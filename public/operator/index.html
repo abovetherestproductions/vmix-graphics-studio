@@ -2572,8 +2572,6 @@ function applyDataSourceModeUI(mode) {
   if (csv)    csv.style.display    = isCsv   ? '' : 'none';
   if (live)   live.style.display   = (!isCsv && !isScApi) ? '' : 'none';
   if (scapi)  scapi.style.display  = isScApi ? '' : 'none';
-  const arPanel = document.getElementById('scapi-autorecord-panel');
-  if (arPanel) arPanel.style.display = isScApi ? '' : 'none';
   // Update poll badge label for sc-api
   const pollBadge = document.getElementById('live-poll-badge');
   if (pollBadge && isScApi) pollBadge.textContent = 'SC API';
