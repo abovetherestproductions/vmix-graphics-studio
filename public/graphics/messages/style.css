@@ -1,0 +1,140 @@
+.messages {
+  position: absolute;
+  left: 0;
+  bottom: 80px;
+  width: 100%;
+  display: flex;
+  align-items: stretch;
+  pointer-events: none;
+  border-radius: var(--panel-radius);
+  background: transparent;
+  isolation: isolate;
+  /* Slide-in start position: -100vw moves the bar one full viewport width to
+     the left, so the bar's right edge starts AT the viewport's left edge
+     regardless of the bar's own width or horizontal positioning. Using
+     -110% of own width was leaving narrower (or non-full-width) bars
+     partially inside the screen — they appeared to slide in from an
+     "invisible wall" at the inner edge instead of from off-screen. */
+  transform: var(--anim-extra-transform, translateX(-100vw));
+  opacity: var(--anim-from-opacity, 0);
+  will-change: transform, opacity;
+  transition: transform var(--anim-duration, 420ms) var(--anim-easing, cubic-bezier(0.22, 1, 0.36, 1)),
+              opacity    var(--anim-duration, 420ms) var(--anim-easing, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+.messages::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 0 var(--panel-radius);
+  z-index: 0;
+  border-radius: var(--panel-radius);
+  background: var(--msg-bar-bg, linear-gradient(105deg, var(--color-header-start) 0%, var(--color-header-end) 55%, rgba(180,14,36,0.85) 100%));
+  pointer-events: none;
+}
+
+.msg-logo-wrap {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--msg-logo-pad-y, 10px) var(--msg-logo-pad-x, 20px);
+}
+
+.msg-logo {
+  height: var(--logo-height, 56px);
+  width: auto;
+  max-width: 240px;
+  object-fit: contain;
+  opacity: var(--logo-opacity, 0.90);
+  transform: translate(var(--logo-x, 0px), var(--logo-y, 0px));
+}
+
+.msg-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 18px var(--msg-body-pad-r, 32px) 16px var(--msg-body-pad-l, 28px);
+  background: transparent;
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.msg-body::before {
+  content: '';
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.10);
+  top: -150px;
+  left: 60px;
+  pointer-events: none;
+}
+
+.msg-body::after {
+  content: '';
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.07);
+  top: -80px;
+  right: 300px;
+  pointer-events: none;
+}
+
+.msg-text-col {
+  min-width: 0;
+  position: relative;
+  z-index: 1;
+  opacity: 1;
+  transition: opacity 220ms ease;
+}
+
+.msg-text-col.msg-text-fading {
+  opacity: 0;
+}
+
+.msg-line1 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--msg-line1-size, 40px);
+  line-height: 1;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+}
+
+.msg-line2 {
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: var(--msg-line2-size, 20px);
+  line-height: 1.2;
+  color: rgba(255,255,255,0.82);
+  margin-top: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.messages.visible {
+  transform: none;
+  opacity: 1;
+}
+
+.messages.out {
+  /* Match the entry: slide back out past the actual viewport edge so the bar
+     fully clears the 1920-px frame regardless of its own width. */
+  transform: var(--anim-extra-transform, translateX(-100vw));
+  opacity: var(--anim-from-opacity, 0);
+  transition: transform var(--anim-out-duration, 320ms) var(--anim-out-easing, cubic-bezier(0.55, 0, 1, 0.45)),
+              opacity    var(--anim-out-duration, 320ms) var(--anim-out-easing, cubic-bezier(0.55, 0, 1, 0.45));
+}

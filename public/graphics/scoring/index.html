@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1920, height=1080" />
+  <title>Scoring</title>
+
+  <link rel="stylesheet" href="/css/reset.css" />
+  <link rel="stylesheet" href="/css/fonts.css" />
+  <link rel="stylesheet" href="/css/theme.css" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="stylesheet" href="/graphics/scoring/style.css" />
+</head>
+<body>
+  <div id="stage" class="stage">
+
+    <!-- Bottom-right score panel -->
+    <div id="graphic-root" class="scoring hidden">
+
+      <!-- Skater name bar (lower third strip) -->
+      <div id="name-bar" class="sc-name-bar">
+        <div class="header-logo-wrap sc-logo-wrap" style="display:none">
+          <img class="header-logo sc-logo" src="" alt="" />
+        </div>
+        <div class="sc-nb-inner">
+          <div id="skater-name" class="sc-skater-name">Skater Name</div>
+          <div id="skater-club" class="sc-skater-club">Club Name</div>
+        </div>
+        <div id="sc-flag-wrap" class="sc-flag-wrap" style="display:none">
+          <img id="sc-flag" class="sc-flag" src="" alt="" />
+        </div>
+        <div id="rank-badge" class="sc-rank-badge">
+          <div class="sc-rank-label">PLACE</div>
+          <div id="rank-num" class="sc-rank-num">—</div>
+        </div>
+      </div>
+
+      <!-- Score breakdown panel -->
+      <div id="score-panel" class="sc-panel">
+        <div id="score-grid" class="sc-score-grid">
+          <div class="sc-score-item" id="item-tes">
+            <div class="sc-score-label" id="label-tes">TES</div>
+            <div class="sc-score-value" id="val-tes">0.00</div>
+          </div>
+          <div class="sc-score-item" id="item-pcs">
+            <div class="sc-score-label">PCS</div>
+            <div class="sc-score-value" id="val-pcs">0.00</div>
+          </div>
+          <div class="sc-score-item sc-score-item--bonus" id="item-bonus" style="display:none">
+            <div class="sc-score-label">BONUS</div>
+            <div class="sc-score-value" id="val-bonus">0.00</div>
+          </div>
+          <div class="sc-score-item sc-score-item--deduction" id="item-deduction" style="display:none">
+            <div class="sc-score-label">DEDUCT</div>
+            <div class="sc-score-value" id="val-deduction">0.00</div>
+          </div>
+          <div class="sc-score-item sc-score-item--total">
+            <div class="sc-score-label">TOTAL</div>
+            <div class="sc-score-value" id="val-total">0.00</div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <script src="/js/core/config.js"></script>
+  <script src="/js/core/caps-targets.js"></script>
+  <script src="/js/core/theme-loader.js"></script>
+  <script src="/js/core/utils.js"></script>
+  <script src="/js/core/json-poller.js"></script>
+  <script src="/js/core/ws-listener.js"></script>
+  <script src="/js/core/state-machine.js"></script>
+  <script src="/js/graphics/scoring.js"></script>
+</body>
+</html>

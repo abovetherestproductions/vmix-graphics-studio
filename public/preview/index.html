@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Preview Wall</title>
+  <link rel="stylesheet" href="/preview/preview.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>Preview Wall</h1>
+      <p>Live producer view of all graphics. These previews do not change output positioning.</p>
+    </div>
+    <div class="topbar-actions">
+      <button id="menu-toggle" type="button">Hide Menu</button>
+      <button id="reload-visible" type="button">Reload Visible</button>
+      <button id="all-on" type="button">All On</button>
+      <button id="all-off" type="button">All Off</button>
+      <button id="reset-layout" type="button">Reset Layout</button>
+      <a href="/operator/">Operator</a>
+    </div>
+  </header>
+
+  <main class="preview-shell">
+    <aside id="sidebar" class="sidebar">
+      <section class="sidebar-section">
+        <label for="tile-size">Global Tile Size</label>
+        <div class="range-row">
+          <input id="tile-size" type="range" min="260" max="760" step="10" />
+          <span id="tile-size-value"></span>
+        </div>
+      </section>
+
+      <section class="sidebar-section">
+        <h2>Graphics</h2>
+        <p class="hint">Drag rows to reorder. Turn previews off when you want more space.</p>
+        <div id="control-list" class="control-list"></div>
+      </section>
+    </aside>
+
+    <section id="wall" class="wall" aria-live="polite"></section>
+  </main>
+
+  <script src="/preview/preview.js"></script>
+</body>
+</html>

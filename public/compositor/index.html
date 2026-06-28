@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1920, height=1080" />
+  <title>Graphics Compositor</title>
+  <link rel="stylesheet" href="/css/reset.css" />
+  <link rel="stylesheet" href="/css/fonts.css" />
+  <link rel="stylesheet" href="/css/theme.css" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="stylesheet" href="/css/animations.css" />
+  <link rel="stylesheet" href="/graphics/lower-third/style.css" />
+  <link rel="stylesheet" href="/graphics/elements/style.css" />
+  <link rel="stylesheet" href="/graphics/messages/style.css" />
+  <link rel="stylesheet" href="/graphics/officials/style.css" />
+  <link rel="stylesheet" href="/graphics/scoring/style.css" />
+  <link rel="stylesheet" href="/graphics/skater-profile/style.css" />
+  <link rel="stylesheet" href="/graphics/rankings/style.css" />
+  <link rel="stylesheet" href="/graphics/standings/style.css" />
+  <link rel="stylesheet" href="/graphics/starting-order/style.css" />
+  <link rel="stylesheet" href="/graphics/clock/style.css" />
+  <link rel="stylesheet" href="/graphics/time-of-day/style.css" />
+</head>
+<body class="stage">
+
+  <!-- ── Lower Third ─────────────────────────────────────────────────── -->
+  <div id="lt-root" class="lower-third hidden">
+
+    <div id="lt-logo-wrap" class="lt-logo-wrap" style="display:none">
+      <img id="lt-logo" class="lt-logo" src="" alt="" />
+    </div>
+
+    <div class="lt-body">
+      <div class="lt-text-col">
+        <div id="lt-line1" class="lt-line1">Name</div>
+        <div id="lt-line2" class="lt-line2">Club / Role</div>
+      </div>
+    </div>
+
+    <div id="lt-flag-wrap" class="lt-flag-wrap" style="display:none">
+      <img id="lt-flag" class="lt-flag" src="" alt="" />
+    </div>
+
+    <div id="lt-info-card" class="lt-info-card" aria-hidden="true">
+      <div id="lt-info-category" class="lt-info-line"></div>
+      <div id="lt-info-segment" class="lt-info-line"></div>
+      <div id="lt-info-group" class="lt-info-line"></div>
+    </div>
+
+  </div>
+
+  <!-- ── Elements Tracker ────────────────────────────────────────────── -->
+  <div id="el-root" class="elements hidden">
+
+    <div class="el-header">
+      <div class="header-logo-wrap el-logo-wrap" style="display:none">
+        <img class="header-logo el-logo" src="" alt="" />
+      </div>
+      <div id="el-skater" class="el-skater">Skater Name</div>
+      <div class="el-total-block">
+        <div id="el-total-label" class="el-total-label">TES</div>
+        <div id="el-total" class="el-total">0.00</div>
+      </div>
+    </div>
+
+    <div id="el-body" class="el-body">
+      <div id="el-rows" class="el-rows"></div>
+      <div id="el-light-rail" class="el-light-rail" aria-label="GOE light rail"></div>
+    </div>
+
+  </div>
+
+  <!-- ── Messages ────────────────────────────────────────────────────── -->
+  <div id="msg-root" class="messages hidden">
+
+    <div id="msg-logo-wrap" class="header-logo-wrap msg-logo-wrap" style="display:none">
+      <img id="msg-logo" class="header-logo msg-logo" src="" alt="" />
+    </div>
+
+    <div class="msg-body">
+      <div class="msg-text-col">
+        <div id="msg-line1" class="msg-line1">Message</div>
+        <div id="msg-line2" class="msg-line2">Details</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Officials ───────────────────────────────────────────────────── -->
+  <div id="of-root" class="officials hidden">
+    <div id="of-panel" class="of-panel">
+
+      <div class="of-header">
+        <div class="of-header-ring"></div>
+        <div class="header-logo-wrap of-logo-wrap" style="display:none">
+          <img class="header-logo of-logo" src="" alt="" />
+        </div>
+        <div class="of-header-content">
+          <div id="of-title" class="of-title">Officials</div>
+          <div id="of-subtitle" class="of-subtitle"></div>
+          <div class="header-event-info of-event-info"></div>
+        </div>
+      </div>
+
+      <div id="of-rows" class="of-rows"></div>
+
+    </div>
+  </div>
+
+  <!-- ── Scoring ─────────────────────────────────────────────────────── -->
+  <div id="sc-root" class="scoring hidden">
+
+    <div id="name-bar" class="sc-name-bar">
+      <div class="header-logo-wrap sc-logo-wrap" style="display:none">
+        <img class="header-logo sc-logo" src="" alt="" />
+      </div>
+      <div class="sc-nb-inner">
+        <div id="skater-name" class="sc-skater-name">Skater Name</div>
+        <div id="skater-club" class="sc-skater-club">Club Name</div>
+      </div>
+      <div id="sc-flag-wrap" class="sc-flag-wrap" style="display:none">
+        <img id="sc-flag" class="sc-flag" src="" alt="" />
+      </div>
+      <div id="rank-badge" class="sc-rank-badge">
+        <div class="sc-rank-label">PLACE</div>
+        <div id="rank-num" class="sc-rank-num">—</div>
+      </div>
+    </div>
+
+    <div id="score-panel" class="sc-panel">
+      <div id="score-grid" class="sc-score-grid">
+        <div class="sc-score-item" id="item-tes">
+          <div class="sc-score-label" id="label-tes">TES</div>
+          <div class="sc-score-value" id="val-tes">0.00</div>
+        </div>
+        <div class="sc-score-item" id="item-pcs">
+          <div class="sc-score-label">PCS</div>
+          <div class="sc-score-value" id="val-pcs">0.00</div>
+        </div>
+        <div class="sc-score-item sc-score-item--bonus" id="item-bonus" style="display:none">
+          <div class="sc-score-label">BONUS</div>
+          <div class="sc-score-value" id="val-bonus">0.00</div>
+        </div>
+        <div class="sc-score-item sc-score-item--deduction" id="item-deduction" style="display:none">
+          <div class="sc-score-label">DEDUCT</div>
+          <div class="sc-score-value" id="val-deduction">0.00</div>
+        </div>
+        <div class="sc-score-item sc-score-item--total">
+          <div class="sc-score-label">TOTAL</div>
+          <div class="sc-score-value" id="val-total">0.00</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Skater Profile ──────────────────────────────────────────────── -->
+  <div id="sp-root" class="skater-profile hidden">
+
+    <div id="sp-photo-wrap" class="sp-photo-wrap">
+      <img id="sp-photo" class="sp-photo" src="" alt="" />
+      <div class="sp-photo-overlay"></div>
+    </div>
+
+    <div class="sp-info-panel">
+
+      <div class="sp-header">
+        <div class="header-logo-wrap sp-logo-wrap" style="display:none">
+          <img class="header-logo sp-logo" src="" alt="" />
+        </div>
+        <div class="sp-header-ring"></div>
+        <div id="sp-event" class="sp-event">Women Short Program</div>
+        <div id="sp-start-num" class="sp-start-num"></div>
+      </div>
+
+      <div class="sp-body">
+        <div id="sp-name" class="sp-name">Skater Name</div>
+        <div id="sp-club" class="sp-club">Club Name</div>
+        <div id="sp-section" class="sp-section">Section</div>
+
+        <div class="sp-divider"></div>
+
+        <div class="sp-stats">
+          <div class="sp-stat" id="stat-sb">
+            <div class="sp-stat-label">SEASON BEST</div>
+            <div id="sp-sb" class="sp-stat-value">—</div>
+          </div>
+          <div class="sp-stat" id="stat-pb">
+            <div class="sp-stat-label">PERSONAL BEST</div>
+            <div id="sp-pb" class="sp-stat-value">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sp-flag-bar">
+        <img id="sp-flag" class="sp-flag" src="" alt="" style="display:none" />
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Rankings ────────────────────────────────────────────────────── -->
+  <div id="rk-root" class="rankings hidden">
+    <div id="rk-panel" class="rk-panel">
+
+      <div class="rk-header">
+        <div class="rk-header-ring"></div>
+        <div class="header-logo-wrap rk-logo-wrap" style="display:none">
+          <img class="header-logo rk-logo" src="" alt="" />
+        </div>
+        <div class="rk-header-left">
+          <div id="rk-title" class="rk-title">Final Rankings</div>
+          <div id="rk-subtitle" class="rk-subtitle"></div>
+          <div class="header-event-info rk-event-info"></div>
+        </div>
+      </div>
+
+      <div id="rk-rows" class="rk-rows"></div>
+
+    </div>
+  </div>
+
+  <!-- ── Standings ───────────────────────────────────────────────────── -->
+  <div id="st-root" class="standings hidden">
+    <div id="st-panel" class="st-panel">
+
+      <div class="st-header">
+        <div class="header-logo-wrap st-logo-wrap" style="display:none">
+          <img class="header-logo st-logo" src="" alt="" />
+        </div>
+        <div class="st-header-ring"></div>
+        <div class="st-header-content">
+          <div id="st-title" class="st-title">Standings</div>
+          <div id="st-subtitle" class="st-subtitle"></div>
+        </div>
+      </div>
+
+      <div id="st-rows" class="st-rows"></div>
+
+    </div>
+  </div>
+
+  <!-- ── Starting Order ──────────────────────────────────────────────── -->
+  <div id="so-root" class="starting-order hidden">
+    <div id="so-panel" class="so-panel">
+      <div class="so-header">
+        <div class="so-header-ring"></div>
+        <div class="header-logo-wrap so-logo-wrap" style="display:none">
+          <img class="header-logo so-logo" src="" alt="" />
+        </div>
+        <div class="so-header-content">
+          <div id="so-title" class="so-title">Starting Order</div>
+          <div id="so-subtitle" class="so-subtitle">Group 1</div>
+          <div class="header-event-info so-event-info"></div>
+        </div>
+      </div>
+
+      <div id="so-rows" class="so-rows"></div>
+    </div>
+  </div>
+
+  <!-- ── Clock ───────────────────────────────────────────────────────── -->
+  <div id="clk-root" class="clock hidden">
+    <div class="clock-panel">
+      <div id="clock-label" class="clock-label">WARM-UP</div>
+      <div id="clock-value" class="clock-value">0:00</div>
+    </div>
+  </div>
+
+  <!-- ── Time of Day ─────────────────────────────────────────────────── -->
+  <div id="tod-root" class="tod hidden">
+    <div class="tod-panel">
+      <div id="tod-label" class="tod-label"></div>
+      <div id="tod-value" class="tod-value">--:--</div>
+    </div>
+  </div>
+
+  <!-- ── Shared core — loaded once for all graphics ──────────────────── -->
+  <script src="/js/core/config.js"></script>
+  <script src="/js/core/caps-targets.js"></script>
+  <script src="/js/core/compositor-theme-loader.js"></script>
+  <script src="/js/core/utils.js"></script>
+  <script src="/js/core/json-poller.js"></script>
+  <script src="/js/core/ws-listener.js"></script>
+  <script src="/js/core/state-machine.js"></script>
+
+  <!-- ── Per-graphic JS (v2 — scoped IDs, single-page safe) ──────────── -->
+  <script src="/js/graphics/v2/lower-third.js"></script>
+  <script src="/js/graphics/v2/elements.js"></script>
+  <script src="/js/graphics/v2/messages.js"></script>
+  <script src="/js/graphics/v2/officials.js"></script>
+  <script src="/js/graphics/v2/scoring.js"></script>
+  <script src="/js/graphics/v2/skater-profile.js"></script>
+  <script src="/js/graphics/v2/rankings.js"></script>
+  <script src="/js/graphics/v2/standings.js"></script>
+  <script src="/js/graphics/v2/starting-order.js"></script>
+  <script src="/js/graphics/v2/clock.js"></script>
+  <script src="/js/graphics/v2/time-of-day.js"></script>
+
+</body>
+</html>

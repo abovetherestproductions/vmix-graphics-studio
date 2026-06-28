@@ -1,0 +1,180 @@
+/* ── Officials Panel — center screen ─────────────── */
+.officials {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 900px;
+  pointer-events: none;
+}
+
+.of-panel {
+  background: var(--color-panel-bg);
+  border-radius: var(--panel-radius);
+  overflow: hidden;
+  box-shadow: var(--panel-shadow);
+  opacity: var(--anim-from-opacity, 0);
+  transform: var(--anim-extra-transform, translateY(36px) scale(0.97));
+  will-change: transform, opacity;
+  transition: opacity var(--anim-duration, 400ms) var(--anim-easing, cubic-bezier(0.22, 1, 0.36, 1)),
+              transform var(--anim-duration, 400ms) var(--anim-easing, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+/* ── Header ───────────────────────────────────────── */
+.of-header {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(105deg, var(--color-header-start) 0%, var(--color-header-end) 100%);
+  padding: 18px 24px 16px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 88px;
+}
+.of-header::before {
+  content: '';
+  position: absolute;
+  width: 300px; height: 300px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.12);
+  top: -110px; left: -50px;
+}
+.of-header::after {
+  content: '';
+  position: absolute;
+  width: 180px; height: 180px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.08);
+  top: -50px; right: 80px;
+}
+.of-header-ring {
+  position: absolute; inset: 0; pointer-events: none; overflow: hidden;
+}
+.of-header-ring::before {
+  content: '';
+  position: absolute;
+  width: 150px; height: 150px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.07);
+  bottom: -70px; left: 42%;
+}
+
+.of-header-content {
+  position: relative; z-index: 1;
+  min-width: 0; flex: 1;
+}
+
+.of-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--of-title-size, 36px);
+  line-height: 1;
+  color: var(--color-text-primary);
+  text-transform: uppercase;
+  /* Single-line constraint — JS shrinks the font instead of wrapping. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.of-subtitle {
+  font-family: var(--font-body);
+  font-size: var(--of-subtitle-size, 16px);
+  font-weight: 400;
+  color: rgba(255,255,255,0.78);
+  margin-top: var(--of-title-sub-gap, 4px);
+}
+.of-event-info {
+  font-family: var(--font-body);
+  /* Share the --of-subtitle-size var so the operator's "Subtitle" font size
+     slider works whether the visible text comes from data.subtitle or the
+     auto-generated event-info line. */
+  font-size: var(--of-subtitle-size, 12px);
+  font-weight: 400;
+  color: rgba(255,255,255,0.55);
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Logo slot — left side of header */
+.header-logo-wrap {
+  position: relative; z-index: 1;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  overflow: visible;
+}
+.of-logo {
+  height: var(--logo-height, 56px);
+  max-height: none;
+  max-width: 160px;
+  object-fit: contain;
+  opacity: var(--logo-opacity, 0.90);
+  transform: translate(var(--logo-x, 0px), var(--logo-y, 0px));
+}
+
+/* ── Rows ─────────────────────────────────────────── */
+.of-rows {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0;
+  /* overflow:hidden so the animateOut roll-up (max-height: 0) visibly
+     clips the rows into the header instead of just shrinking the box
+     while the rows escape its bounds. */
+  overflow: hidden;
+}
+
+.of-row {
+  display: grid;
+  grid-template-columns: var(--of-col-role, 220px) 1fr;
+  align-items: center;
+  min-height: var(--row-min-height, 58px);
+  padding: 0 28px;
+  padding-block: var(--graphic-row-pad, 0px);
+  border-top: 1px solid var(--color-row-border);
+  column-gap: 20px;
+  /* Cascade-down reveal: row starts above its final position and slides down. */
+  opacity: 0;
+  transform: translateY(-22px);
+  transition: opacity 360ms cubic-bezier(0.22, 1, 0.36, 1),
+              transform 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.of-row:first-child { border-top: none; }
+.of-row:nth-child(even) { background: var(--color-row-alt); }
+
+.of-role {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--of-role-size, 14px);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--color-accent-light);
+  text-align: var(--of-role-align, right);
+}
+
+.of-name {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: var(--of-name-size, 20px);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Compact mode for 9-judge panels */
+.officials.layout-compact .of-row { min-height: var(--row-min-height, 46px); }
+.officials.layout-compact .of-name { font-size: 17px; }
+
+/* ── Animation states ─────────────────────────────── */
+.officials.visible .of-panel {
+  opacity: 1;
+  transform: none;
+}
+.of-row.row-in {
+  opacity: 1;
+  transform: translateY(0);
+}

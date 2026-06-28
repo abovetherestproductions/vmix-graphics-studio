@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1920, height=1080" />
+  <title>Manual Skater</title>
+  <link rel="stylesheet" href="/css/reset.css" />
+  <link rel="stylesheet" href="/css/fonts.css" />
+  <link rel="stylesheet" href="/css/theme.css" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="stylesheet" href="/graphics/manual-skater/style.css" />
+</head>
+<body>
+  <div id="stage" class="stage">
+    <div id="graphic-root" class="lower-third manual-skater hidden">
+      <div id="lt-logo-wrap" class="lt-logo-wrap" style="display:none">
+        <img id="lt-logo" class="lt-logo" src="" alt="" />
+      </div>
+
+      <div class="lt-body">
+        <div class="lt-text-col">
+          <div id="lt-line1" class="lt-line1">Name</div>
+          <div id="lt-line2" class="lt-line2">Club</div>
+        </div>
+      </div>
+
+      <div id="lt-flag-wrap" class="lt-flag-wrap" style="display:none">
+        <img id="lt-flag" class="lt-flag" src="" alt="" />
+      </div>
+
+      <div id="lt-info-card" class="lt-info-card" aria-hidden="true">
+        <div id="lt-info-category" class="lt-info-line"></div>
+        <div id="lt-info-segment" class="lt-info-line"></div>
+        <div id="lt-info-group" class="lt-info-line"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/core/config.js"></script>
+  <script src="/js/core/caps-targets.js"></script>
+  <script src="/js/core/theme-loader.js"></script>
+  <script src="/js/core/utils.js"></script>
+  <script src="/js/core/json-poller.js"></script>
+  <script src="/js/core/ws-listener.js"></script>
+  <script src="/js/core/state-machine.js"></script>
+  <script src="/js/graphics/manual-skater.js"></script>
+</body>
+</html>

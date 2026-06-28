@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Production Control</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101115;
+      --panel: #181a21;
+      --panel-2: #20232c;
+      --line: #303440;
+      --text: #f4f6fb;
+      --muted: #aeb5c4;
+      --accent: #d81135;
+      --ok: #2fc46c;
+      --warn: #f3b33d;
+      --bad: #ef5964;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--line);
+      background: #14161c;
+    }
+    h1 { margin: 0; font-size: 20px; letter-spacing: 0; }
+    main { padding: 20px 24px 32px; display: grid; gap: 16px; }
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(260px, 1fr)); gap: 16px; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      min-width: 0;
+    }
+    .panel h2 { margin: 0 0 12px; font-size: 14px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.08em; }
+    .kv { display: grid; grid-template-columns: 130px 1fr; gap: 8px 12px; font-size: 13px; align-items: center; }
+    .kv span:nth-child(odd), label { color: var(--muted); }
+    input, textarea, select {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font: inherit;
+    }
+    textarea { min-height: 62px; resize: vertical; }
+    .buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    button {
+      border: 0;
+      border-radius: 6px;
+      background: var(--accent);
+      color: white;
+      padding: 8px 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.55; cursor: wait; }
+    button.secondary { background: var(--panel-2); color: var(--text); border: 1px solid var(--line); }
+    .pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 4px 9px; font-size: 12px; background: var(--panel-2); }
+    .ok { color: var(--ok); }
+    .warn { color: var(--warn); }
+    .bad { color: var(--bad); }
+    .wide { grid-column: 1 / -1; }
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .muted { color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .overlay-grid { display: grid; gap: 8px; margin-top: 10px; }
+    .overlay-row { display: grid; grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) 86px; gap: 8px; align-items: center; }
+    .overlay-row.header { color: var(--muted); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+    .overlay-row .template-name { font-weight: 800; color: var(--text); }
+    .repair-summary { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+    .repair-list { display: grid; gap: 6px; max-height: 360px; overflow: auto; }
+    .repair-row {
+      display: grid;
+      grid-template-columns: 76px minmax(180px, 1fr) 28px minmax(180px, 1fr);
+      gap: 8px;
+      align-items: center;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel-2);
+      font-size: 12px;
+    }
+    .repair-row .file { word-break: break-word; }
+    @media (max-width: 980px) {
+      .grid { grid-template-columns: 1fr; }
+      .kv { grid-template-columns: 1fr; }
+      .overlay-row { grid-template-columns: 1fr; }
+      .repair-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Production Control</h1>
+    <span id="status-pill" class="pill">Loading</span>
+  </header>
+  <main>
+    <section class="grid">
+      <div class="panel">
+        <h2>Current Metadata</h2>
+        <div class="kv">
+          <label for="eventName">Event</label><input id="eventName" />
+          <label for="categoryName">Category</label><input id="categoryName" />
+          <label for="segmentName">Segment</label><input id="segmentName" />
+          <label for="segmentNumber">Segment #</label><input id="segmentNumber" />
+          <label for="startOrder">Start Order</label><input id="startOrder" type="number" />
+          <label for="skaterName">Skater</label><input id="skaterName" />
+          <label for="club">Club</label><input id="club" />
+        </div>
+        <div class="buttons">
+          <button onclick="saveCurrent()">Save Current</button>
+          <button class="secondary" onclick="callApi('/api/control/previous-skater')">Previous</button>
+          <button class="secondary" onclick="callApi('/api/control/next-skater')">Next</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>vMix</h2>
+        <div class="kv">
+          <span>Connection</span><b id="vmixConnected">Unknown</b>
+          <span>Recording</span><b id="vmixRecording">Unknown</b>
+          <span>Session</span><span id="sessionStatus">None</span>
+          <span>Last MP4</span><span id="lastProcessed">None</span>
+        </div>
+        <div class="buttons">
+          <button id="recordToggleBtn" onclick="callApi('/api/vmix/recording/toggle', this)">Record Toggle</button>
+          <button class="secondary" onclick="callApi('/api/test/vmix')">Test vMix</button>
+          <button class="secondary" onclick="callApi('/api/test/recording-folder')">Test Record Folder</button>
+          <button class="secondary" onclick="callApi('/api/test/output-folder')">Test Output</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Dailymotion</h2>
+        <div class="kv">
+          <span>Enabled</span><b id="dmEnabled">Unknown</b>
+          <span>Status</span><b id="dmStatus">Unknown</b>
+          <span>Live ID</span><span id="dmLiveId">None</span>
+          <span>Latest VOD</span><span id="dmVod">None</span>
+        </div>
+        <div class="buttons">
+          <button onclick="callApi('/api/dailymotion/recording/toggle')">DM Toggle</button>
+          <button class="secondary" onclick="callApi('/api/test/dailymotion')">Test DM</button>
+          <button class="secondary" onclick="callApi('/api/dailymotion/recording/rename-latest')">Rename Latest</button>
+        </div>
+      </div>
+
+      <div class="panel wide">
+        <h2>Settings</h2>
+        <div class="grid">
+          <div>
+            <div class="kv">
+              <label for="vmixHost">vMix Host</label><input id="vmixHost" />
+              <label for="vmixPort">vMix Port</label><input id="vmixPort" type="number" />
+              <label for="vmixRecordingFolder">Recording Folder</label><input id="vmixRecordingFolder" />
+              <label for="defaultBrowserInputName">Browser Input</label><input id="defaultBrowserInputName" />
+              <label for="defaultOverlayNumber">Overlay #</label><input id="defaultOverlayNumber" type="number" min="1" max="4" />
+              <label for="overlayOutDelayMs">Overlay Out Delay</label><input id="overlayOutDelayMs" type="number" min="0" step="50" />
+            </div>
+          </div>
+          <div>
+            <div class="kv">
+              <label for="outputRootFolder">Output Root</label><input id="outputRootFolder" />
+              <label for="needsReviewFolder">Needs Review</label><input id="needsReviewFolder" />
+              <label for="metadataSource">MP4 Metadata Source</label>
+              <select id="metadataSource">
+                <option value="auto">Auto</option>
+                <option value="scoring">Scoring</option>
+                <option value="manual-skater">Manual Skater</option>
+              </select>
+              <label for="filenameFormat">Filename Format</label><input id="filenameFormat" />
+              <label for="categoryRecordingFilenameFormat">Category Format</label><input id="categoryRecordingFilenameFormat" />
+            </div>
+          </div>
+          <div>
+            <div class="kv">
+              <label for="dailymotionEnabled">DM Enabled</label><input id="dailymotionEnabled" type="checkbox" />
+              <label for="dailymotionLiveVideoId">Live Video ID</label><input id="dailymotionLiveVideoId" />
+              <label for="dailymotionVodTitleFormat">VOD Title</label><input id="dailymotionVodTitleFormat" />
+              <label for="dailymotionVodDescriptionFormat">VOD Description</label><textarea id="dailymotionVodDescriptionFormat"></textarea>
+            </div>
+          </div>
+          <div style="grid-column:1/-1;">
+            <h2>Graphic Overlay Routing</h2>
+            <p class="muted">Leave Input or Overlay blank to use the defaults above. These values are used automatically by one-button graphic toggle URLs.</p>
+            <div id="graphicOverlayRows" class="overlay-grid"></div>
+          </div>
+        </div>
+        <div class="buttons">
+          <button onclick="saveSettings()">Save Settings</button>
+          <button class="secondary" onclick="callApi('/api/preview/local-filename')">Preview Filename</button>
+          <button class="secondary" onclick="callApi('/api/preview/dailymotion-title')">Preview DM Title</button>
+        </div>
+      </div>
+
+      <div class="panel wide">
+        <h2>Recording Filename Repair</h2>
+        <p class="muted">Scans the configured Needs Review folder on this server and compares video timestamps with the recording action log. Scanning changes nothing. Apply is enabled only after a fresh proposal is created.</p>
+        <div class="buttons">
+          <button id="repairScanBtn" onclick="scanRecordingRepairs(this)">Scan Needs Review</button>
+          <button id="repairApplyBtn" class="secondary" onclick="applyRecordingRepairs(this)" disabled>Apply Proposed Renames</button>
+        </div>
+        <div id="repairSummary" class="repair-summary"></div>
+        <div id="repairList" class="repair-list">
+          <span class="muted">No scan has been run.</span>
+        </div>
+      </div>
+
+      <div class="panel wide">
+        <h2>Response</h2>
+        <pre id="responseBox">Ready</pre>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const GRAPHIC_OVERLAYS = [
+      ['starting-order', 'Starting Order'],
+      ['scoring', 'Scoring Display'],
+      ['lower-third', 'Lower Third'],
+      ['manual-skater', 'Manual Skater'],
+      ['standings', 'Rank 6 Context'],
+      ['officials', 'Officials'],
+      ['elements', 'Elements Tracker'],
+      ['messages', 'Messages'],
+      ['skater-profile', 'Skater Profile'],
+      ['rankings', 'Final Rankings'],
+    ];
+
+    async function jsonFetch(url, options = {}) {
+      const res = await fetch(url, {
+        headers: { 'Content-Type': 'application/json' },
+        ...options,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || data.error || res.statusText);
+      return data;
+    }
+
+    function showResponse(data) {
+      $('responseBox').textContent = JSON.stringify(data, null, 2);
+    }
+
+    function setText(id, value) {
+      $(id).textContent = value == null || value === '' ? 'None' : value;
+    }
+
+    function escapeAttr(value) {
+      return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    }
+
+    function setValueIfNotFocused(id, value) {
+      const el = $(id);
+      if (!el || el === document.activeElement) return;
+      el.value = value;
+    }
+
+    function setCheckedIfNotFocused(id, value) {
+      const el = $(id);
+      if (!el || el === document.activeElement) return;
+      el.checked = !!value;
+    }
+
+    function isAnyOverlayRowFocused() {
+      const active = document.activeElement;
+      if (!active) return false;
+      const container = $('graphicOverlayRows');
+      return !!(container && container.contains(active));
+    }
+
+    function renderGraphicOverlayRows(graphicOverlays = {}) {
+      const target = $('graphicOverlayRows');
+      target.innerHTML = `
+        <div class="overlay-row header">
+          <div>Graphic</div>
+          <div>vMix Input</div>
+          <div>Overlay #</div>
+        </div>
+      `;
+      GRAPHIC_OVERLAYS.forEach(([id, label]) => {
+        const cfg = graphicOverlays[id] || {};
+        const row = document.createElement('div');
+        row.className = 'overlay-row';
+        row.innerHTML = `
+          <div class="template-name">${label}</div>
+          <input id="gfxInput-${id}" placeholder="default" value="${escapeAttr(cfg.inputName || '')}" />
+          <input id="gfxOverlay-${id}" type="number" min="1" max="4" placeholder="default" value="${cfg.overlayNumber || ''}" />
+        `;
+        target.appendChild(row);
+      });
+    }
+
+    function readGraphicOverlayRows() {
+      const map = {};
+      GRAPHIC_OVERLAYS.forEach(([id]) => {
+        const inputName = $(`gfxInput-${id}`)?.value.trim() || '';
+        const overlayRaw = $(`gfxOverlay-${id}`)?.value;
+        const overlayNumber = overlayRaw ? Math.min(Math.max(Number(overlayRaw) || 1, 1), 4) : null;
+        if (inputName || overlayNumber) {
+          map[id] = {};
+          if (inputName) map[id].inputName = inputName;
+          if (overlayNumber) map[id].overlayNumber = overlayNumber;
+        }
+      });
+      return map;
+    }
+
+    let settingsLoaded = false;
+    let recordingRepairToken = null;
+
+    async function loadSettings() {
+      const settings = await jsonFetch('/api/settings').catch(() => ({}));
+      const cfg = settings.settings || {};
+      $('vmixHost').value = cfg.vmix?.vmixHost || '';
+      $('vmixPort').value = cfg.vmix?.vmixPort || '';
+      $('vmixRecordingFolder').value = cfg.vmix?.vmixRecordingFolder || '';
+      $('defaultBrowserInputName').value = cfg.vmix?.defaultBrowserInputName || '';
+      $('defaultOverlayNumber').value = cfg.vmix?.defaultOverlayNumber || 1;
+      $('overlayOutDelayMs').value = cfg.vmix?.overlayOutDelayMs ?? 900;
+      renderGraphicOverlayRows(cfg.vmix?.graphicOverlays || {});
+      $('outputRootFolder').value = cfg.localRecordingSorter?.outputRootFolder || '';
+      $('needsReviewFolder').value = cfg.localRecordingSorter?.needsReviewFolder || '';
+      $('metadataSource').value = cfg.localRecordingSorter?.metadataSource || 'auto';
+      $('filenameFormat').value = cfg.localRecordingSorter?.filenameFormat || '';
+      $('categoryRecordingFilenameFormat').value = cfg.localRecordingSorter?.categoryRecordingFilenameFormat || '';
+      $('dailymotionEnabled').checked = !!cfg.dailymotion?.dailymotionEnabled;
+      $('dailymotionLiveVideoId').value = cfg.dailymotion?.dailymotionLiveVideoId || '';
+      $('dailymotionVodTitleFormat').value = cfg.dailymotion?.dailymotionVodTitleFormat || '';
+      $('dailymotionVodDescriptionFormat').value = cfg.dailymotion?.dailymotionVodDescriptionFormat || '';
+      settingsLoaded = true;
+    }
+
+    async function refresh() {
+      if (!settingsLoaded) {
+        await loadSettings().catch(() => {});
+      }
+      const statusResult = await Promise.allSettled([jsonFetch('/api/production/status')]).then(r => r[0]);
+      const data = statusResult.status === 'fulfilled' ? statusResult.value : {};
+
+      if (statusResult.status === 'fulfilled') {
+        const current = data.current || {};
+        const skater = current.currentSkater || {};
+        $('eventName').value = current.currentEvent || '';
+        $('categoryName').value = current.currentCategory || '';
+        $('segmentName').value = current.currentSegment || '';
+        $('segmentNumber').value = current.segmentNumber || '';
+        $('startOrder').value = skater.startOrder || '';
+        $('skaterName').value = skater.skaterName || '';
+        $('club').value = skater.club || '';
+
+        $('status-pill').textContent = data.settingsWarnings?.length ? 'Warnings' : 'Ready';
+        $('status-pill').className = `pill ${data.settingsWarnings?.length ? 'warn' : 'ok'}`;
+        setText('vmixConnected', data.vmix?.connected ? 'Connected' : 'Offline');
+        $('vmixConnected').className = data.vmix?.connected ? 'ok' : 'bad';
+        setText('vmixRecording', data.vmix?.recording ? 'Recording' : 'Stopped');
+        $('vmixRecording').className = data.vmix?.recording ? 'warn' : 'ok';
+        setText('sessionStatus', data.localRecording?.activeSession?.status || 'None');
+        setText('lastProcessed', data.localRecording?.lastProcessedFile || 'None');
+        const recordToggleBtn = $('recordToggleBtn');
+        if (recordToggleBtn) {
+          const actionBusy = !!data.localRecording?.actionInProgress;
+          recordToggleBtn.disabled = actionBusy;
+          recordToggleBtn.textContent = actionBusy ? 'Working...' : 'Record Toggle';
+        }
+        setText('dmEnabled', data.dailymotion?.enabled ? 'Enabled' : 'Disabled');
+        setText('dmStatus', data.dailymotion?.recordStatus || 'Unknown');
+        setText('dmLiveId', data.dailymotion?.liveVideoId || 'None');
+        setText('dmVod', data.dailymotion?.latestVodTitle || data.dailymotion?.latestVodId || 'None');
+        showResponse(data);
+      } else {
+        $('status-pill').textContent = 'Status unavailable';
+        $('status-pill').className = 'pill bad';
+        showResponse({ error: statusResult.reason?.message || 'Failed to load /api/production/status' });
+      }
+    }
+
+    async function saveCurrent() {
+      const body = {
+        currentEvent: $('eventName').value,
+        currentCategory: $('categoryName').value,
+        currentSegment: $('segmentName').value,
+        segmentNumber: $('segmentNumber').value,
+        currentSkater: {
+          startOrder: $('startOrder').value ? Number($('startOrder').value) : null,
+          skaterName: $('skaterName').value,
+          club: $('club').value,
+        },
+      };
+      showResponse(await jsonFetch('/api/state/current', { method: 'POST', body: JSON.stringify(body) }));
+      await refresh();
+    }
+
+    async function saveSettings() {
+      const body = {
+        vmix: {
+          vmixHost: $('vmixHost').value,
+          vmixPort: Number($('vmixPort').value || 8088),
+          vmixRecordingFolder: $('vmixRecordingFolder').value,
+          defaultBrowserInputName: $('defaultBrowserInputName').value,
+          defaultOverlayNumber: Number($('defaultOverlayNumber').value || 1),
+          overlayOutDelayMs: Number($('overlayOutDelayMs').value || 0),
+          graphicOverlays: readGraphicOverlayRows(),
+        },
+        localRecordingSorter: {
+          outputRootFolder: $('outputRootFolder').value,
+          needsReviewFolder: $('needsReviewFolder').value,
+          metadataSource: $('metadataSource').value,
+          filenameFormat: $('filenameFormat').value,
+          categoryRecordingFilenameFormat: $('categoryRecordingFilenameFormat').value,
+        },
+        dailymotion: {
+          dailymotionEnabled: $('dailymotionEnabled').checked,
+          dailymotionLiveVideoId: $('dailymotionLiveVideoId').value,
+          dailymotionVodTitleFormat: $('dailymotionVodTitleFormat').value,
+          dailymotionVodDescriptionFormat: $('dailymotionVodDescriptionFormat').value,
+        },
+      };
+      showResponse(await jsonFetch('/api/settings', { method: 'POST', body: JSON.stringify(body) }));
+      settingsLoaded = false;
+      await loadSettings().catch(() => {});
+      await refresh();
+    }
+
+    async function callApi(url, button) {
+      const previousText = button?.textContent;
+      let responseData = null;
+      try {
+        if (button) {
+          button.disabled = true;
+          button.textContent = 'Working...';
+        }
+        responseData = await jsonFetch(url, { method: 'POST' });
+        showResponse(responseData);
+        await refresh();
+      } catch (err) {
+        showResponse({ success: false, message: err.message });
+      } finally {
+        if (button) {
+          const shouldStayBusy = button.id === 'recordToggleBtn' && responseData?.action === 'busy';
+          button.disabled = shouldStayBusy;
+          button.textContent = shouldStayBusy ? 'Working...' : previousText;
+        }
+      }
+    }
+
+    function renderRecordingRepairs(data) {
+      recordingRepairToken = data.token || null;
+      $('repairApplyBtn').disabled = !recordingRepairToken || !data.eligibleChanges;
+      $('repairSummary').innerHTML = `
+        <span class="pill">${data.totalFiles || 0} files</span>
+        <span class="pill ok">${data.eligibleChanges || 0} proposed</span>
+        <span class="pill">${data.alreadyCorrect || 0} already correct</span>
+        <span class="pill ${data.needsReview ? 'warn' : ''}">${data.needsReview || 0} need review</span>
+      `;
+      const changed = (data.items || []).filter(item => !item.noChange);
+      if (!changed.length && !(data.unmatchedFiles || []).length) {
+        $('repairList').innerHTML = '<span class="muted">No filename changes are proposed.</span>';
+        return;
+      }
+      $('repairList').innerHTML = '';
+      changed.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'repair-row';
+        row.innerHTML = `
+          <b class="${item.eligible ? 'ok' : 'warn'}">${item.eligible ? item.confidence : 'review'}</b>
+          <span class="file">${escapeAttr(item.source)}</span>
+          <b>&rarr;</b>
+          <span class="file">${escapeAttr(item.target)}</span>
+        `;
+        $('repairList').appendChild(row);
+      });
+      (data.unmatchedFiles || []).forEach(file => {
+        const row = document.createElement('div');
+        row.className = 'repair-row';
+        row.innerHTML = `<b class="warn">review</b><span class="file">${escapeAttr(file)}</span><b>&rarr;</b><span class="file">No safe log match</span>`;
+        $('repairList').appendChild(row);
+      });
+    }
+
+    async function scanRecordingRepairs(button) {
+      const previousText = button.textContent;
+      recordingRepairToken = null;
+      $('repairApplyBtn').disabled = true;
+      try {
+        button.disabled = true;
+        button.textContent = 'Scanning...';
+        const data = await jsonFetch('/api/recording/repair/scan', { method: 'POST' });
+        renderRecordingRepairs(data);
+        showResponse(data);
+      } catch (err) {
+        showResponse({ success: false, message: err.message });
+      } finally {
+        button.disabled = false;
+        button.textContent = previousText;
+      }
+    }
+
+    async function applyRecordingRepairs(button) {
+      if (!recordingRepairToken) return;
+      if (!window.confirm('Apply the proposed recording filename changes? This will rename files on the server machine.')) return;
+      const previousText = button.textContent;
+      try {
+        button.disabled = true;
+        button.textContent = 'Applying...';
+        const data = await jsonFetch('/api/recording/repair/apply', {
+          method: 'POST',
+          body: JSON.stringify({ token: recordingRepairToken }),
+        });
+        recordingRepairToken = null;
+        showResponse(data);
+        await scanRecordingRepairs($('repairScanBtn'));
+      } catch (err) {
+        recordingRepairToken = null;
+        $('repairApplyBtn').disabled = true;
+        showResponse({ success: false, message: err.message });
+      } finally {
+        button.textContent = previousText;
+      }
+    }
+
+    refresh().catch(err => showResponse({ success: false, message: err.message }));
+    setInterval(() => refresh().catch(() => {}), 5000);
+  </script>
+</body>
+</html>

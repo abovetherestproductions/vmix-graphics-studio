@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Manual Skater Control</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101115;
+      --panel: #181a21;
+      --panel-2: #20232c;
+      --line: #303440;
+      --text: #f4f6fb;
+      --muted: #aeb5c4;
+      --accent: #d81135;
+      --ok: #2fc46c;
+      --warn: #f3b33d;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top left, rgba(216,17,53,0.18), transparent 34%), var(--bg);
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(20,22,28,0.88);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .header-left { min-width: 0; }
+    h1 { margin: 0; font-size: 20px; letter-spacing: .02em; }
+    .header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+    .header-actions button { padding: 7px 10px; }
+    main { padding: 14px 18px 24px; display: grid; gap: 12px; }
+    .grid { display: grid; grid-template-columns: minmax(300px, 420px) 1fr; gap: 16px; align-items: start; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 16px;
+      min-width: 0;
+      box-shadow: 0 20px 70px rgba(0,0,0,0.20);
+    }
+    h2 { margin: 0 0 12px; font-size: 13px; text-transform: uppercase; color: var(--muted); letter-spacing: .1em; }
+    label { display: block; color: var(--muted); font-size: 12px; font-weight: 700; margin: 10px 0 5px; }
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--text);
+      border-radius: 7px;
+      padding: 8px 10px;
+      font: inherit;
+    }
+    button {
+      border: 0;
+      border-radius: 7px;
+      background: var(--accent);
+      color: white;
+      padding: 8px 12px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    button.secondary { background: var(--panel-2); color: var(--text); border: 1px solid var(--line); }
+    .buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    .status { color: var(--muted); font-size: 13px; line-height: 1.45; }
+    .ok { color: var(--ok); }
+    .warn { color: var(--warn); font-weight: 800; }
+    .list-panel { padding: 0; overflow: hidden; }
+    .list-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+    .list-header h2 { margin: 0; }
+    .table-wrap { max-height: calc(100dvh - 150px); overflow: auto; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: clamp(12px, 1.05vw, 14px); }
+    th, td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; position: sticky; top: 0; background: var(--panel); z-index: 2; }
+    td { line-height: 1.25; overflow-wrap: anywhere; }
+    tr { cursor: pointer; }
+    tr:hover { background: rgba(255,255,255,0.05); }
+    tr.active { background: rgba(216,17,53,0.24); }
+    tr.category-missing td:last-child::before {
+      content: "Missing category";
+      color: var(--warn);
+      font-weight: 800;
+    }
+    code { color: #90caf9; word-break: break-all; }
+    pre { white-space: pre-wrap; word-break: break-word; color: var(--muted); font-size: 12px; line-height: 1.45; margin: 0; }
+    body.controls-hidden main.grid { grid-template-columns: minmax(0, 1fr); }
+    body.controls-hidden .controls-panel,
+    body.controls-hidden .response-panel { display: none; }
+    body.controls-hidden .table-wrap { max-height: calc(100dvh - 88px); }
+    body.compact header { padding: 8px 10px; }
+    body.compact main { padding: 8px; gap: 8px; }
+    body.compact .list-header { padding: 8px 10px; }
+    body.compact th,
+    body.compact td { padding: 6px 8px; }
+    body.compact h1 { font-size: 16px; }
+    body.compact .status { font-size: 11px; }
+    @media (max-width: 1000px) {
+      .grid { grid-template-columns: 1fr; }
+      .controls-panel { order: 2; }
+      .list-panel { order: 1; }
+      .response-panel { order: 3; }
+    }
+    @media (max-width: 720px) {
+      header { align-items: flex-start; flex-direction: column; }
+      .header-actions { width: 100%; justify-content: flex-start; }
+      .header-actions button { flex: 1 1 auto; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <h1>Manual Skater Control</h1>
+      <div id="summary" class="status">Loading...</div>
+    </div>
+    <div class="header-actions">
+      <button class="secondary" id="controlsToggle" onclick="toggleControls()">Hide Controls</button>
+      <button class="secondary" id="compactToggle" onclick="toggleCompact()">Compact</button>
+      <button onclick="callApi('/api/manual-skaters/previous')">Prev</button>
+      <button onclick="callApi('/api/manual-skaters/next')">Next</button>
+      <button class="secondary" onclick="callApi('/api/manual-skaters/show')">Show</button>
+      <button class="secondary" onclick="callApi('/api/manual-skaters/hide')">Hide</button>
+    </div>
+  </header>
+  <main class="grid">
+    <section class="panel controls-panel">
+      <h2>Workbook</h2>
+      <label for="workbookPath">Workbook Path</label>
+      <input id="workbookPath" />
+      <label for="sheetName">Sheet</label>
+      <select id="sheetName"></select>
+      <label for="nameHeader">Name Header</label>
+      <select id="nameHeader"></select>
+      <label for="clubHeader">Club Header</label>
+      <select id="clubHeader"></select>
+      <label for="categoryHeader">Category Header</label>
+      <select id="categoryHeader"></select>
+      <label for="flagHeader">Flag Header</label>
+      <select id="flagHeader"></select>
+      <div class="buttons">
+        <button onclick="saveConfig()">Save / Reload</button>
+        <button class="secondary" onclick="callApi('/api/manual-skaters/refresh')">Refresh List</button>
+      </div>
+
+      <h2 style="margin-top:22px;">Controls</h2>
+      <div class="buttons">
+        <button onclick="callApi('/api/manual-skaters/previous')">Previous</button>
+        <button onclick="callApi('/api/manual-skaters/next')">Next</button>
+        <button class="secondary" onclick="callApi('/api/manual-skaters/show')">Show</button>
+        <button class="secondary" onclick="callApi('/api/manual-skaters/hide')">Hide</button>
+      </div>
+
+      <h2 style="margin-top:22px;">Temporary Skater</h2>
+      <label for="manualName">Name</label>
+      <input id="manualName" />
+      <label for="manualClub">Club</label>
+      <input id="manualClub" />
+      <label for="manualCategory">Category</label>
+      <input id="manualCategory" />
+      <div class="buttons">
+        <button onclick="showManual()">Show Temporary</button>
+        <button class="secondary" onclick="callApi('/api/manual-skaters/return-to-list')">Back To List</button>
+      </div>
+
+      <h2 style="margin-top:22px;">Companion URLs</h2>
+      <pre id="companionUrls"></pre>
+    </section>
+
+    <section class="panel list-panel">
+      <div class="list-header">
+        <h2>Skater List</h2>
+        <div class="status">Click a row to select its data</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <colgroup>
+            <col style="width:30%">
+            <col style="width:26%">
+            <col style="width:30%">
+            <col style="width:14%">
+          </colgroup>
+          <thead>
+            <tr><th>Name</th><th>Club</th><th>Category</th><th>Flag</th></tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel response-panel" style="grid-column:1/-1;">
+      <h2>Response</h2>
+      <pre id="responseBox">Ready</pre>
+    </section>
+  </main>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const STORAGE_KEY = 'manual-skaters-control-layout-v1';
+    let selectedIndex = 0;
+
+    function loadLayout() {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+      catch { return {}; }
+    }
+
+    function saveLayout(patch = {}) {
+      const next = { ...loadLayout(), ...patch };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      applyLayout(next);
+    }
+
+    function applyLayout(layout = loadLayout()) {
+      document.body.classList.toggle('controls-hidden', !!layout.controlsHidden);
+      document.body.classList.toggle('compact', !!layout.compact);
+      $('controlsToggle').textContent = layout.controlsHidden ? 'Show Controls' : 'Hide Controls';
+      $('compactToggle').textContent = layout.compact ? 'Comfort' : 'Compact';
+    }
+
+    function toggleControls() {
+      saveLayout({ controlsHidden: !document.body.classList.contains('controls-hidden') });
+    }
+
+    function toggleCompact() {
+      saveLayout({ compact: !document.body.classList.contains('compact') });
+    }
+
+    async function jsonFetch(url, options = {}) {
+      const res = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...options });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || data.message || res.statusText);
+      return data;
+    }
+
+    function showResponse(data) {
+      $('responseBox').textContent = JSON.stringify(data, null, 2);
+    }
+
+    function optionList(select, values, selected, allowBlank, blankLabel = '(first sheet)') {
+      select.innerHTML = '';
+      if (allowBlank) select.appendChild(new Option(blankLabel, ''));
+      values.forEach(value => select.appendChild(new Option(value, value)));
+      select.value = selected || '';
+    }
+
+    function companionText() {
+      const base = `${location.origin}`;
+      return [
+        `${base}/api/control/manual-skaters-next`,
+        `${base}/api/control/manual-skaters-previous`,
+        `${base}/api/control/manual-skaters-show`,
+        `${base}/api/control/manual-skaters-hide`,
+        `${base}/api/graphics/manual-skater/toggle`,
+        `${base}/api/control/manual-skaters-refresh`,
+        `${base}/api/control/manual-skaters-return-to-list`,
+        `${base}/api/control/manual-skaters-row/1`,
+        `${base}/api/control/manual-skaters-manual?name=SKATER%20NAME&club=CLUB&category=CATEGORY`,
+      ].join('\n');
+    }
+
+    function renderRows(rows) {
+      const tbody = $('rows');
+      tbody.innerHTML = '';
+      rows.forEach(row => {
+        const tr = document.createElement('tr');
+        const classes = [];
+        if (row.index === selectedIndex) classes.push('active');
+        if (!String(row.category || '').trim()) classes.push('category-missing');
+        tr.className = classes.join(' ');
+        tr.onclick = () => selectRow(row.index + 1);
+        tr.innerHTML = `<td>${escapeHtml(row.name)}</td><td>${escapeHtml(row.club)}</td><td>${escapeHtml(row.category)}</td><td>${escapeHtml(row.flag || '')}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    }
+
+    async function refresh() {
+      const data = await jsonFetch('/api/manual-skaters/status');
+      selectedIndex = data.selected?.index ?? data.settings?.selectedIndex ?? 0;
+      $('workbookPath').value = data.settings?.workbookPath || '';
+      optionList($('sheetName'), data.sheetNames || [], data.settings?.sheetName || '', true);
+      optionList($('nameHeader'), data.headers || [], data.settings?.nameHeader || 'name', false);
+      optionList($('clubHeader'), data.headers || [], data.settings?.clubHeader || 'club', false);
+      optionList($('categoryHeader'), data.headers || [], data.settings?.categoryHeader || 'category', false);
+      optionList($('flagHeader'), data.headers || [], data.settings?.flagHeader || 'flag', true, '(no flag column)');
+      const selectedCategory = String(data.selected?.category || '').trim();
+      const categoryWarning = selectedCategory ? '' : ' · <span class="warn">selected row needs a category value</span>';
+      $('summary').innerHTML = `<span class="ok">${data.rows?.length || 0} rows</span> · selected #${selectedIndex + 1}${categoryWarning} · <code>${escapeHtml(data.workbookPath || '')}</code>`;
+      $('companionUrls').textContent = companionText();
+      renderRows(data.rows || []);
+      showResponse(data);
+    }
+
+    async function callApi(url) {
+      try {
+        const data = await jsonFetch(url, { method: 'POST' });
+        showResponse(data);
+        await refresh();
+      } catch (err) {
+        showResponse({ ok: false, error: err.message });
+      }
+    }
+
+    async function saveConfig() {
+      try {
+        const body = {
+          workbookPath: $('workbookPath').value.trim(),
+          sheetName: $('sheetName').value,
+          nameHeader: $('nameHeader').value,
+          clubHeader: $('clubHeader').value,
+          categoryHeader: $('categoryHeader').value,
+          flagHeader: $('flagHeader').value,
+        };
+        const data = await jsonFetch('/api/manual-skaters/config', { method: 'POST', body: JSON.stringify(body) });
+        showResponse(data);
+        await refresh();
+      } catch (err) {
+        showResponse({ ok: false, error: err.message });
+      }
+    }
+
+    async function selectRow(displayIndex) {
+      await callApi(`/api/manual-skaters/row/${displayIndex}`);
+    }
+
+    async function showManual() {
+      try {
+        const data = await jsonFetch('/api/manual-skaters/manual', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: $('manualName').value,
+            club: $('manualClub').value,
+            category: $('manualCategory').value,
+          }),
+        });
+        showResponse(data);
+        await refresh();
+      } catch (err) {
+        showResponse({ ok: false, error: err.message });
+      }
+    }
+
+    applyLayout();
+    refresh().catch(err => showResponse({ ok: false, error: err.message }));
+  </script>
+</body>
+</html>

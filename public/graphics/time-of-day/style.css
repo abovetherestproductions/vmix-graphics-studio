@@ -1,0 +1,74 @@
+/* ── Time-of-day clock ───────────────────────────────────────────
+   Same look + feel as the countdown clock but with its own CSS
+   variables so colours / fonts / background are configured
+   independently — operator can run both clocks at once with
+   different styling. */
+.tod {
+  position: absolute;
+  top: var(--safe-top, 60px);
+  right: var(--safe-right, 70px);
+  pointer-events: none;
+  transform-origin: 100% 0%;
+  opacity: var(--anim-from-opacity, 0);
+  transform: var(--anim-extra-transform, translateY(-30px));
+  transition: opacity var(--anim-duration, 350ms) var(--anim-easing, cubic-bezier(0.22, 1, 0.36, 1)),
+              transform var(--anim-duration, 350ms) var(--anim-easing, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+.tod-panel {
+  background: var(--tod-panel-bg, var(--color-panel-bg));
+  border-radius: var(--panel-radius);
+  box-shadow: var(--panel-shadow);
+  padding: 14px 26px 16px;
+  text-align: center;
+  min-width: 200px;
+  position: relative;
+  overflow: hidden;
+}
+.tod-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, var(--color-header-start) 0%, var(--color-header-end) 100%);
+  opacity: var(--tod-panel-tint-opacity, 0.18);
+  pointer-events: none;
+  border-radius: var(--panel-radius);
+}
+
+.tod-label {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--tod-label-size, 16px);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--tod-label-color, rgba(255,255,255,0.72));
+  margin-bottom: 4px;
+  position: relative; z-index: 1;
+  white-space: nowrap;
+}
+.tod-label:empty {
+  display: none;
+}
+
+.tod-value {
+  font-family: var(--font-numbers);
+  font-weight: 900;
+  font-size: var(--tod-value-size, 72px);
+  line-height: 1;
+  color: var(--tod-value-color, var(--color-text-primary));
+  letter-spacing: 0.5px;
+  font-variant-numeric: tabular-nums;
+  position: relative; z-index: 1;
+}
+
+/* ── Animation states ─────────────────────────────── */
+.tod.visible {
+  opacity: 1;
+  transform: none;
+}
+.tod.out {
+  opacity: var(--anim-from-opacity, 0);
+  transform: var(--anim-extra-transform, translateY(-30px));
+  transition: opacity var(--anim-out-duration, 260ms) var(--anim-out-easing, cubic-bezier(0.55, 0, 1, 0.45)),
+              transform var(--anim-out-duration, 260ms) var(--anim-out-easing, cubic-bezier(0.55, 0, 1, 0.45));
+}

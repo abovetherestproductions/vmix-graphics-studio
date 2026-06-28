@@ -1,0 +1,17 @@
+@import url("/graphics/lower-third/style.css");
+
+.manual-skater .lt-text-col {
+  transition: opacity 220ms ease;
+}
+
+.manual-skater .lt-text-col.lt-text-fading {
+  opacity: 0;
+}
+
+.manual-skater .lt-body::before {
+  left: 60px;
+}
+
+.manual-skater .lt-body::after {
+  right: 300px;
+}

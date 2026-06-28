@@ -1,0 +1,371 @@
+/* ── Scoring Display — positioned bottom-right ────── */
+.scoring {
+  position: absolute;
+  right: var(--safe-right, 70px);
+  bottom: var(--safe-bottom, 60px);
+  width: 720px;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  /* Top-only clipping so the panel's "tucked-above" start position stays
+     hidden, but the name bar can slide up from way below the container's
+     natural bottom — i.e. from the bottom of the page. The clip's top
+     corners pick up the panel-radius so the visual frame still rounds. */
+  clip-path: inset(0 -50px -100vh -50px round var(--panel-radius) var(--panel-radius) 0 0);
+}
+
+/* ── Name bar ─────────────────────────────────────── */
+/* Entry phase 1: slides UP from the bottom of the page (translateY 350px → 0)
+   with a fade-in. Sits in front (z-index 2) so the panel can emerge from
+   behind it on a delay in phase 2. */
+.sc-name-bar {
+  display: flex;
+  align-items: stretch;
+  min-height: var(--row-min-height, 0);
+  border-radius: var(--panel-radius) var(--panel-radius) 0 0;
+  overflow: hidden;
+  background: linear-gradient(105deg, var(--color-header-start) 0%, var(--color-header-end) 100%);
+  position: relative;
+  z-index: 2;
+  opacity: var(--anim-from-opacity, 0);
+  transform: translateY(350px);
+  will-change: transform, opacity;
+  transition: opacity var(--anim-duration, 480ms) var(--anim-easing, cubic-bezier(0.22, 1, 0.36, 1)),
+              transform var(--anim-duration, 480ms) var(--anim-easing, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+/* decorative rings */
+.sc-name-bar::before {
+  content: '';
+  position: absolute;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.12);
+  top: -100px;
+  left: -40px;
+  pointer-events: none;
+}
+.sc-name-bar::after {
+  content: '';
+  position: absolute;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.08);
+  top: -50px;
+  right: 110px;
+  pointer-events: none;
+}
+
+.sc-nb-inner {
+  flex: 1;
+  padding: 14px 20px 14px 22px;
+  padding-block: calc(14px + var(--graphic-row-pad, 0px));
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.sc-flag-wrap {
+  width: 78px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+  position: relative;
+  z-index: 1;
+  transform: translate(var(--sc-flag-x, 0px), var(--sc-flag-y, 0px));
+}
+
+.sc-flag {
+  width: var(--sc-flag-w, 52px);
+  height: var(--sc-flag-h, 34px);
+  object-fit: contain;
+  display: block;
+}
+
+
+.sc-skater-name {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--sc-name-size, 32px);
+  line-height: 1.08; /* prevent descenders clipping into the club line below */
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sc-skater-club {
+  font-family: var(--font-body);
+  font-size: var(--sc-club-size, 14px);
+  font-weight: 400;
+  color: rgba(255,255,255,0.78);
+  /* Gap between skater name and club — operator-controlled. */
+  margin-top: var(--sc-name-club-gap, 8px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Rank badge */
+.sc-rank-badge {
+  width: 90px;
+  flex-shrink: 0;
+  background: var(--sc-rank-bg, rgba(0,0,0,0.28));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 0;
+  position: relative;
+  z-index: 1;
+}
+
+.sc-rank-label {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.60);
+}
+
+.sc-rank-num {
+  font-family: var(--font-numbers);
+  font-weight: 900;
+  font-size: var(--sc-rank-num-size, 42px);
+  line-height: 1;
+  color: var(--color-text-primary);
+}
+
+/* Logo slot in name bar — left side */
+.sc-logo-wrap {
+  position: relative; z-index: 1;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  border-right: 1px solid rgba(255,255,255,0.12);
+  background: var(--sc-logo-bg, rgba(0,0,0,0.18));
+}
+.sc-logo {
+  height: var(--logo-height, 48px);
+  max-width: 100px;
+  object-fit: contain;
+  opacity: var(--logo-opacity, 0.90);
+  transform: translate(var(--logo-x, 0px), var(--logo-y, 0px));
+}
+
+/* ── Score panel ──────────────────────────────────── */
+/* Entry phase 2: panel stays invisible (opacity:0) while the name bar
+   slides up. At ~480ms the name bar has landed at its natural position;
+   panel's opacity instantly flips to 1 — but visually it's still hidden
+   behind the name bar because both are at translateY(-100%) of panel
+   height (above natural) and the name bar's z-index covers them. Then
+   the panel slides DOWN out from underneath the name bar over 520ms. */
+.sc-panel {
+  background: var(--sc-panel-bg, var(--color-panel-bg));
+  border-radius: 0 0 var(--panel-radius) var(--panel-radius);
+  overflow: hidden;
+  box-shadow: var(--panel-shadow);
+  position: relative;
+  z-index: 1;
+  opacity: 0;
+  transform: translateY(-100%);
+  will-change: transform, opacity;
+  transition: opacity 1ms 480ms,
+              transform 520ms 480ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sc-score-grid {
+  display: grid;
+  /* TES · PCS · TOTAL — TOTAL gets slightly more room. */
+  grid-template-columns: 1fr 1fr 1.25fr;
+}
+/* Extended grids — sized to the number of visible cells. JS toggles the
+   matching class based on which of bonus / deduction are non-zero. */
+.sc-score-grid.sc-has-bonus,
+.sc-score-grid.sc-has-deduct {
+  /* TES · PCS · (BONUS | DEDUCT) · TOTAL — 4 columns */
+  grid-template-columns: 1fr 1fr 0.95fr 1.2fr;
+}
+.sc-score-grid.sc-has-extras {
+  /* TES · PCS · BONUS · DEDUCT · TOTAL — 5 columns */
+  grid-template-columns: 1fr 1fr 0.85fr 0.85fr 1.2fr;
+}
+.sc-score-item--bonus     .sc-score-label,
+.sc-score-item--bonus     .sc-score-value {
+  color: #ffc848;
+}
+.sc-score-item--bonus     .sc-score-value {
+  text-shadow: 0 0 8px rgba(255,196,72,0.22);
+}
+.sc-score-item--deduction .sc-score-label,
+.sc-score-item--deduction .sc-score-value {
+  color: #ff5867;
+}
+.sc-score-item--deduction .sc-score-value {
+  text-shadow: 0 0 8px rgba(255,88,103,0.22);
+}
+
+.sc-score-item {
+  padding: 16px 0 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-left: 1px solid var(--color-row-border);
+}
+.sc-score-item:first-child {
+  border-left: none;
+}
+
+.sc-score-item--total {
+  background: rgba(255,255,255,0.04);
+  position: relative;
+  overflow: hidden;
+}
+.sc-score-item--total .sc-score-value {
+  font-size: var(--sc-total-size, 36px);
+  color: var(--color-text-primary);
+}
+.sc-score-item--total .sc-score-label {
+  color: var(--color-accent-light);
+}
+
+/* ── Cumulative-score reveal animation ────────────────────────────────────
+ * Triggered 3s after a segment score arrives, IF the cumulative category
+ * score (catTotal) is higher than the segment score (i.e., this isn't the
+ * first segment of the category). The total cell pulses while the value
+ * tweens up; the rank badge does a quick flip from SegRank to CatRank.
+ * ───────────────────────────────────────────────────────────────────────── */
+.sc-score-item--total {
+  transition: none;
+}
+.sc-score-item--total.sc-reveal {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0.10) 100%);
+  box-shadow:
+    0 0 34px rgba(255, 255, 255, 0.52) inset,
+    0 0 18px rgba(255, 255, 255, 0.20);
+  animation: sc-total-flash 900ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.sc-score-item--total::after {
+  content: '';
+  position: absolute;
+  inset: -18% -45%;
+  background: linear-gradient(
+    110deg,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,0.10) 35%,
+    rgba(255,255,255,0.72) 50%,
+    rgba(255,255,255,0.12) 65%,
+    rgba(255,255,255,0) 100%
+  );
+  transform: translateX(-145%) skewX(-18deg);
+  opacity: 0;
+  pointer-events: none;
+}
+.sc-score-item--total.sc-reveal::after {
+  animation: sc-shimmer-sweep 900ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.sc-rank-badge {
+  transition: transform 250ms ease;
+  position: relative;
+  overflow: hidden;
+}
+.sc-rank-badge.sc-reveal {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.10) 100%);
+  box-shadow:
+    0 0 28px rgba(255, 255, 255, 0.36) inset,
+    0 0 12px rgba(255, 255, 255, 0.16);
+  animation: sc-total-flash 900ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.sc-rank-badge::after {
+  content: '';
+  position: absolute;
+  inset: -18% -45%;
+  background: linear-gradient(
+    110deg,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,0.08) 35%,
+    rgba(255,255,255,0.62) 50%,
+    rgba(255,255,255,0.10) 65%,
+    rgba(255,255,255,0) 100%
+  );
+  transform: translateX(-145%) skewX(-18deg);
+  opacity: 0;
+  pointer-events: none;
+}
+.sc-rank-badge.sc-reveal::after {
+  animation: sc-shimmer-sweep 900ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes sc-total-flash {
+  0%   { transform: scale(1); }
+  18%  { transform: scale(1.075); }
+  42%  { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+@keyframes sc-shimmer-sweep {
+  0%   { transform: translateX(-145%) skewX(-18deg); opacity: 0; }
+  18%  { opacity: 0.18; }
+  45%  { opacity: 0.95; }
+  82%  { opacity: 0.16; }
+  100% { transform: translateX(145%) skewX(-18deg); opacity: 0; }
+}
+
+.sc-rank-num,
+.sc-score-value {
+  transition: transform 180ms ease, opacity 180ms ease;
+  display: inline-block;
+}
+.sc-value-pop {
+  animation: sc-value-pop 520ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes sc-value-pop {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.18); }
+  62%  { transform: scale(0.96); }
+  100% { transform: scale(1); }
+}
+
+.sc-score-label {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--sc-label-size, 11px);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: 4px;
+}
+
+.sc-score-value {
+  font-family: var(--font-numbers);
+  font-weight: 700;
+  font-size: var(--sc-score-size, 28px);
+  line-height: 1;
+  color: rgba(255,255,255,0.90);
+  /* count-up animation handled by JS */
+  transition: color 200ms ease;
+}
+
+/* ── Animation states ─────────────────────────────── */
+.scoring.visible .sc-name-bar,
+.scoring.visible .sc-panel {
+  opacity: 1;
+  transform: none;
+}
+
+.scoring.out .sc-name-bar,
+.scoring.out .sc-panel {
+  opacity: var(--anim-from-opacity, 0);
+  transform: var(--anim-extra-transform, translateY(16px));
+  transition: opacity var(--anim-out-duration, 260ms) var(--anim-out-easing, cubic-bezier(0.55, 0, 1, 0.45)),
+              transform var(--anim-out-duration, 260ms) var(--anim-out-easing, cubic-bezier(0.55, 0, 1, 0.45));
+}

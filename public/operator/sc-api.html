@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SC API — Operator</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #1a1a1e;
+    --surface:   #24242a;
+    --surface2:  #2c2c34;
+    --border:    rgba(255,255,255,0.08);
+    --text:      #f0f0f2;
+    --text2:     #8888a0;
+    --accent:    #5b8af5;
+    --green:     #81c784;
+    --green-bg:  rgba(76,175,80,0.12);
+    --green-bdr: rgba(76,175,80,0.30);
+    --red:       #ef5350;
+    --red-bg:    rgba(244,67,54,0.10);
+    --orange:    #ffb74d;
+    --orange-bg: rgba(255,152,0,0.10);
+    --blue:      #64b5f6;
+    --blue-bg:   rgba(33,150,243,0.10);
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 13px;
+    line-height: 1.4;
+    overflow: hidden;
+  }
+
+  /* ── Layout ─────────────────────────────────────────────────────── */
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  #header {
+    flex-shrink: 0;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  #segment-selectors {
+    flex-shrink: 0;
+    padding: 8px 10px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  #roster-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 10px;
+  }
+
+
+  /* ── Controls ───────────────────────────────────────────────────── */
+  select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 6px 8px;
+    font-size: 12px;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238888a0' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    padding-right: 24px;
+    cursor: pointer;
+  }
+  select:focus { outline: none; border-color: var(--accent); }
+  select option { background: #2c2c34; }
+
+  .sel-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text2);
+    margin-bottom: 3px;
+  }
+
+  /* ── Roster ─────────────────────────────────────────────────────── */
+  .skater-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 8px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    margin-bottom: 4px;
+    cursor: pointer;
+    transition: background 120ms, border-color 120ms;
+    user-select: none;
+  }
+  .skater-row:hover  { background: rgba(91,138,245,0.10); border-color: rgba(91,138,245,0.30); }
+  .skater-row:active { background: rgba(91,138,245,0.20); }
+  .skater-row.selected {
+    background: rgba(91,138,245,0.28);
+    border-color: rgba(91,138,245,0.80);
+    border-left: 3px solid var(--accent);
+    box-shadow: 0 0 0 1px rgba(91,138,245,0.35);
+  }
+  .skater-row.selected:hover { background: rgba(91,138,245,0.35); }
+  .skater-row.selected .skater-pos { color: var(--accent); }
+  .skater-row.onice {
+    background: rgba(76,175,80,0.22);
+    border-color: rgba(76,175,80,0.65);
+    border-left: 3px solid #81c784;
+  }
+  .skater-row.onice:hover { background: rgba(76,175,80,0.30); }
+  .skater-row.scored { opacity: 0.72; }
+  .skater-row.flash {
+    background: rgba(129,199,132,0.20) !important;
+    border-color: rgba(129,199,132,0.50) !important;
+    transition: none;
+  }
+
+  .skater-pos {
+    width: 22px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: #ffffff;
+    flex-shrink: 0;
+  }
+  .skater-flag {
+    width: 28px;
+    height: 19px;
+    object-fit: cover;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .skater-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .skater-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .skater-row.onice .skater-name { color: #fff; font-weight: 700; }
+  .skater-row.selected .skater-name { color: #fff; }
+  .skater-club {
+    font-size: 10px;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 1px;
+  }
+  .skater-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .pill {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 1.2px;
+    padding: 2px 7px;
+    border-radius: 10px;
+  }
+  .pill-onice  {
+    background: rgba(76,175,80,0.30);
+    color: #fff;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    animation: onice-pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes onice-pulse {
+    0%, 100% { background: rgba(76,175,80,0.30); box-shadow: none; }
+    50%       { background: rgba(76,175,80,0.55); box-shadow: 0 0 8px rgba(76,175,80,0.50); }
+  }
+  .pill-scored { background: rgba(255,255,255,0.07); color: #ffffff; font-size: 10px; }
+  .pill-withdrawn { background: rgba(229,57,53,0.25); color: #ef9a9a; border: 1px solid rgba(229,57,53,0.45); }
+
+  .withdrawn-section {
+    margin-top: 10px;
+    border: 1px solid rgba(229,57,53,0.35);
+    border-radius: 10px;
+    padding: 6px 8px 4px;
+    background: rgba(229,57,53,0.06);
+  }
+  .withdrawn-hdr {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: rgba(239,154,154,0.75);
+    padding: 0 2px 6px;
+  }
+  .skater-row.withdrawn {
+    opacity: 0.55;
+    cursor: not-allowed;
+    pointer-events: none;
+    border-color: rgba(229,57,53,0.20);
+  }
+  .skater-row.withdrawn:hover { background: var(--surface2); }
+
+  .btn-manual {
+    background: rgba(91,138,245,0.15);
+    border: 1px solid rgba(91,138,245,0.30);
+    border-radius: 6px;
+    color: var(--accent);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 120ms;
+  }
+  .btn-manual:hover  { background: rgba(91,138,245,0.25); }
+  .btn-manual:active { background: rgba(91,138,245,0.35); }
+  .btn-manual.flash {
+    background: rgba(129,199,132,0.25);
+    border-color: rgba(129,199,132,0.45);
+    color: var(--green);
+  }
+
+  .group-hdr {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text2);
+    padding: 6px 2px 4px;
+  }
+
+  /* ── Header elements ────────────────────────────────────────────── */
+  #ws-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #555;
+    flex-shrink: 0;
+    transition: background 300ms;
+  }
+  #ws-dot.ok { background: var(--green); }
+  #ws-dot.err { background: var(--red); }
+
+  #event-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #refresh-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text2);
+    font-size: 11px;
+    padding: 3px 7px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  #refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+  #repoll-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text2);
+    font-size: 11px;
+    padding: 3px 7px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  #repoll-btn:hover { border-color: var(--green); color: var(--green); }
+
+  /* ── Toast ──────────────────────────────────────────────────────── */
+  #toast {
+    position: fixed;
+    bottom: 50px;
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-size: 12px;
+    color: var(--text);
+    opacity: 0;
+    transition: opacity 200ms, transform 200ms;
+    pointer-events: none;
+    z-index: 999;
+    white-space: nowrap;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── StreamDeck URLs ────────────────────────────────────────────── */
+  #streamdeck-strip {
+    flex-shrink: 0;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    padding: 6px 10px;
+    display: flex;
+    gap: 6px;
+  }
+  .sd-url-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 6px;
+    cursor: pointer;
+    transition: border-color 120ms, background 120ms;
+    text-align: center;
+    min-width: 0;
+  }
+  .sd-url-btn:hover { border-color: var(--accent); background: rgba(91,138,245,0.10); }
+  .sd-url-btn:active { background: rgba(91,138,245,0.20); }
+  .sd-url-label {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text2);
+  }
+  .sd-url-text {
+    font-size: 9px;
+    color: var(--accent);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+  }
+  .sd-url-btn.flash-ok { border-color: var(--green); background: rgba(76,175,80,0.15); }
+
+  /* ── Empty state ────────────────────────────────────────────────── */
+  #roster-empty {
+    display: none;
+    text-align: center;
+    padding: 24px 0;
+    color: var(--text2);
+    font-size: 12px;
+  }
+  #no-event {
+    display: none;
+    text-align: center;
+    padding: 20px;
+    color: var(--text2);
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.3; }
+  }
+
+  /* Scrollbar */
+  #roster-area::-webkit-scrollbar { width: 4px; }
+  #roster-area::-webkit-scrollbar-track { background: transparent; }
+  #roster-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Header -->
+  <div id="header">
+    <div id="ws-dot" title="Server connection"></div>
+    <div id="event-name">No event selected</div>
+    <button id="repoll-btn" onclick="repollNow()" title="Force immediate re-poll from API">⟳ Poll</button>
+    <button id="refresh-btn" onclick="refreshRoster()" title="Refresh skater list">↻</button>
+  </div>
+
+  <!-- StreamDeck navigation URLs -->
+  <div id="streamdeck-strip">
+    <div class="sd-url-btn" id="sd-prev" onclick="sdNavigate('prev-skater', this)" ondblclick="sdCopy('prev-skater', this)" title="Click to go to previous skater — double-click to copy URL">
+      <div class="sd-url-label">◀ Prev Skater</div>
+      <div class="sd-url-text" id="sd-prev-url">…</div>
+    </div>
+    <div class="sd-url-btn" id="sd-next" onclick="sdNavigate('next-skater', this)" ondblclick="sdCopy('next-skater', this)" title="Click to go to next skater — double-click to copy URL">
+      <div class="sd-url-label">Next Skater ▶</div>
+      <div class="sd-url-text" id="sd-next-url">…</div>
+    </div>
+  </div>
+
+  <!-- Category + Segment selectors -->
+  <div id="segment-selectors">
+    <div>
+      <div class="sel-label">Category</div>
+      <select id="cat-select" onchange="onCategoryChange(this.value)">
+        <option value="">— loading —</option>
+      </select>
+    </div>
+    <div>
+      <div class="sel-label">Segment</div>
+      <select id="seg-select" onchange="onSegmentChange(this.value)">
+        <option value="">— select a category —</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Roster -->
+  <div id="roster-area">
+    <div id="no-event">Open the main operator panel, enter an Event ID and click <strong>Fetch Event</strong> to get started.</div>
+    <div id="roster-empty">No entries yet — activate a segment in the main operator panel.</div>
+    <div id="roster-list"></div>
+  </div>
+
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── State ───────────────────────────────────────────────────────────
+const state = {
+  eventId:          null,
+  eventName:        null,
+  categoryId:       null,
+  segmentId:        null,
+  categories:       [],
+  segments:         [],
+  entries:          [],
+  selectedEntryId:  null,
+};
+
+let ws          = null;
+let _toastTimer = null;
+
+// ── Utilities ────────────────────────────────────────────────────────
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(path, opts);
+  if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || r.statusText); }
+  return r.json();
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ── Boot: load current config ────────────────────────────────────────
+async function boot() {
+  try {
+    const cfg = await api('GET', '/api/config');
+    const scApi = cfg.dataSource?.scApi || {};
+    state.eventId   = scApi.eventId   || null;
+    state.categoryId = scApi.categoryId || null;
+    state.segmentId  = scApi.segmentId  || null;
+
+    if (!state.eventId) {
+      document.getElementById('no-event').style.display = '';
+      return;
+    }
+
+    // Load event info + categories
+    await loadEvent(state.eventId);
+
+    // Restore segment selection if set
+    if (state.segmentId) {
+      document.getElementById('seg-select').value = state.segmentId;
+      await refreshRoster();
+    }
+  } catch(e) {
+    console.warn('[boot]', e.message);
+  }
+}
+
+async function loadEvent(eventId) {
+  try {
+    const data = await api('GET', `/api/sc-api/browse/event/${encodeURIComponent(eventId)}`);
+    state.categories = data.categories || [];
+    state.eventName  = data.event?.name || eventId;
+
+    document.getElementById('event-name').textContent = state.eventName;
+    document.getElementById('no-event').style.display = 'none';
+
+    const catSel = document.getElementById('cat-select');
+    catSel.innerHTML = '<option value="">— Select category —</option>';
+    state.categories.forEach(c => {
+      const o = document.createElement('option');
+      o.value = c.id;
+      o.textContent = c.name + (c.discipline ? ` — ${c.discipline}` : '');
+      catSel.appendChild(o);
+    });
+
+    if (state.categoryId) {
+      catSel.value = state.categoryId;
+      await loadSegments(state.categoryId);
+    }
+  } catch(e) {
+    document.getElementById('event-name').textContent = 'Error loading event';
+    console.warn('[loadEvent]', e.message);
+  }
+}
+
+async function loadSegments(categoryId) {
+  const segSel = document.getElementById('seg-select');
+  segSel.innerHTML = '<option value="">Loading…</option>';
+  try {
+    const data = await api('GET', `/api/sc-api/browse/category/${encodeURIComponent(categoryId)}`);
+    state.segments = data.segments || [];
+    segSel.innerHTML = '<option value="">— Select segment —</option>';
+    state.segments.forEach(s => {
+      const o = document.createElement('option');
+      o.value = s.id;
+      const dot = s.inProgress ? '🟢 ' : (s.status === 'Complete' ? '✓ ' : '');
+      o.textContent = dot + s.name;
+      segSel.appendChild(o);
+    });
+    if (state.segmentId) segSel.value = state.segmentId;
+  } catch(e) {
+    segSel.innerHTML = '<option value="">Error</option>';
+  }
+}
+
+// ── Selection handlers ───────────────────────────────────────────────
+async function onCategoryChange(categoryId) {
+  state.categoryId = categoryId || null;
+  state.segmentId  = null;
+  state.entries    = [];
+  renderRoster([]);
+  if (!categoryId) return;
+  await loadSegments(categoryId);
+}
+
+async function onSegmentChange(segmentId) {
+  state.segmentId = segmentId || null;
+  state.entries   = [];
+  renderRoster([]);
+  if (!segmentId) return;
+
+  // Activate this segment on the server (starts/restarts polling)
+  const seg = state.segments.find(s => s.id === segmentId);
+  const cat = state.categories.find(c => c.id === state.categoryId);
+  try {
+    await api('POST', '/api/sc-api/select', {
+      eventId:    state.eventId,
+      categoryId: state.categoryId,
+      segmentId,
+      segmentName:  seg?.name     || '',
+      discipline:   cat?.discipline || '',
+    });
+    toast(`✓ ${seg?.name || 'Segment'} activated`);
+    setTimeout(refreshRoster, 600);
+  } catch(e) {
+    toast(`Error: ${e.message}`);
+  }
+}
+
+// ── Roster ───────────────────────────────────────────────────────────
+async function repollNow() {
+  const btn = document.getElementById('repoll-btn');
+  if (btn) btn.textContent = '…';
+  try {
+    await api('POST', '/api/sc-api/refresh');
+    toast('✓ Re-polled');
+    await refreshRoster();
+  } catch(e) {
+    toast(`Error: ${e.message}`);
+  } finally {
+    if (btn) btn.textContent = '⟳ Poll';
+  }
+}
+
+async function refreshRoster() {
+  try {
+    const data = await api('GET', '/api/sc-api/roster');
+    state.entries = data.entries || [];
+    renderRoster(state.entries);
+  } catch(e) {
+    console.warn('[roster]', e.message);
+  }
+}
+
+function isWithdrawn(entry) {
+  const s = (entry.status || '').toUpperCase();
+  return s === 'WITHDRAW' || s === 'WITHDRAWN' || s === 'WDR';
+}
+
+function renderRoster(entries) {
+  const list    = document.getElementById('roster-list');
+  const emptyEl = document.getElementById('roster-empty');
+  const noEvt   = document.getElementById('no-event');
+
+  if (!state.eventId) { noEvt.style.display = ''; list.innerHTML = ''; return; }
+  noEvt.style.display = 'none';
+
+  if (!entries.length) {
+    emptyEl.style.display = '';
+    list.innerHTML = '';
+    return;
+  }
+  emptyEl.style.display = 'none';
+
+  const active    = entries.filter(e => !isWithdrawn(e));
+  const withdrawn = entries.filter(e =>  isWithdrawn(e));
+
+  // Group active entries by warm-up group
+  const groups = new Map();
+  active.forEach(e => {
+    const g = e.group ?? 1;
+    if (!groups.has(g)) groups.set(g, []);
+    groups.get(g).push(e);
+  });
+
+  list.innerHTML = '';
+  [...groups.keys()].sort((a,b) => a-b).forEach(g => {
+    if (groups.size > 1) {
+      const hdr = document.createElement('div');
+      hdr.className = 'group-hdr';
+      hdr.textContent = `Warm-up Group ${g}`;
+      list.appendChild(hdr);
+    }
+    groups.get(g).forEach(entry => list.appendChild(buildRow(entry)));
+  });
+
+  if (withdrawn.length) {
+    const section = document.createElement('div');
+    section.className = 'withdrawn-section';
+    const hdr = document.createElement('div');
+    hdr.className = 'withdrawn-hdr';
+    hdr.textContent = `Withdrawn — ${withdrawn.length} skater${withdrawn.length > 1 ? 's' : ''}`;
+    section.appendChild(hdr);
+    withdrawn.forEach(entry => section.appendChild(buildRow(entry)));
+    list.appendChild(section);
+  }
+}
+
+function buildRow(entry) {
+  const row = document.createElement('div');
+  const wdn = isWithdrawn(entry);
+  const isSelected = !wdn && entry.id === state.selectedEntryId;
+  row.className = 'skater-row'
+    + (wdn        ? ' withdrawn' : '')
+    + (entry.onice && !wdn ? ' onice'    : '')
+    + (isSelected && !entry.onice ? ' selected' : '')
+    + (!entry.onice && !isSelected && !wdn && entry.rank != null ? ' scored' : '');
+  row.dataset.entryId = entry.id;
+  if (!wdn) row.onclick = () => setManual(entry.id, entry.name);
+
+  // Position
+  const pos = document.createElement('div');
+  pos.className = 'skater-pos';
+  pos.textContent = entry.position ?? '—';
+  row.appendChild(pos);
+
+  // Flag
+  if (entry.flagUrl) {
+    const img = document.createElement('img');
+    img.className = 'skater-flag';
+    img.src = entry.flagUrl;
+    img.alt = '';
+    img.onerror = () => img.remove();
+    row.appendChild(img);
+  }
+
+  // Name + club
+  const info = document.createElement('div');
+  info.className = 'skater-info';
+  const nameEl = document.createElement('div');
+  nameEl.className = 'skater-name';
+  nameEl.textContent = entry.name || '—';
+  const clubEl = document.createElement('div');
+  clubEl.className = 'skater-club';
+  clubEl.textContent = entry.club || '';
+  info.appendChild(nameEl);
+  info.appendChild(clubEl);
+  row.appendChild(info);
+
+  // Right side
+  if (wdn) {
+    const p = document.createElement('div');
+    p.className = 'pill pill-withdrawn';
+    p.textContent = 'WITHDRAWN';
+    row.appendChild(p);
+  } else if (entry.onice) {
+    const p = document.createElement('div');
+    p.className = 'pill pill-onice';
+    p.textContent = 'ON ICE';
+    row.appendChild(p);
+  } else if (entry.rank != null) {
+    const p = document.createElement('div');
+    p.className = 'pill pill-scored';
+    p.textContent = `#${entry.rank}  ${entry.score != null ? entry.score.toFixed(2) : ''}`;
+    row.appendChild(p);
+  }
+
+  return row;
+}
+
+async function setManual(entryId, name) {
+  // Set selectedEntryId before the await so that any roster re-render
+  // triggered by WS broadcasts during the await picks up the correct selection.
+  state.selectedEntryId = entryId;
+  document.querySelectorAll('.skater-row.selected').forEach(r => r.classList.remove('selected'));
+  const immediate = document.querySelector(`.skater-row[data-entry-id="${CSS.escape(entryId)}"]`)
+    ?? document.querySelector(`.skater-row[data-entryId="${CSS.escape(entryId)}"]`);
+  if (immediate) immediate.classList.add('selected');
+
+  try {
+    await Promise.all([
+      api('POST', `/api/sc-api/manual-skater/${encodeURIComponent(entryId)}`),
+      api('POST', '/api/sc-api/refresh'),
+    ]);
+    // Re-find the row in case the DOM was rebuilt during the await
+    const liveRow = document.querySelector(`.skater-row[data-entry-id="${CSS.escape(entryId)}"]`)
+      ?? document.querySelector(`.skater-row[data-entryId="${CSS.escape(entryId)}"]`);
+    document.querySelectorAll('.skater-row.selected').forEach(r => r.classList.remove('selected'));
+    if (liveRow) {
+      liveRow.classList.add('selected');
+      liveRow.classList.add('flash');
+      setTimeout(() => liveRow.classList.remove('flash'), 1200);
+    }
+    toast(`✓ ${name} — all graphics refreshed`);
+  } catch(e) {
+    toast(`Error: ${e.message}`);
+  }
+}
+
+// ── WebSocket ────────────────────────────────────────────────────────
+function connectWs() {
+  const dot = document.getElementById('ws-dot');
+  ws = new WebSocket(`ws://${location.host}`);
+
+  ws.onopen = () => dot.className = 'ok';
+
+  ws.onmessage = evt => {
+    let msg;
+    try { msg = JSON.parse(evt.data); } catch { return; }
+
+    if (msg.type === 'update') {
+      if (msg.template === 'starting-order' || msg.template === 'scoring') {
+        clearTimeout(connectWs._rosterDebounce);
+        connectWs._rosterDebounce = setTimeout(refreshRoster, 700);
+      }
+    }
+
+    if (msg.type === 'config-update') {
+      // Only re-init fully if the event itself changed; otherwise just refresh roster
+      api('GET', '/api/config').then(cfg => {
+        const scApi = cfg.dataSource?.scApi || {};
+        if (scApi.eventId && scApi.eventId !== state.eventId) {
+          // Different event — full re-init
+          boot();
+        } else if (scApi.segmentId && scApi.segmentId !== state.segmentId) {
+          // Segment changed from main panel — update local state and refresh roster
+          state.segmentId = scApi.segmentId;
+          document.getElementById('seg-select').value = scApi.segmentId;
+          clearTimeout(connectWs._rosterDebounce);
+          connectWs._rosterDebounce = setTimeout(refreshRoster, 400);
+        }
+      }).catch(() => {});
+    }
+  };
+
+  ws.onclose = () => {
+    dot.className = 'err';
+    setTimeout(connectWs, 3000);
+  };
+  ws.onerror = () => ws.close();
+}
+
+// ── StreamDeck URL helpers ────────────────────────────────────────────
+function sdUrl(action) {
+  return `${location.origin}/api/sc-api/${action}`;
+}
+
+function sdPopulateUrls() {
+  document.getElementById('sd-prev-url').textContent = sdUrl('prev-skater');
+  document.getElementById('sd-next-url').textContent = sdUrl('next-skater');
+}
+
+function sdCopy(action, btn) {
+  navigator.clipboard.writeText(sdUrl(action)).catch(() => {});
+}
+
+async function sdNavigate(action, btn) {
+  try {
+    const data = await api('POST', `/api/sc-api/${action}`);
+    if (data?.data?.name) {
+      // Update selected state in the roster
+      const entries = state.entries;
+      const match = entries.find(e => e.name === data.data.name);
+      if (match) {
+        state.selectedEntryId = match.id;
+        document.querySelectorAll('.skater-row').forEach(r => r.classList.remove('selected'));
+        const row = document.querySelector(`.skater-row[data-entry-id="${CSS.escape(match.id)}"]`);
+        if (row) { row.classList.add('selected'); row.scrollIntoView({ block: 'nearest' }); }
+      }
+      toast(`✓ ${data.data.name}`);
+    }
+    btn.classList.add('flash-ok');
+    setTimeout(() => btn.classList.remove('flash-ok'), 1200);
+  } catch(e) {
+    toast(`Error: ${e.message}`);
+  }
+}
+
+// ── Init ─────────────────────────────────────────────────────────────
+boot();
+connectWs();
+sdPopulateUrls();
+
+</script>
+</body>
+</html>

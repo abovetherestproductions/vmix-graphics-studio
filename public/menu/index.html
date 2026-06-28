@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>vMix Graphics Menu</title>
+  <link rel="stylesheet" href="/menu/menu.css" />
+</head>
+<body>
+  <header class="hero">
+    <div>
+      <p class="eyebrow">vMix HTML Graphics</p>
+      <h1>Graphics Menu</h1>
+      <p class="lede">Copy these URLs into vMix Web Browser inputs. Use the LAN address when vMix is on another machine.</p>
+    </div>
+    <nav class="quick-links">
+      <a href="/operator/">Operator</a>
+      <a href="/preview/">Preview Wall</a>
+      <a href="/messages/">Messages Control</a>
+      <a href="/production-control/">Production Control</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="panel host-panel">
+      <div>
+        <h2>Server Address</h2>
+        <p>Change this if you need to paste URLs using a specific LAN IP, for example <code>http://192.168.1.252:3012</code>.</p>
+      </div>
+      <div class="host-tools">
+        <input id="base-url" type="text" spellcheck="false" />
+        <button type="button" id="reset-base">Use Current</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <div>
+          <h2>Graphic Endpoints</h2>
+          <p>These are the clean output URLs intended for vMix browser inputs.</p>
+        </div>
+        <button type="button" id="copy-all">Copy All</button>
+      </div>
+      <div id="graphics-list" class="url-grid"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Helpful Control Pages</h2>
+      <div id="pages-list" class="url-grid compact"></div>
+    </section>
+  </main>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script src="/menu/menu.js"></script>
+</body>
+</html>

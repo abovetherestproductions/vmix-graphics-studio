@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1920, height=1080" />
+  <title>Skater Profile</title>
+
+  <link rel="stylesheet" href="/css/reset.css" />
+  <link rel="stylesheet" href="/css/fonts.css" />
+  <link rel="stylesheet" href="/css/theme.css" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="stylesheet" href="/graphics/skater-profile/style.css" />
+</head>
+<body>
+  <div id="stage" class="stage">
+    <div id="graphic-root" class="skater-profile hidden">
+
+      <!-- Left: photo -->
+      <div id="sp-photo-wrap" class="sp-photo-wrap">
+        <img id="sp-photo" class="sp-photo" src="" alt="" />
+        <div class="sp-photo-overlay"></div>
+      </div>
+
+      <!-- Right: info panel -->
+      <div class="sp-info-panel">
+
+        <div class="sp-header">
+          <div class="header-logo-wrap sp-logo-wrap" style="display:none">
+            <img class="header-logo sp-logo" src="" alt="" />
+          </div>
+          <div class="sp-header-ring"></div>
+          <div id="sp-event" class="sp-event">Women Short Program</div>
+          <div id="sp-start-num" class="sp-start-num"></div>
+        </div>
+
+        <div class="sp-body">
+          <div id="sp-name" class="sp-name">Skater Name</div>
+          <div id="sp-club" class="sp-club">Club Name</div>
+          <div id="sp-section" class="sp-section">Section</div>
+
+          <div class="sp-divider"></div>
+
+          <div class="sp-stats">
+            <div class="sp-stat" id="stat-sb">
+              <div class="sp-stat-label">SEASON BEST</div>
+              <div id="sp-sb" class="sp-stat-value">—</div>
+            </div>
+            <div class="sp-stat" id="stat-pb">
+              <div class="sp-stat-label">PERSONAL BEST</div>
+              <div id="sp-pb" class="sp-stat-value">—</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sp-flag-bar">
+          <img id="sp-flag" class="sp-flag" src="" alt="" style="display:none" />
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/core/config.js"></script>
+  <script src="/js/core/caps-targets.js"></script>
+  <script src="/js/core/theme-loader.js"></script>
+  <script src="/js/core/utils.js"></script>
+  <script src="/js/core/json-poller.js"></script>
+  <script src="/js/core/ws-listener.js"></script>
+  <script src="/js/core/state-machine.js"></script>
+  <script src="/js/graphics/skater-profile.js"></script>
+</body>
+</html>

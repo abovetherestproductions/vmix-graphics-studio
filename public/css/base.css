@@ -1,0 +1,64 @@
+html, body {
+  width: 1920px;
+  height: 1080px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+body {
+  font-family: var(--font-body, 'Inter', Arial, Helvetica, sans-serif);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+  color: var(--color-text-primary, #ffffff);
+}
+
+.stage {
+  position: relative;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  background: transparent;
+}
+
+.hidden {
+  visibility: hidden;
+  opacity: 0;
+}
+
+/* ── Position & scale overrides ───────────────────────────────────────────
+ * Defaults live here; theme-loader overwrites per-template via CSS vars.
+ * The CSS `translate` and `scale` individual properties compose on top of
+ * any `transform` the template sets for animations — no conflicts.
+ * Each template's style.css sets transform-origin to its natural anchor.
+ * ───────────────────────────────────────────────────────────────────────── */
+:root {
+  --pos-x:            0px;
+  --pos-y:            0px;
+  --pos-scale:        1;
+  --graphic-row-pad:  0px;
+}
+
+.stage > div {
+  translate: var(--pos-x) var(--pos-y);
+  scale: var(--pos-scale);
+  /* Default anchor: top-center (good for centered panels).
+     Templates override with their own transform-origin below. */
+  transform-origin: 50% 0;
+}
+
+/* ── French: force ALL CAPS on category/segment-bearing text ──────────
+ * The main title classes already have text-transform: uppercase. French
+ * capitalisation rules (lowercase month names, lowercase adjectives etc.)
+ * make translated category/segment strings look inconsistent compared to
+ * the always-uppercase headers. This rule uppercases the remaining places
+ * where category/segment text shows so the on-air display is uniform. */
+html[lang="fr"] .lt-info-line,
+html[lang="fr"] .so-subtitle,
+html[lang="fr"] .rk-subtitle,
+html[lang="fr"] .st-subtitle,
+html[lang="fr"] .of-subtitle,
+html[lang="fr"] .sp-subtitle {
+  text-transform: uppercase;
+}

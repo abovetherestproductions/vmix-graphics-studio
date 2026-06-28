@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stream Deck Graphic Icons</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0d13;
+      --panel: #151922;
+      --line: #30394a;
+      --text: #f4f6fb;
+      --muted: #aab2c2;
+      --accent: #e31b3f;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(227, 27, 63, 0.22), transparent 34rem),
+        var(--bg);
+      color: var(--text);
+      font: 16px/1.45 Arial, Helvetica, sans-serif;
+      padding: 28px;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 28px;
+    }
+
+    p {
+      margin: 0 0 24px;
+      color: var(--muted);
+    }
+
+    section.group {
+      margin-top: 28px;
+    }
+
+    .group-title {
+      margin: 0 0 12px;
+      color: var(--text);
+      font-size: 20px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: rgba(21, 25, 34, 0.92);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px;
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+    }
+
+    img {
+      display: block;
+      width: 144px;
+      height: 144px;
+      object-fit: contain;
+      border-radius: 16px;
+      margin-bottom: 14px;
+      background: #000;
+    }
+
+    h2 {
+      margin: 0 0 8px;
+      font-size: 18px;
+    }
+
+    code {
+      display: block;
+      white-space: nowrap;
+      overflow-x: auto;
+      background: #080a0f;
+      border: 1px solid #252d3c;
+      border-radius: 10px;
+      color: #ffffff;
+      padding: 10px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Stream Deck Graphic Icons</h1>
+  <p>Static PNGs for manually embedding in Companion buttons. Use the mini-shot set first if you want the button to look like the real graphic.</p>
+
+  <section class="group">
+    <h2 class="group-title">Actual Mini-Shot Icons</h2>
+    <main class="grid" id="actualGrid"></main>
+  </section>
+
+  <section class="group">
+    <h2 class="group-title">Simple Operator Cards</h2>
+    <main class="grid" id="cardGrid"></main>
+  </section>
+
+  <script>
+    const actualIcons = [
+      ['Lower Third', 'actual-lower-third.png'],
+      ['Start Order', 'actual-starting-order.png'],
+      ['Rankings', 'actual-rankings.png'],
+      ['Small Rankings', 'actual-small-rankings.png'],
+      ['Element Tracker', 'actual-elements.png'],
+      ['Officials', 'actual-officials.png'],
+      ['Messages', 'actual-messages.png'],
+    ];
+
+    const cardIcons = [
+      ['Lower Third', 'lower-third.png'],
+      ['Start Order', 'starting-order.png'],
+      ['Rankings', 'rankings.png'],
+      ['Small Rankings', 'small-rankings.png'],
+      ['Element Tracker', 'elements.png'],
+      ['Officials', 'officials.png'],
+      ['Messages', 'messages.png'],
+      ['Recording', 'recording.png'],
+    ];
+
+    const origin = window.location.origin;
+
+    function renderIcons(gridId, icons) {
+      const grid = document.getElementById(gridId);
+      icons.forEach(([label, file]) => {
+        const url = `${origin}/streamdeck-icons/${file}`;
+        const card = document.createElement('section');
+        card.className = 'card';
+        card.innerHTML = `
+          <img src="${file}" alt="${label}">
+          <h2>${label}</h2>
+          <code>${url}</code>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    renderIcons('actualGrid', actualIcons);
+    renderIcons('cardGrid', cardIcons);
+</script>
+</body>
+</html>

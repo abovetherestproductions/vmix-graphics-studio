@@ -1,0 +1,271 @@
+.starting-order {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: var(--safe-top, 90px);
+  width: 880px;
+  pointer-events: none;
+}
+
+.so-panel {
+  background: var(--color-panel-bg);
+  border-radius: var(--panel-radius);
+  overflow: hidden;
+  box-shadow: var(--panel-shadow);
+  opacity: var(--anim-from-opacity, 0);
+  transform: var(--anim-extra-transform, translateY(40px));
+  will-change: transform, opacity;
+  transition: opacity var(--anim-duration, 400ms) var(--anim-easing, cubic-bezier(0.22, 1, 0.36, 1)),
+              transform var(--anim-duration, 400ms) var(--anim-easing, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+/* ── Header — uses shared .g-header from theme.css ── */
+.so-header {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(105deg, var(--color-header-start) 0%, var(--color-header-end) 100%);
+  padding: 14px 24px 14px 26px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 88px;
+}
+
+.so-header::before,
+.so-header::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  pointer-events: none;
+}
+.so-header::before {
+  width: 340px;
+  height: 340px;
+  top: -120px;
+  left: -60px;
+}
+.so-header::after {
+  width: 220px;
+  height: 220px;
+  top: -60px;
+  right: 80px;
+}
+
+.so-header-ring {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.so-header-ring::before {
+  content: '';
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  top: -30px;
+  right: 260px;
+}
+.so-header-ring::after {
+  content: '';
+  position: absolute;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  bottom: -140px;
+  left: 40%;
+}
+
+.so-header-content {
+  position: relative; z-index: 1;
+  min-width: 0; flex: 1;
+  display: flex; flex-direction: column; gap: 3px;
+  justify-content: center;
+}
+
+.so-title {
+  font-family: var(--font-display);
+  font-size: var(--so-title-size, 36px);
+  line-height: 1;
+  font-weight: 800;
+  color: var(--color-text-primary);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  /* Single-line constraint + ellipsis fallback. JS fitTitleOneLine shrinks
+     the font progressively before ellipsis ever kicks in. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.so-subtitle {
+  font-family: var(--font-body);
+  font-size: var(--so-subtitle-size, 18px);
+  line-height: 1.15;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.82);
+  margin-top: var(--so-title-sub-gap, 4px);
+}
+
+.so-event-info {
+  font-family: var(--font-body);
+  /* Share the --so-subtitle-size var so the operator's "Subtitle" font slider
+     also affects the auto-generated event-info line below the title. */
+  font-size: var(--so-subtitle-size, 12px);
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.55);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Logo slot — left side of header */
+.so-logo-wrap {
+  position: relative; z-index: 1;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  overflow: visible;
+}
+.so-logo {
+  height: var(--logo-height, 56px);
+  max-height: none;
+  max-width: 160px;
+  object-fit: contain;
+  opacity: var(--logo-opacity, 0.90);
+  transform: translate(var(--logo-x, 0px), var(--logo-y, 0px));
+}
+
+/* ── Rows container ───────────────────────────────── */
+.so-rows {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 0;
+  background: var(--color-row-bg);
+  overflow: hidden;
+}
+
+.so-row {
+  display: grid;
+  grid-template-columns: var(--so-col-pos, 68px) var(--so-col-flag, 46px) 1fr;
+  align-items: center;
+  column-gap: 12px;
+  padding: 0 22px;
+  padding-block: var(--graphic-row-pad, 0px);
+  border-top: 1px solid var(--color-row-border);
+  /* Cascade-down reveal: row starts above its final position and slides down. */
+  opacity: 0;
+  transform: translateY(-22px);
+  transition: opacity 360ms cubic-bezier(0.22, 1, 0.36, 1),
+              transform 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.so-row:first-child {
+  border-top: none;
+}
+
+.so-row:nth-child(even) {
+  background: var(--color-row-alt);
+}
+
+/* ── Cells ───────────────────────────────────────── */
+.so-pos {
+  font-family: var(--font-numbers);
+  font-weight: 800;
+  color: var(--so-pos-color, var(--color-accent-light));
+  text-align: center;
+}
+
+.so-flag-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.so-flag {
+  width: var(--so-flag-w, 42px);
+  height: var(--so-flag-h, 27px);
+  object-fit: contain;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.so-main {
+  min-width: 0;
+}
+
+.so-name {
+  font-family: var(--font-body);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.so-club {
+  font-family: var(--font-body);
+  margin-top: 3px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.so-status {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-accent-light);
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── Layout modes ─────────────────────────────────── */
+/* Large: 1–4 rows */
+.layout-large .so-row  { min-height: var(--row-min-height, 94px); }
+.layout-large .so-pos  { font-size: var(--so-pos-size-lg, 32px); }
+.layout-large .so-name { font-size: var(--so-name-size-lg, 28px); line-height: 1.08; }
+.layout-large .so-club { font-size: var(--so-club-size-lg, 18px); line-height: 1.12; }
+
+/* Standard: 5–7 rows */
+.layout-standard .so-row  { min-height: var(--row-min-height, 74px); }
+.layout-standard .so-pos  { font-size: var(--so-pos-size-md, 28px); }
+.layout-standard .so-name { font-size: var(--so-name-size-md, 24px); line-height: 1.08; }
+.layout-standard .so-club { font-size: var(--so-club-size-md, 16px); line-height: 1.12; }
+
+/* Compact: 8–10 rows */
+.layout-compact .so-row  { min-height: var(--row-min-height, 60px); }
+.layout-compact .so-pos  { font-size: var(--so-pos-size-sm, 22px); }
+.layout-compact .so-name { font-size: var(--so-name-size-sm, 20px); line-height: 1.08; }
+.layout-compact .so-club { font-size: var(--so-club-size-sm, 13px); line-height: 1.12; }
+
+/* ── Group / page change: only rows slide, header frozen ── */
+@keyframes so-rows-exit {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(-50px); }
+}
+@keyframes so-rows-enter {
+  from { opacity: 0; transform: translateX(50px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.so-rows.page-exit  { animation: so-rows-exit  200ms ease-in  forwards; }
+.so-rows.page-enter { animation: so-rows-enter 280ms cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+
+/* ── Animation states ─────────────────────────────── */
+.so-row.row-in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.starting-order.visible .so-panel {
+  opacity: 1;
+  transform: none;
+}

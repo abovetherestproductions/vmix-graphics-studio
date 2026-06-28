@@ -1,0 +1,5 @@
+.so-panel,
+.so-row {
+  transition-property: opacity, transform;
+  transition-timing-function: ease;
+}

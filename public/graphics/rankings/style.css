@@ -1,0 +1,245 @@
+/* ── Final Rankings — centered full leaderboard ───── */
+.rankings {
+  position: absolute;
+  left: 50%;
+  top: var(--safe-top, 90px);
+  width: 880px;
+  pointer-events: none;
+  /* transform-origin defaults to 50% 0 (top-center) from base.css */
+}
+
+.rk-panel {
+  background: var(--color-panel-bg);
+  border-radius: var(--panel-radius);
+  overflow: hidden;
+  box-shadow: var(--panel-shadow);
+  opacity: var(--anim-from-opacity, 0);
+  transform: translateX(-50%) var(--anim-extra-transform, translateY(40px));
+  will-change: transform, opacity;
+  transition: opacity var(--anim-duration, 400ms) var(--anim-easing, cubic-bezier(0.22, 1, 0.36, 1)),
+              transform var(--anim-duration, 400ms) var(--anim-easing, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+/* ── Header ───────────────────────────────────────── */
+.rk-header {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(105deg, var(--color-header-start) 0%, var(--color-header-end) 100%);
+  padding: 18px 26px 14px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 88px;
+}
+
+.rk-header::before, .rk-header::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.12);
+  pointer-events: none;
+}
+.rk-header::before { width: 300px; height: 300px; top: -120px; left: -60px; }
+.rk-header::after  { width: 200px; height: 200px; top: -60px;  right: 80px; }
+
+.rk-header-ring {
+  position: absolute; inset: 0; pointer-events: none; overflow: hidden;
+}
+.rk-header-ring::before {
+  content: '';
+  position: absolute;
+  width: 160px; height: 160px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.08);
+  top: -30px; right: 220px;
+}
+.rk-header-ring::after {
+  content: '';
+  position: absolute;
+  width: 220px; height: 220px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.07);
+  bottom: -130px; left: 42%;
+}
+
+.rk-header-left  { position: relative; z-index: 1; min-width: 0; flex: 1; }
+.rk-header-right {
+  position: relative; z-index: 1; flex-shrink: 0;
+  text-align: right; display: flex; flex-direction: column;
+  align-items: flex-end; justify-content: flex-end; gap: 8px;
+}
+
+.rk-title {
+  font-family: var(--font-display);
+  font-size: var(--rk-title-size, 36px);
+  line-height: 1;
+  font-weight: 800;
+  color: var(--color-text-primary);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  /* Single-line constraint — JS shrinks the font instead of wrapping. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rk-subtitle {
+  font-family: var(--font-body);
+  margin-top: var(--rk-title-sub-gap, 3px);
+  font-size: var(--rk-subtitle-size, 18px);
+  font-weight: 500;
+  color: rgba(255,255,255,0.82);
+}
+
+.rk-event-info {
+  font-family: var(--font-body);
+  /* Share the --rk-subtitle-size var so the operator's "Subtitle" font slider
+     also affects the auto-generated event-info line below the title. */
+  font-size: var(--rk-subtitle-size, 12px);
+  font-weight: 400;
+  color: rgba(255,255,255,0.55);
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
+/* Logo — left side of header */
+.rk-logo-wrap {
+  position: relative; z-index: 1;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  overflow: visible;
+}
+.rk-logo {
+  height: var(--logo-height, 56px);
+  max-height: none;
+  max-width: 160px;
+  object-fit: contain;
+  opacity: var(--logo-opacity, 0.90);
+  transform: translate(var(--logo-x, 0px), var(--logo-y, 0px));
+}
+
+/* ── Rows container — ONLY this element animates on page changes ─── */
+.rk-rows {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-row-bg);
+  padding: 6px 0;
+  /* Slide animation for page transitions */
+  transition: none;
+}
+
+/* Page-change slide: exit left, enter from right */
+@keyframes rk-rows-exit {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(-50px); }
+}
+@keyframes rk-rows-enter {
+  from { opacity: 0; transform: translateX(50px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.rk-rows.page-exit  { animation: rk-rows-exit  200ms ease-in  forwards; }
+.rk-rows.page-enter { animation: rk-rows-enter 280ms cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+
+/* ── Rows ─────────────────────────────────────────── */
+.rk-row {
+  display: grid;
+  grid-template-columns: var(--rk-col-rank, 52px) var(--rk-col-flag, 60px) 1fr var(--rk-col-total, 82px);
+  align-items: center;
+  padding: 0 22px 0 16px;
+  padding-block: var(--graphic-row-pad, 0px);
+  border-top: 1px solid var(--color-row-border);
+  flex-shrink: 0;
+  /* Cascade-down reveal: row starts above its final position and slides down. */
+  opacity: 0;
+  transform: translateY(-22px);
+  transition: opacity 360ms cubic-bezier(0.22, 1, 0.36, 1),
+              transform 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.rk-row:first-child { border-top: none; }
+.rk-row:nth-child(even) { background: var(--color-row-alt); }
+
+/* Layout modes: row heights adapt to page size */
+.layout-large    .rk-row { min-height: var(--row-min-height, 94px); }
+.layout-standard .rk-row { min-height: var(--row-min-height, 74px); }
+.layout-compact  .rk-row { min-height: var(--row-min-height, 60px); }
+
+/* Medal colours for top 3 */
+.rk-row.rank-1 .rk-rank { color: #FFD700; }
+.rk-row.rank-2 .rk-rank { color: #C0C0C0; }
+.rk-row.rank-3 .rk-rank { color: #CD7F32; }
+
+.rk-rank {
+  font-family: var(--font-numbers);
+  font-weight: 800;
+  font-size: var(--rk-rank-size-lg, 26px);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.rk-flag-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.rk-flag {
+  width: var(--rk-flag-w, 42px); height: var(--rk-flag-h, 27px);
+  object-fit: contain;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.06);
+}
+
+/* Extra breathing room between flag column and skater name */
+.rk-main { min-width: 0; padding-left: 10px; }
+
+.rk-name {
+  font-family: var(--font-body);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rk-club {
+  font-family: var(--font-body);
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.layout-large    .rk-name { font-size: var(--rk-name-size-lg, 28px); }
+.layout-large    .rk-club { font-size: var(--rk-club-size-lg, 18px); }
+.layout-standard .rk-name { font-size: var(--rk-name-size-md, 23px); }
+.layout-standard .rk-club { font-size: var(--rk-club-size-md, 15px); }
+.layout-compact  .rk-name { font-size: var(--rk-name-size-sm, 19px); }
+.layout-compact  .rk-club { font-size: var(--rk-club-size-sm, 13px); }
+
+.rk-total {
+  font-family: var(--font-numbers);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  text-align: right;
+}
+.layout-large    .rk-total { font-size: var(--rk-total-size-lg, 24px); }
+.layout-standard .rk-total { font-size: var(--rk-total-size-md, 22px); }
+.layout-compact  .rk-total { font-size: var(--rk-total-size-sm, 19px); }
+
+/* ── Animation states ─────────────────────────────── */
+.rankings.visible .rk-panel {
+  opacity: 1;
+  transform: translateX(-50%);
+}
+
+.rk-row.row-in {
+  opacity: 1;
+  transform: translateY(0);
+}

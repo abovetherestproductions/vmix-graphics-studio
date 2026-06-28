@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Live runtime data — changes per competition, not part of the codebase
+public/data/*.json
+config/current-state.json
+config/history/
+
+# Logs
+logs/
+*.log
+
+# Event-specific input files
+CSV Data/
+manual skater list/
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Environment / secrets (precaution)
+.env
+.env.*

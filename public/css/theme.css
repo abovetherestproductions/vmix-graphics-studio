@@ -1,0 +1,236 @@
+:root {
+  /* ── Accent / brand ───────────────────────────────── */
+  --color-accent:            #C8102E;
+  --color-accent-light:      #E8213F;
+  --color-accent-dark:       #8B0B20;
+
+  /* ── Header gradient ─────────────────────────────── */
+  --color-header-start:      #8B0B20;
+  --color-header-end:        #E8213F;
+
+  /* ── Panel / surface ─────────────────────────────── */
+  --color-panel-bg:          rgba(14, 14, 18, 0.92);
+  --color-row-bg:            rgba(14, 14, 18, 0.92);
+  --color-row-alt:           rgba(255, 255, 255, 0.03);
+  --color-row-border:        rgba(255, 255, 255, 0.08);
+  --panel-radius:            20px;
+  --panel-shadow:            0 20px 70px rgba(0, 0, 0, 0.40);
+
+  /* ── Decorative rings on/off ────────────────────── */
+  --header-rings-opacity:    1;
+
+  /* ── Text ────────────────────────────────────────── */
+  --color-text-primary:      #ffffff;
+  --color-text-secondary:    rgba(255, 255, 255, 0.72);
+  --color-text-muted:        rgba(255, 255, 255, 0.45);
+
+  /* ── Typography ──────────────────────────────────── */
+  --font-display:            'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
+  --font-body:               'Inter', Arial, Helvetica, sans-serif;
+  --font-numbers:            'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
+
+  /* ── Shared animation timing ─────────────────────── */
+  --anim-panel-in:           400ms cubic-bezier(0.22, 1, 0.36, 1);
+  --anim-panel-out:          280ms cubic-bezier(0.55, 0, 1, 0.45);
+  --anim-row-in:             360ms cubic-bezier(0.22, 1, 0.36, 1);
+  --anim-row-out:            220ms cubic-bezier(0.55, 0, 1, 0.45);
+  --anim-stagger:            55ms;
+
+  /* ── Layout grid helpers ─────────────────────────── */
+  --safe-left:               70px;
+  --safe-right:              70px;
+  --safe-top:                60px;
+  --safe-bottom:             60px;
+}
+
+/* ── Shared header block used by all panel templates ── */
+.g-header {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(105deg, var(--color-header-start) 0%, var(--color-header-end) 100%);
+  padding: 22px 32px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* Decorative circle rings — pure CSS, matches the GT Titles look */
+.g-header::before,
+.g-header::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  pointer-events: none;
+}
+.g-header::before {
+  width: 340px;
+  height: 340px;
+  top: -120px;
+  left: -60px;
+}
+.g-header::after {
+  width: 220px;
+  height: 220px;
+  top: -60px;
+  right: 80px;
+}
+
+/* Extra rings via a child span (optional — add <span class="g-header-rings"></span>) */
+.g-header-rings::before,
+.g-header-rings::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+}
+.g-header-rings::before {
+  width: 180px;
+  height: 180px;
+  top: -30px;
+  right: 260px;
+}
+.g-header-rings::after {
+  width: 260px;
+  height: 260px;
+  bottom: -140px;
+  left: 40%;
+}
+
+.g-header-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 42px;
+  line-height: 1;
+  color: var(--color-text-primary);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  position: relative;
+  z-index: 1;
+}
+
+.g-header-subtitle {
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 20px;
+  line-height: 1.2;
+  color: rgba(255, 255, 255, 0.82);
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Shared panel shell ───────────────────────────── */
+.g-panel {
+  background: var(--color-panel-bg);
+  border-radius: var(--panel-radius);
+  overflow: hidden;
+  box-shadow: var(--panel-shadow);
+  pointer-events: none;
+}
+
+/* ── Shared table row ────────────────────────────── */
+.g-row {
+  display: flex;
+  align-items: center;
+  border-top: 1px solid var(--color-row-border);
+  padding: 0 24px;
+}
+.g-row:first-child {
+  border-top: none;
+}
+.g-row:nth-child(even) {
+  background: var(--color-row-alt);
+}
+
+/* ── Shared cell types ───────────────────────────── */
+.g-cell-rank {
+  font-family: var(--font-numbers);
+  font-weight: 800;
+  font-size: 32px;
+  color: var(--color-accent-light);
+  min-width: 60px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.g-cell-name {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 26px;
+  color: var(--color-text-primary);
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.g-cell-detail {
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 17px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.g-cell-score {
+  font-family: var(--font-numbers);
+  font-weight: 700;
+  font-size: 28px;
+  color: var(--color-text-primary);
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── Generic animation states ────────────────────── */
+.g-panel-wrap {
+  opacity: 0;
+  transform: translateY(36px);
+  will-change: transform, opacity;
+  transition: opacity var(--anim-panel-in), transform var(--anim-panel-in);
+}
+.g-panel-wrap.panel-in {
+  opacity: 1;
+  transform: translateY(0);
+}
+.g-panel-wrap.panel-out {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity var(--anim-panel-out), transform var(--anim-panel-out);
+}
+
+.g-row-anim {
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity var(--anim-row-in), transform var(--anim-row-in);
+}
+.g-row-anim.row-in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Header ring opacity control (set --header-rings-opacity to 0 to hide) ── */
+.so-header::before, .so-header::after,
+.so-header-ring::before, .so-header-ring::after,
+.rk-header::before, .rk-header::after,
+.rk-header-ring::before, .rk-header-ring::after,
+.of-header::before, .of-header::after,
+.of-header-ring::before, .of-header-ring::after,
+.sc-name-bar::before, .sc-name-bar::after,
+.st-header::before, .st-header::after,
+.st-header-ring::before, .st-header-ring::after,
+.sp-header::before, .sp-header::after,
+.sp-header-ring::before, .sp-header-ring::after,
+.el-header::before,
+.lt-body::before, .lt-body::after,
+.msg-body::before, .msg-body::after,
+.un-label-block::before,
+.g-header::before, .g-header::after,
+.g-header-rings::before, .g-header-rings::after {
+  opacity: var(--header-rings-opacity, 1);
+  transition: opacity 400ms ease;
+}

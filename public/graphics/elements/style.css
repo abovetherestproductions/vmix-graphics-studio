@@ -1,0 +1,307 @@
+/* ── Elements Tracker Bug — top-left ──────────────── */
+/* Two-phase entry:
+   1. The whole tracker (header) drops from above the screen into place.
+   2. After a configurable delay (--el-body-delay, default 2000ms) the
+      body wrapper (rows + light rail) slides down from behind the header
+      by expanding its max-height from 0 to natural.
+
+   Background / radius / shadow live on .el-header and .el-body — the
+   .elements container itself is "invisible" so that during phase 1 only
+   the red header bar is visible (no empty panel area hanging below it). */
+.elements {
+  position: absolute;
+  left: var(--safe-left, 70px);
+  top: var(--safe-top, 60px);
+  width: 420px;
+  pointer-events: none;
+  transform-origin: 0% 0%; /* scale from top-left corner */
+}
+
+/* ── Header ───────────────────────────────────────── */
+.el-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px 10px 14px;
+  background: linear-gradient(105deg, var(--color-header-start) 0%, var(--color-header-end) 100%);
+  position: relative;
+  overflow: hidden;
+  z-index: 2;
+  /* Fully rounded while standalone in phase 1; bottom corners square out
+     once the body arrives so they merge visually with the body panel. */
+  border-radius: var(--panel-radius);
+  box-shadow: var(--panel-shadow);
+  /* Entry: drops from above the viewport into place. */
+  opacity: var(--anim-from-opacity, 0);
+  transform: translateY(-180px);
+  will-change: transform, opacity;
+  transition: opacity var(--anim-duration, 480ms) var(--anim-easing, cubic-bezier(0.22, 1, 0.36, 1)),
+              transform var(--anim-duration, 480ms) var(--anim-easing, cubic-bezier(0.22, 1, 0.36, 1)),
+              border-radius 220ms ease var(--el-body-delay, 2000ms);
+}
+.elements.visible .el-header {
+  opacity: 1;
+  transform: none;
+  border-radius: var(--panel-radius) var(--panel-radius) 0 0;
+}
+.el-header::before {
+  content: '';
+  position: absolute;
+  width: 200px; height: 200px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.12);
+  top: -80px; left: -30px;
+}
+
+/* Logo slot */
+.el-logo-wrap {
+  position: relative; z-index: 1;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+.el-logo {
+  height: var(--logo-height, 36px);
+  max-width: 80px;
+  object-fit: contain;
+  opacity: var(--logo-opacity, 0.90);
+  transform: translate(var(--logo-x, 0px), var(--logo-y, 0px));
+}
+
+.el-skater {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--el-skater-size, 18px);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+  position: relative; z-index: 1;
+  transform: translate(var(--el-title-x, 0px), var(--el-title-y, 0px));
+}
+
+.el-total-block {
+  flex-shrink: 0;
+  text-align: center;
+  margin-left: 12px;
+  position: relative; z-index: 1;
+  /* Block height intentionally equals the SCORE height alone — the label is
+     absolute-positioned below so it can't push the score up out of vertical
+     alignment with the skater name. The .el-header flex parent uses
+     align-items: center, so the score's centre tracks the name's centre
+     regardless of which font ends up taller (operator-tunable sizes). */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.el-total {
+  font-family: var(--font-numbers);
+  font-weight: 800;
+  font-size: var(--el-total-size, 26px);
+  line-height: 1;
+  color: var(--color-text-primary);
+}
+
+/* Operator-toggleable: when .hide-total-label is on root, the TES label
+   disappears entirely (the number is implied). */
+.elements.hide-total-label .el-total-label { display: none; }
+
+.el-total-label {
+  font-family: var(--font-display);
+  font-size: var(--el-label-size, 9px);
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.65);
+  /* Absolute so it doesn't add to .el-total-block's height — keeps the
+     score's centre aligned with the skater name regardless of label
+     presence. Horizontally centred over the score so short labels (TES /
+     NTÉ) read cleanly above any score width. */
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 1px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* ── Body wrapper (rows + light rail) ─────────────── */
+/* Owns the panel background / bottom-radius / shadow. Starts collapsed
+   (max-height 0) so the header is the only thing visible during phase 1.
+   After the operator-configurable --el-body-delay, expands to its natural
+   height — content appears to slide down out from behind the header. */
+.el-body {
+  position: relative;
+  z-index: 1;
+  background: var(--color-panel-bg);
+  border-radius: 0 0 var(--panel-radius) var(--panel-radius);
+  box-shadow: var(--panel-shadow);
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 640ms cubic-bezier(0.83, 0, 0.17, 1);
+  transition-delay: var(--el-body-delay, 2000ms);
+}
+.elements.visible .el-body {
+  max-height: 900px;
+}
+
+/* ── Element rows ─────────────────────────────────── */
+.el-rows {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 0;
+  max-height: 700px;
+  overflow: hidden;
+}
+
+.el-row {
+  display: grid;
+  grid-template-columns: 1fr 54px 54px 58px;
+  align-items: center;
+  min-height: var(--row-min-height, 0px);
+  padding: 5px 14px;
+  padding-block: calc(5px + var(--graphic-row-pad, 0px));
+  border-top: 1px solid var(--color-row-border);
+  column-gap: 8px;
+  opacity: 0;
+  transform: translateY(5px);
+  transition: opacity 300ms ease, transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.el-row:first-child { border-top: none; }
+.el-row.row-in  { opacity: 1; transform: none; }
+.el-row.no-anim { transition: none; }
+
+/* Most recent element highlighted */
+.el-row.current {
+  background: rgba(255,255,255,0.06);
+}
+.el-row.current .el-code {
+  color: var(--color-text-primary);
+}
+
+.el-code {
+  font-family: var(--font-numbers);
+  font-weight: 700;
+  font-size: var(--el-code-size, 15px);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* When showing full element names, allow wrapping and use body font */
+.el-code.show-name {
+  font-family: var(--font-body);
+  font-weight: 600;
+  white-space: normal;
+  line-height: 1.15;
+  font-size: calc(var(--el-code-size, 15px) * 0.92);
+}
+
+.el-bv,
+.el-score {
+  font-family: var(--font-numbers);
+  font-size: var(--el-value-size, 14px);
+  text-align: right;
+}
+
+.el-bv {
+  font-weight: 400;
+  color: var(--color-text-secondary);
+}
+
+.el-goe {
+  font-family: var(--font-numbers);
+  font-size: var(--el-value-size, 14px);
+  font-weight: 700;
+  text-align: right;
+}
+.el-goe.pos { color: #5cb85c; }
+.el-goe.neg { color: #ff6b6b; }
+.el-goe.zero{ color: var(--color-text-muted); }
+
+.el-score {
+  font-weight: 800;
+  color: var(--color-text-primary);
+}
+
+/* Bottom summary row — "Highest TES" line shared by list and single-line modes.
+   Gold/amber tint marks it as a "leader" stat distinct from per-element scores. */
+.el-row.el-summary {
+  background: linear-gradient(90deg, rgba(255,196,72,0.10) 0%, rgba(255,196,72,0.04) 100%);
+  border-top: 1px solid rgba(255,196,72,0.35);
+}
+.el-row.el-summary .el-summary-label {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--el-highest-label-color, #ffc848);
+  font-size: var(--el-highest-label-size, calc(var(--el-code-size, 15px) * 0.85));
+}
+.el-row.el-summary .el-score {
+  color: var(--el-highest-score-color, #ffc848);
+  font-size: var(--el-highest-score-size, var(--el-value-size, 14px));
+  text-shadow: 0 0 8px color-mix(in srgb, var(--el-highest-score-color, #ffc848) 25%, transparent);
+}
+
+.el-light-rail {
+  display: none;
+  align-items: center;
+  gap: 7px;
+  min-height: 26px;
+  padding: 8px 14px 10px;
+  background: rgba(0,0,0,0.38);
+  border-top: 1px solid var(--color-row-border);
+}
+
+.el-light {
+  display: block;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.26);
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.08), 0 0 8px rgba(0,0,0,0.35);
+}
+
+.el-light.pos {
+  background: #43d56f;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.15), 0 0 6px 2px rgba(67,213,111,0.85), 0 0 16px 3px rgba(67,213,111,0.35);
+}
+
+.el-light.neg {
+  background: #ff4d5f;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.15), 0 0 6px 2px rgba(255,77,95,0.85), 0 0 16px 3px rgba(255,77,95,0.35);
+}
+
+.el-light.zero {
+  background: rgba(210,216,226,0.5);
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.10), 0 0 6px 1px rgba(200,210,220,0.3);
+}
+
+.el-light.current {
+  animation: el-light-pulse 700ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* ── Animation states ─────────────────────────────── */
+/* Entry/exit choreography lives on .el-header and .el-body individually.
+   The .out state is driven from JS (animateOut in elements.js): it
+   collapses the body via max-height, then fades / lifts the header. */
+@keyframes el-light-pulse {
+  0%   { transform: scale(1.0); opacity: 0.6; }
+  30%  { transform: scale(1.55); opacity: 1; }
+  100% { transform: scale(1.0); opacity: 1; }
+}
+
+.elements.out .el-header {
+  /* Header lifts back up and fades during exit. */
+  opacity: 0;
+  transform: translateY(-180px);
+  transition: opacity var(--anim-out-duration, 320ms) var(--anim-out-easing, cubic-bezier(0.55, 0, 1, 0.45)),
+              transform var(--anim-out-duration, 320ms) var(--anim-out-easing, cubic-bezier(0.55, 0, 1, 0.45));
+}

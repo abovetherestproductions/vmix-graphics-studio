@@ -1,0 +1,19 @@
+{
+  "name": "vmix-html-graphics-starter",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Starter HTML/CSS/JS graphics package for vMix Web Browser input with JSON polling and animation states.",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "recordings:repair": "node tools/repair-recordings.js",
+    "test": "node --test tests/*.test.js"
+  },
+  "dependencies": {
+    "chokidar": "^3.6.0",
+    "csv-parse": "^5.5.6",
+    "express": "^4.19.2",
+    "ws": "^8.18.0",
+    "xlsx": "^0.18.5"
+  }
+}
