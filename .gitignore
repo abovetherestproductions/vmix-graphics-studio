@@ -6,6 +6,10 @@ public/data/*.json
 config/current-state.json
 config/history/
 
+# Machine-specific settings (vMix host, recording folders, workbook paths) —
+# each install keeps its own; never sync between machines
+config/settings.json
+
 # Logs
 logs/
 *.log
