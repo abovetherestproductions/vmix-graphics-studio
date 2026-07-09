@@ -31,6 +31,9 @@ const wss    = new WebSocketServer({ server });
 const PORT   = process.env.PORT || 3012;
 
 const DATA_DIR   = path.join(__dirname, 'public', 'data');
+// Fresh clones don't have this folder (git ignores its contents) — create it
+// so writeConfig/writeData never fail with ENOENT on a new install.
+fs.mkdirSync(DATA_DIR, { recursive: true });
 const CONFIG_FILE = path.join(DATA_DIR, 'event-config.json');
 const DEFAULT_CSV_FILES = {
   eventInfo: 'SC2_csslivetextEventInfo.csv',
