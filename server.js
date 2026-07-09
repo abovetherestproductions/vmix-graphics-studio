@@ -3363,22 +3363,15 @@ async function moveScApiSkater(direction) {
   return applyScApiManualSkater(active[next].id);
 }
 
-app.post('/api/sc-api/next-skater', async (_req, res) => {
-  try {
-    const data = await moveScApiSkater(1);
-    res.json({ ok: true, data });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
+// GET + POST so StreamDeck / Companion / browser can all trigger these
+registerDualAsync('/api/sc-api/next-skater', async (_req, res) => {
+  const data = await moveScApiSkater(1);
+  res.json({ ok: true, data });
 });
 
-app.post('/api/sc-api/prev-skater', async (_req, res) => {
-  try {
-    const data = await moveScApiSkater(-1);
-    res.json({ ok: true, data });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
+registerDualAsync('/api/sc-api/prev-skater', async (_req, res) => {
+  const data = await moveScApiSkater(-1);
+  res.json({ ok: true, data });
 });
 
 // ── Auto-record endpoints ──────────────────────────────────────────────────
