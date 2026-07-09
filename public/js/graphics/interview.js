@@ -36,14 +36,7 @@
     if (flagWrapEl && flagImgEl) {
       const flagUrl = String(data.flagUrl || '').trim();
       const showFlag = window.configHeaderOverrides?.['interview']?.ltShowFlag !== false;
-      if (flagUrl && showFlag) {
-        window.GraphicsUtils.wireFlagFallback(flagImgEl, flagWrapEl);
-        if (flagImgEl.getAttribute('src') !== flagUrl) flagImgEl.src = flagUrl;
-        flagWrapEl.style.display = '';
-      } else {
-        flagWrapEl.style.display = 'none';
-        flagImgEl.removeAttribute('src');
-      }
+      window.GraphicsUtils.setFlag(flagImgEl, flagWrapEl, showFlag ? flagUrl : '');
     }
   }
 

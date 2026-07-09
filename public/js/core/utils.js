@@ -145,6 +145,32 @@ window.GraphicsUtils = {
    * @param {HTMLElement} wrapEl       — the container to hide on error
    *                                     (falls back to imgEl.parentElement)
    */
+  /**
+   * Show a flag in a PERSISTENT <img> element (lower-third, manual-skater,
+   * interview — graphics that reuse the same img across renders). Safe
+   * against re-renders with an unchanged URL: wireFlagFallback pessimistically
+   * hides the wrap until onload, but re-assigning an identical src never
+   * re-fires onload, which left the flag invisible until an input refresh.
+   * If the requested URL is already loaded, just make sure it's visible.
+   */
+  setFlag(imgEl, wrapEl, url) {
+    if (!imgEl || !wrapEl) return;
+    const target = String(url || '').trim();
+    if (!target) {
+      wrapEl.style.display = 'none';
+      imgEl.removeAttribute('src');
+      return;
+    }
+    if (imgEl.getAttribute('src') === target && imgEl.complete && imgEl.naturalWidth > 0) {
+      wrapEl.style.display = '';
+      wrapEl.style.visibility = '';
+      return;
+    }
+    window.GraphicsUtils.wireFlagFallback(imgEl, wrapEl);
+    imgEl.src = target;
+    wrapEl.style.display = '';
+  },
+
   wireFlagFallback(imgEl, wrapEl) {
     if (!imgEl) return;
     const wrap = wrapEl || imgEl.parentElement;

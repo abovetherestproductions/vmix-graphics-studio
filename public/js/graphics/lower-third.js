@@ -105,14 +105,7 @@
 
     // Flag — right side. Hides itself if the asset 404s (unknown flag) so a
     // broken-image icon never makes it on air.
-    if (data.flagUrl) {
-      window.GraphicsUtils.wireFlagFallback(flagEl, flagWrap);
-      flagEl.src = data.flagUrl;
-      flagWrap.style.display = '';
-    } else {
-      flagEl.src = '';
-      flagWrap.style.display = 'none';
-    }
+    window.GraphicsUtils.setFlag(flagEl, flagWrap, data.flagUrl);
 
     // Logo show/hide is controlled by theme-loader (logoShow config in operator)
     // Only override the src if the data payload provides a specific logo URL
