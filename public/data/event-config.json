@@ -63,12 +63,12 @@
     "scApi": {
       "baseUrl": "https://sc-css-public-api-cmh9d3htgxfpdkb7.canadacentral-01.azurewebsites.net",
       "eventId": "019f2d40-acbc-777d-bd66-1d55ee9029fc",
-      "categoryId": "019f2d41-4bd5-777d-bd66-2e424cf790c7",
-      "segmentId": "019f2d41-4be0-777d-bd66-34ec1d7b256c",
+      "categoryId": "019f2e23-9408-777d-bd6a-e2da128db6df",
+      "segmentId": "019f2e23-9412-777d-bd6a-f08a76af7d55",
       "pollIntervalMs": 2000,
       "officialsPollIntervalMs": 30000,
-      "segmentName": "Short Program",
-      "discipline": "Singles"
+      "segmentName": "Rhythm Dance",
+      "discipline": "Ice Dance"
     }
   },
   "messages": {
@@ -218,7 +218,7 @@
       "rounded": true,
       "radius": 20,
       "ltFlagHeight": 68,
-      "animPreset": "default",
+      "animPreset": "rise",
       "animSpeed": 920,
       "animEasing": "smooth",
       "logoShow": true,
@@ -247,7 +247,7 @@
       "ltInfoRight": 20,
       "ltInfoRadius": 18,
       "ltInfoMaxWidth": 760,
-      "animPreset": "default",
+      "animPreset": "rise",
       "animSpeed": 920,
       "animEasing": "smooth",
       "logoShow": true,
@@ -464,10 +464,10 @@
       }
     }
   },
-  "categoryName": "Junior Women",
-  "categoryNameFr": "Femmes Junior",
-  "segmentName": "Short Program",
-  "segmentNameFr": "Programme court",
+  "categoryName": "Junior Ice Dance",
+  "categoryNameFr": "Junior — Danse sur glace",
+  "segmentName": "Rhythm Dance",
+  "segmentNameFr": "Danse Rythmique",
   "eventLocationFr": "Fleetwood Arena  Surrey  BC",
   "elementsLayoutMode": "list",
   "globalHeaderOverride": "",
