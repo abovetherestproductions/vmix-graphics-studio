@@ -3301,6 +3301,9 @@ async function applyScApiManualSkater(entryId) {
   graphicState['manual-skater'] = { visible: existing.control.visible, state: existing.control.state };
   broadcast({ type: 'update', template: 'manual-skater', payload: existing });
   scApiSelectedEntryId = entryId;
+  // Tell open operator pages (sc-api.html) which skater is now selected so
+  // StreamDeck-triggered next/prev updates the on-page highlight too.
+  broadcast({ type: 'sc-api-selection', entryId, name: data.name });
 
   // Interview bar follows the selected skater by default. Skipped while the
   // interview graphic is on air so a roster click can't rewrite a live

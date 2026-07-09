@@ -1,0 +1,70 @@
+{
+  "vmix": {
+    "vmixHost": "localhost",
+    "vmixPort": 8088,
+    "vmixRecordingFolder": "C:\\vMixRecordings",
+    "defaultBrowserInputName": "GFX",
+    "defaultOverlayNumber": 1,
+    "overlayOutDelayMs": 900,
+    "graphicOverlays": {
+      "starting-order": {
+        "inputName": "7",
+        "overlayNumber": 3
+      },
+      "scoring": {
+        "inputName": "3",
+        "overlayNumber": 3
+      },
+      "lower-third": {
+        "inputName": "2",
+        "overlayNumber": 3
+      },
+      "manual-skater": {
+        "inputName": "18",
+        "overlayNumber": 3
+      },
+      "standings": {
+        "inputName": "6",
+        "overlayNumber": 3
+      },
+      "officials": {
+        "inputName": "5",
+        "overlayNumber": 3
+      },
+      "elements": {
+        "inputName": "4",
+        "overlayNumber": 1
+      },
+      "messages": {
+        "inputName": "1",
+        "overlayNumber": 3
+      },
+      "rankings": {
+        "inputName": "11",
+        "overlayNumber": 3
+      }
+    }
+  },
+  "localRecordingSorter": {
+    "outputRootFolder": "C:\\SkatingVideos",
+    "needsReviewFolder": "C:\\SkatingVideos\\_Needs Review",
+    "createCategoryFoldersAutomatically": true,
+    "filenameFormat": "{skaterName}.mp4",
+    "categoryRecordingFilenameFormat": "{eventName} - {categoryName} - Segment {segmentNumber}.mp4",
+    "metadataSource": "manual-skater"
+  },
+  "dailymotion": {
+    "dailymotionEnabled": false,
+    "dailymotionLiveVideoId": "",
+    "dailymotionVodTitleFormat": "{eventName} - {categoryName}",
+    "dailymotionVodDescriptionFormat": "",
+    "dailymotionAccountLabel": ""
+  },
+  "safety": {
+    "preferStopSnapshotForFileNaming": false,
+    "captureStartSnapshotForAudit": true,
+    "moveUncertainFilesToNeedsReview": true,
+    "writeActionLog": true,
+    "preventOverwrite": true
+  }
+}

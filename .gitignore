@@ -1,14 +1,13 @@
 # Dependencies
 node_modules/
 
-# Live runtime data — changes per competition, not part of the codebase
+# Live runtime data — changes per competition, not part of the codebase.
+# EXCEPTION: event-config.json (layout/theme/positions) is tracked so the
+# Mac's look-and-feel syncs to other machines via pull.
 public/data/*.json
+!public/data/event-config.json
 config/current-state.json
 config/history/
-
-# Machine-specific settings (vMix host, recording folders, workbook paths) —
-# each install keeps its own; never sync between machines
-config/settings.json
 
 # Logs
 logs/

@@ -909,6 +909,18 @@ function connectWs() {
     let msg;
     try { msg = JSON.parse(evt.data); } catch { return; }
 
+    if (msg.type === 'sc-api-selection' && msg.entryId) {
+      // Selection made server-side (StreamDeck next/prev or another page) —
+      // mirror the highlight here.
+      state.selectedEntryId = msg.entryId;
+      document.querySelectorAll('.skater-row.selected').forEach(r => r.classList.remove('selected'));
+      const row = document.querySelector(`.skater-row[data-entry-id="${CSS.escape(msg.entryId)}"]`);
+      if (row) { row.classList.add('selected'); row.scrollIntoView({ block: 'nearest' }); }
+      const entry = state.entries.find(e => e.id === msg.entryId);
+      if (entry) ivSyncFromSelection(entry);
+      return;
+    }
+
     if (msg.type === 'update') {
       if (msg.template === 'starting-order' || msg.template === 'scoring') {
         clearTimeout(connectWs._rosterDebounce);
