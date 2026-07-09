@@ -39,7 +39,7 @@
     cut:   { bar: null,                  panel: null },
   };
 
-  const BAR_TEMPLATES = new Set(['lower-third', 'manual-skater']);
+  const BAR_TEMPLATES = new Set(['lower-third', 'manual-skater', 'interview']);
 
   let lastConfigSignature = '';
 
@@ -239,13 +239,16 @@
         segmentName:    config.segmentName    || '',
         segmentNameFr:  config.segmentNameFr  || '',
         ltInfoText:     pos.ltInfoText        || '',
+        ltShowFlag:     pos.ltShowFlag !== false,
+        ltLine2Source:  pos.ltLine2Source     || 'club',
+        ltLine2Custom:  pos.ltLine2Custom     || '',
       };
 
       // Apply title override for custom/event sources
       applyHeaderOverride(template, graphicRoot, lang);
 
       // ── Template-specific CSS vars ──────────────────────────────────────
-      if (template === 'lower-third' || template === 'manual-skater') {
+      if (template === 'lower-third' || template === 'manual-skater' || template === 'interview') {
         graphicRoot.style.setProperty('--lt-flag-height', `${pos.ltFlagHeight ?? 68}px`);
         graphicRoot.style.setProperty('--lt-flag-pad',    `${pos.ltFlagPad    ?? 24}px`);
         graphicRoot.style.setProperty('--lt-flag-x',      `${pos.ltFlagX      ?? 0}px`);

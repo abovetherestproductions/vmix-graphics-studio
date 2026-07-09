@@ -52,6 +52,7 @@ const TEMPLATES = [
   'elements',
   'messages',
   'manual-skater',
+  'interview',
   'clock',
   'time-of-day',
   'skater-profile',
@@ -1919,6 +1920,7 @@ const PREVIEW_GRAPHIC_META = {
   elements: { title: 'ELEMENTS', sub: 'GOE TRACKER', accent: '#e31b3f' },
   messages: { title: 'MESSAGES', sub: 'ANNOUNCE', accent: '#e31b3f' },
   'manual-skater': { title: 'MANUAL', sub: 'SKATER', accent: '#e31b3f' },
+  interview: { title: 'INTERVIEW', sub: 'NAME BAR', accent: '#c9a227' },
   'skater-profile': { title: 'PROFILE', sub: 'SKATER BIO', accent: '#e31b3f' },
   rankings: { title: 'RANKINGS', sub: 'FINAL', accent: '#e31b3f' },
 };
@@ -3168,6 +3170,15 @@ app.get('/api/sc-api/browse/event/:eventId', async (req, res) => {
   }
 });
 
+app.get('/api/sc-api/browse/event/:eventId/rinks', async (req, res) => {
+  try {
+    const result = await scApiService.browseEventRinks(req.params.eventId.trim());
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 app.get('/api/sc-api/browse/category/:categoryId', async (req, res) => {
   try {
     const result = await scApiService.browseCategory(req.params.categoryId.trim());
@@ -3204,6 +3215,7 @@ app.post('/api/sc-api/select', async (req, res) => {
   if (!segmentId) return res.status(400).json({ error: 'segmentId is required' });
   const cfg = readConfig();
   cfg.dataSource = cfg.dataSource || {};
+  const prevSegmentId = cfg.dataSource.scApi?.segmentId || null;
   cfg.dataSource.mode = 'sc-api';
   cfg.dataSource.scApi = Object.assign({}, cfg.dataSource.scApi || {}, {
     baseUrl: baseUrl || 'https://sc-css-public-api-cmh9d3htgxfpdkb7.canadacentral-01.azurewebsites.net',
@@ -3216,6 +3228,24 @@ app.post('/api/sc-api/select', async (req, res) => {
     officialsPollIntervalMs: Number(officialsPollIntervalMs) || 30000,
   });
   writeConfig(cfg);
+
+  // On-ice-driven graphics (scoring, lower-third, elements) are only rewritten
+  // when a skater is on ice, so a segment change leaves the previous segment's
+  // skater in those files until someone new goes on ice. Clear them so an
+  // operator can't accidentally air the last segment's data.
+  if (segmentId !== prevSegmentId) {
+    for (const t of ['scoring', 'lower-third', 'elements']) {
+      const payload = {
+        meta:    { template: t, revision: Date.now(), updatedAt: new Date().toISOString() },
+        control: { visible: false, state: 'hidden' },
+        data:    {},
+      };
+      writeData(t, payload);
+      graphicState[t] = { visible: false, state: 'hidden' };
+      broadcast({ type: 'update', template: t, payload });
+    }
+  }
+
   startConfiguredPolling();
   // Await the initial force-poll so data is fresh before the operator UI responds.
   // This means by the time sc-api.html shows "✓ activated", the template files
@@ -3250,27 +3280,58 @@ async function applyScApiManualSkater(entryId) {
     control: { visible: false, state: 'hidden' },
     data:    {},
   };
-  existing.data = Object.assign({}, existing.data, {
+  existing.data = {
     line1:          data.name,
     line2:          data.club,
+    name:           data.name,
+    club:           data.club,
     flagUrl:        data.flagUrl,
     categoryName:   data.categoryName,
     categoryNameFr: data.categoryNameFr,
     segmentName:    data.segmentName,
     segmentNameFr:  data.segmentNameFr,
     groupNumber:    data.groupNumber,
-  });
+  };
   existing.meta.revision  = Date.now();
   existing.meta.updatedAt = new Date().toISOString();
   writeData('manual-skater', existing);
   graphicState['manual-skater'] = { visible: existing.control.visible, state: existing.control.state };
   broadcast({ type: 'update', template: 'manual-skater', payload: existing });
   scApiSelectedEntryId = entryId;
+
+  // Interview bar follows the selected skater by default. Skipped while the
+  // interview graphic is on air so a roster click can't rewrite a live
+  // interview — operator overrides happen via the interview panel/page.
+  const iv = readData('interview') || {
+    meta:    { template: 'interview', revision: 0, updatedAt: new Date().toISOString() },
+    control: { visible: false, state: 'hidden' },
+    data:    {},
+  };
+  if (!iv.control?.visible) {
+    iv.data = {
+      line1:        data.name,
+      line2:        data.club,
+      name:         data.name,
+      club:         data.club,
+      flagUrl:      data.flagUrl,
+      categoryName: data.categoryName,
+      source:       'auto',
+    };
+    iv.meta.revision  = Date.now();
+    iv.meta.updatedAt = new Date().toISOString();
+    writeData('interview', iv);
+    graphicState['interview'] = { visible: iv.control.visible, state: iv.control.state };
+    broadcast({ type: 'update', template: 'interview', payload: iv });
+  }
+
   const cfg = readConfig();
   const segCode = (data.segmentName || '').replace(/.*\b(SP|FS|RD|FD|SD|PD)\b.*/i, '$1').toUpperCase();
   const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
   const filename = [sanitizeFilename(data.name), segCode, datePart].filter(Boolean).join(' - ');
-  vmixClient.setFilename(filename).catch(e => console.warn('[sc-api] setFilename error:', e.message));
+  vmixClient.setFilename(filename).catch(e => {
+    const reason = e.message || e.code || 'unreachable';
+    console.warn(`[sc-api] vMix setFilename failed (${reason}) — is vMix running? Check autoRecord.vmixHost/vmixPort in settings.`);
+  });
   return data;
 }
 

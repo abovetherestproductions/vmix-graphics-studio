@@ -369,8 +369,47 @@ function createScApiService({
         inProgress: !!s.isSegmentInProgress,
         startDate:  s.startDateTime || null,
         order:      s.performanceOrder ?? 999,
+        rink:       newApi.safeStr(s.segmentRink),
       })).sort((a, b) => a.order - b.order),
     };
+  }
+
+  // Rink map for an event: which rinks exist, and which rinks each category's
+  // segments run on. Requires one segment fetch per category, so results are
+  // cached — rink assignments don't change mid-event.
+  const rinksCache = new Map(); // eventId -> { at, promise }
+  const RINKS_CACHE_MS = 10 * 60 * 1000;
+
+  function browseEventRinks(eventId) {
+    const hit = rinksCache.get(eventId);
+    if (hit && Date.now() - hit.at < RINKS_CACHE_MS) return hit.promise;
+    const promise = buildEventRinks(eventId).catch(err => {
+      rinksCache.delete(eventId);
+      throw err;
+    });
+    rinksCache.set(eventId, { at: Date.now(), promise });
+    return promise;
+  }
+
+  async function buildEventRinks(eventId) {
+    const categories = await fetchCategories(eventId);
+    const categoryRinks = {};
+    const rinkSet = new Set();
+    const BATCH = 8; // polite parallelism against the public API
+    for (let i = 0; i < categories.length; i += BATCH) {
+      await Promise.all(categories.slice(i, i + BATCH).map(async c => {
+        const catId = newApi.safeStr(c.categoryId);
+        try {
+          const segments = await fetchSegments(catId);
+          const rinks = [...new Set(segments.map(s => newApi.safeStr(s.segmentRink)).filter(Boolean))];
+          categoryRinks[catId] = rinks;
+          rinks.forEach(r => rinkSet.add(r));
+        } catch {
+          categoryRinks[catId] = [];
+        }
+      }));
+    }
+    return { rinks: [...rinkSet].sort(), categoryRinks };
   }
 
   async function browseSegment(segmentId) {
@@ -433,7 +472,7 @@ function createScApiService({
     // Polling (also callable manually)
     pollOnce, pollOfficials,
     // Operator browse (for API routes)
-    browseEvent, browseCategory, browseSegment,
+    browseEvent, browseCategory, browseSegment, browseEventRinks,
     // Manual skater push
     setManualSkaterFromEntry,
     // Direct fetch (for operator routes that need raw data)

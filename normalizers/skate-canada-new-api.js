@@ -453,9 +453,20 @@ function normalizeOfficials(officials, categoryDto, segmentDto, lang, existingCo
   const catName   = catEn(categoryDto);
   const catNameFr = catFr(categoryDto) || catName;
 
+  // Broadcast listing order: judges first, then Technical Controller, then the
+  // Technical Specialists (officialPosition is a within-role number, so TS1
+  // sorts before TS2 even though the numbers aren't displayed), then everyone
+  // else (Referee, Data Input, Video Replay…).
+  function roleRank(roleEn) {
+    const r = roleEn.toLowerCase();
+    if (r.includes('judge'))                 return 0;
+    if (r.includes('technical controller'))  return 1;
+    if (r.includes('technical specialist'))  return 2;
+    return 3;
+  }
+
   const rows = (Array.isArray(officials) ? officials : [])
     .filter(o => safeStr(o.officialFullName))
-    .sort((a, b) => (a.officialPosition ?? 99) - (b.officialPosition ?? 99))
     .map(o => {
       // officialRole is an OfficialRoleDto — field names are best-guessed from convention
       const role   = o.officialRole;
@@ -473,8 +484,12 @@ function normalizeOfficials(officials, categoryDto, segmentDto, lang, existingCo
         name:    safeStr(o.officialFullName),
         section,
         flagUrl: sectionFlagUrl(section),
+        _rank:   roleRank(roleEn),
+        _pos:    o.officialPosition ?? 99,
       };
-    });
+    })
+    .sort((a, b) => (a._rank - b._rank) || (a._pos - b._pos))
+    .map(({ _rank, _pos, ...row }) => row);
 
   return {
     meta:    nowMeta('officials'),

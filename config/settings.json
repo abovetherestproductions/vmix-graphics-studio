@@ -51,7 +51,7 @@
     "createCategoryFoldersAutomatically": true,
     "filenameFormat": "{skaterName}.mp4",
     "categoryRecordingFilenameFormat": "{eventName} - {categoryName} - Segment {segmentNumber}.mp4",
-    "metadataSource": "auto"
+    "metadataSource": "manual-skater"
   },
   "dailymotion": {
     "dailymotionEnabled": false,

@@ -297,6 +297,63 @@
   }
   #repoll-btn:hover { border-color: var(--green); color: var(--green); }
 
+  /* ── Interview panel ────────────────────────────────────────────── */
+  #interview-panel {
+    flex-shrink: 0;
+    border-top: 1px solid rgba(201,162,39,0.35);
+    background: var(--surface);
+  }
+  #interview-panel summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 7px 10px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #e7c65a;
+    user-select: none;
+  }
+  #interview-panel summary::-webkit-details-marker { display: none; }
+  #interview-panel summary::before { content: '▸ '; }
+  #interview-panel[open] summary::before { content: '▾ '; }
+  #interview-body {
+    padding: 0 10px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  #interview-body input[type="text"] {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+  #interview-body input[type="text"]:focus { outline: none; border-color: #c9a227; }
+  .iv-row { display: flex; gap: 6px; align-items: center; }
+  .iv-row > * { flex: 1; }
+  .iv-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 7px 8px;
+    cursor: pointer;
+    transition: background 120ms, border-color 120ms;
+  }
+  .iv-btn:hover { border-color: #c9a227; }
+  .iv-btn-show { background: rgba(76,175,80,0.15); border-color: rgba(76,175,80,0.35); color: var(--green); }
+  .iv-btn-show:hover { background: rgba(76,175,80,0.28); border-color: rgba(76,175,80,0.6); }
+  .iv-btn-hide { background: rgba(244,67,54,0.12); border-color: rgba(244,67,54,0.30); color: var(--red); }
+  .iv-btn-hide:hover { background: rgba(244,67,54,0.24); border-color: rgba(244,67,54,0.55); }
+  .iv-check { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text2); cursor: pointer; flex: 0 0 auto; }
+  .iv-check input { accent-color: #c9a227; cursor: pointer; }
+
   /* ── Toast ──────────────────────────────────────────────────────── */
   #toast {
     position: fixed;
@@ -413,6 +470,12 @@
 
   <!-- Category + Segment selectors -->
   <div id="segment-selectors">
+    <div id="rink-selector-wrap" style="display:none;">
+      <div class="sel-label">Rink — this machine</div>
+      <select id="rink-select" onchange="onRinkChange(this.value)">
+        <option value="">All rinks</option>
+      </select>
+    </div>
     <div>
       <div class="sel-label">Category</div>
       <select id="cat-select" onchange="onCategoryChange(this.value)">
@@ -434,6 +497,30 @@
     <div id="roster-list"></div>
   </div>
 
+  <!-- Interview lower-third quick control -->
+  <details id="interview-panel">
+    <summary>Interview</summary>
+    <div id="interview-body">
+      <input type="text" id="iv-name" placeholder="Name" autocomplete="off" />
+      <div class="iv-row">
+        <select id="iv-line2-src" onchange="ivLine2SrcChange()">
+          <option value="club">Line 2: Club</option>
+          <option value="category">Line 2: Category</option>
+          <option value="custom">Line 2: Custom</option>
+        </select>
+        <label class="iv-check" title="Include the province flag on the bar">
+          <input type="checkbox" id="iv-flag" checked /> Flag
+        </label>
+      </div>
+      <input type="text" id="iv-line2-custom" placeholder="Custom line 2 (e.g. Coach — Sunset FSC)" autocomplete="off" style="display:none;" />
+      <div class="iv-row">
+        <button class="iv-btn" onclick="ivFillFromSelected()" title="Fill from the selected skater in the list">↙ Use Selected</button>
+        <button class="iv-btn iv-btn-show" onclick="ivShow()">▶ Show</button>
+        <button class="iv-btn" onclick="ivUpdate()">↻ Update</button>
+        <button class="iv-btn iv-btn-hide" onclick="ivHide()">■ Hide</button>
+      </div>
+    </div>
+  </details>
 
 </div>
 
@@ -450,6 +537,9 @@ const state = {
   segments:         [],
   entries:          [],
   selectedEntryId:  null,
+  rinks:            [],
+  categoryRinks:    {},
+  rinkFilter:       '',
 };
 
 let ws          = null;
@@ -508,23 +598,74 @@ async function loadEvent(eventId) {
     document.getElementById('event-name').textContent = state.eventName;
     document.getElementById('no-event').style.display = 'none';
 
-    const catSel = document.getElementById('cat-select');
-    catSel.innerHTML = '<option value="">— Select category —</option>';
-    state.categories.forEach(c => {
-      const o = document.createElement('option');
-      o.value = c.id;
-      o.textContent = c.name + (c.discipline ? ` — ${c.discipline}` : '');
-      catSel.appendChild(o);
-    });
+    renderCategoryOptions();
+    loadRinks(); // async, non-blocking — populates the rink filter when ready
 
     if (state.categoryId) {
-      catSel.value = state.categoryId;
+      document.getElementById('cat-select').value = state.categoryId;
       await loadSegments(state.categoryId);
     }
   } catch(e) {
     document.getElementById('event-name').textContent = 'Error loading event';
     console.warn('[loadEvent]', e.message);
   }
+}
+
+// ── Rink filter ──────────────────────────────────────────────────────
+function rinkStorageKey() { return `scapi-rink-filter:${state.eventId}`; }
+
+async function loadRinks() {
+  try {
+    const data = await api('GET', `/api/sc-api/browse/event/${encodeURIComponent(state.eventId)}/rinks`);
+    state.rinks         = data.rinks || [];
+    state.categoryRinks = data.categoryRinks || {};
+    const wrap = document.getElementById('rink-selector-wrap');
+    const sel  = document.getElementById('rink-select');
+    if (state.rinks.length > 1) {
+      sel.innerHTML = '<option value="">All rinks</option>';
+      state.rinks.forEach(r => {
+        const o = document.createElement('option');
+        o.value = r;
+        o.textContent = r;
+        sel.appendChild(o);
+      });
+      const saved = localStorage.getItem(rinkStorageKey()) || '';
+      state.rinkFilter = state.rinks.includes(saved) ? saved : '';
+      sel.value = state.rinkFilter;
+      wrap.style.display = '';
+    } else {
+      wrap.style.display = 'none';
+      state.rinkFilter = '';
+    }
+    renderCategoryOptions();
+  } catch(e) {
+    console.warn('[rinks]', e.message);
+  }
+}
+
+function onRinkChange(rink) {
+  state.rinkFilter = rink || '';
+  localStorage.setItem(rinkStorageKey(), state.rinkFilter);
+  renderCategoryOptions();
+  toast(rink ? `Showing ${rink} categories` : 'Showing all rinks');
+}
+
+function renderCategoryOptions() {
+  const catSel = document.getElementById('cat-select');
+  const filter = state.rinkFilter;
+  const cats = state.categories.filter(c =>
+    !filter
+    || (state.categoryRinks[c.id] || []).includes(filter)
+    || c.id === state.categoryId  // never hide the active category
+  );
+  catSel.innerHTML = '<option value="">— Select category —</option>';
+  cats.forEach(c => {
+    const o = document.createElement('option');
+    o.value = c.id;
+    o.textContent = c.name + (c.discipline ? ` — ${c.discipline}` : '');
+    catSel.appendChild(o);
+  });
+  catSel.value = state.categoryId || '';
 }
 
 async function loadSegments(categoryId) {
@@ -534,11 +675,15 @@ async function loadSegments(categoryId) {
     const data = await api('GET', `/api/sc-api/browse/category/${encodeURIComponent(categoryId)}`);
     state.segments = data.segments || [];
     segSel.innerHTML = '<option value="">— Select segment —</option>';
+    const filter = state.rinkFilter;
     state.segments.forEach(s => {
+      // Hide segments on other rinks when a rink filter is set (but never the active one)
+      if (filter && s.rink && s.rink !== filter && s.id !== state.segmentId) return;
       const o = document.createElement('option');
       o.value = s.id;
-      const dot = s.inProgress ? '🟢 ' : (s.status === 'Complete' ? '✓ ' : '');
-      o.textContent = dot + s.name;
+      const dot = s.inProgress ? '🟢 ' : (/complete/i.test(s.status) ? '✓ ' : '');
+      const rinkTag = (!filter && s.rink) ? ` — ${s.rink}` : '';
+      o.textContent = dot + s.name + rinkTag;
       segSel.appendChild(o);
     });
     if (state.segmentId) segSel.value = state.segmentId;
@@ -745,6 +890,8 @@ async function setManual(entryId, name) {
       liveRow.classList.add('flash');
       setTimeout(() => liveRow.classList.remove('flash'), 1200);
     }
+    const entry = state.entries.find(e => e.id === entryId);
+    if (entry) ivSyncFromSelection(entry);
     toast(`✓ ${name} — all graphics refreshed`);
   } catch(e) {
     toast(`Error: ${e.message}`);
@@ -820,6 +967,7 @@ async function sdNavigate(action, btn) {
         document.querySelectorAll('.skater-row').forEach(r => r.classList.remove('selected'));
         const row = document.querySelector(`.skater-row[data-entry-id="${CSS.escape(match.id)}"]`);
         if (row) { row.classList.add('selected'); row.scrollIntoView({ block: 'nearest' }); }
+        ivSyncFromSelection(match);
       }
       toast(`✓ ${data.data.name}`);
     }
@@ -828,6 +976,82 @@ async function sdNavigate(action, btn) {
   } catch(e) {
     toast(`Error: ${e.message}`);
   }
+}
+
+// ── Interview panel ──────────────────────────────────────────────────
+const ivState = { club: '', category: '' };
+
+function ivCategoryName() {
+  const cat = state.categories.find(c => c.id === state.categoryId);
+  return cat ? cat.name : '';
+}
+
+function ivFillEntry(entry) {
+  document.getElementById('iv-name').value = entry.name || '';
+  ivState.club     = entry.club || '';
+  ivState.category = ivCategoryName();
+  document.getElementById('iv-flag').dataset.url = entry.flagUrl || '';
+}
+
+function ivFillFromSelected() {
+  const entry = state.entries.find(e => e.id === state.selectedEntryId);
+  if (!entry) { toast('Select a skater in the list first'); return; }
+  ivFillEntry(entry);
+  toast(`Interview: ${entry.name}`);
+}
+
+// Follow roster selection automatically while the panel is closed. An open
+// panel means the operator may be mid-override — leave their edits alone.
+function ivSyncFromSelection(entry) {
+  const panel = document.getElementById('interview-panel');
+  if (panel && !panel.open) ivFillEntry(entry);
+}
+
+function ivLine2SrcChange() {
+  const src = document.getElementById('iv-line2-src').value;
+  document.getElementById('iv-line2-custom').style.display = src === 'custom' ? '' : 'none';
+}
+
+function ivResolveLine2() {
+  const src = document.getElementById('iv-line2-src').value;
+  if (src === 'club')     return ivState.club;
+  if (src === 'category') return ivState.category || ivCategoryName();
+  return document.getElementById('iv-line2-custom').value.trim();
+}
+
+function ivPayload() {
+  const flagOn = document.getElementById('iv-flag').checked;
+  return {
+    line1:   document.getElementById('iv-name').value.trim(),
+    line2:   ivResolveLine2(),
+    flagUrl: flagOn ? (document.getElementById('iv-flag').dataset.url || '') : '',
+    source:  'manual',
+  };
+}
+
+async function ivShow() {
+  const data = ivPayload();
+  if (!data.line1) { toast('Enter a name first'); return; }
+  try {
+    await api('POST', '/api/graphics/interview/show', { data });
+    toast(`✓ Interview shown: ${data.line1}`);
+  } catch(e) { toast(`Error: ${e.message}`); }
+}
+
+async function ivUpdate() {
+  const data = ivPayload();
+  if (!data.line1) { toast('Enter a name first'); return; }
+  try {
+    await api('POST', '/api/graphics/interview/update', { data });
+    toast(`✓ Interview updated`);
+  } catch(e) { toast(`Error: ${e.message}`); }
+}
+
+async function ivHide() {
+  try {
+    await api('POST', '/api/graphics/interview/hide');
+    toast('✓ Interview hidden');
+  } catch(e) { toast(`Error: ${e.message}`); }
 }
 
 // ── Init ─────────────────────────────────────────────────────────────

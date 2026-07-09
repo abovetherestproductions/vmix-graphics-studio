@@ -136,7 +136,7 @@
       };
 
       // Bar templates need full off-screen travel; panel templates use subtle offset
-      const BAR_TEMPLATES = ['lower-third', 'manual-skater'];
+      const BAR_TEMPLATES = ['lower-third', 'manual-skater', 'interview'];
       const isBar = BAR_TEMPLATES.includes(template);
 
       const PRESET_TRANSFORMS = {
@@ -171,7 +171,7 @@
       root.style.setProperty('--anim-out-easing', 'ease-in');
 
       // Lower-third flag + background colors (template-specific CSS vars)
-      if (template === 'lower-third' || template === 'manual-skater') {
+      if (template === 'lower-third' || template === 'manual-skater' || template === 'interview') {
         root.style.setProperty('--lt-flag-height', `${pos.ltFlagHeight ?? 68}px`);
         root.style.setProperty('--lt-flag-pad',    `${pos.ltFlagPad    ?? 24}px`);
         root.style.setProperty('--lt-flag-x',      `${pos.ltFlagX      ?? 0}px`);
@@ -347,6 +347,9 @@
         segmentName:    config.segmentName    || '',
         segmentNameFr:  config.segmentNameFr  || '',
         ltInfoText:     pos.ltInfoText        || '',
+        ltShowFlag:     pos.ltShowFlag !== false,
+        ltLine2Source:  pos.ltLine2Source     || 'club',
+        ltLine2Custom:  pos.ltLine2Custom     || '',
       };
 
     }

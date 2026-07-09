@@ -63,6 +63,10 @@ window.GraphicsCapsTargets = {
     { key:'line1',    label:'Skater Name',  selector:'.lt-line1',    defaultUpper:true,  isName:true },
     { key:'line2',    label:'Club',         selector:'.lt-line2',    defaultUpper:false },
   ],
+  'interview': [
+    { key:'line1',    label:'Name',         selector:'.lt-line1',    defaultUpper:true,  isName:true },
+    { key:'line2',    label:'Subtitle',     selector:'.lt-line2',    defaultUpper:false },
+  ],
   'skater-profile': [
     { key:'name',     label:'Skater Name',  selector:'.sp-name',     defaultUpper:true,  isName:true },
     { key:'club',     label:'Club',         selector:'.sp-club',     defaultUpper:false },

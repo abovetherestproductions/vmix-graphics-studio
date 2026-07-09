@@ -13,6 +13,7 @@
     { id: 'rankings', title: 'Rankings', path: '/graphics/rankings/?preview=1' },
     { id: 'messages', title: 'Messages', path: '/graphics/messages/?preview=1' },
     { id: 'manual-skater', title: 'Manual Skater', path: '/graphics/manual-skater/?preview=1' },
+    { id: 'interview', title: 'Interview', path: '/graphics/interview/?preview=1' },
     { id: 'clock', title: 'Clock (Countdown / Count-up)', path: '/graphics/clock/?preview=1' },
     { id: 'time-of-day', title: 'Time of Day', path: '/graphics/time-of-day/?preview=1' },
   ];

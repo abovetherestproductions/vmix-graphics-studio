@@ -1079,6 +1079,7 @@ const TEMPLATES = [
   { id: 'scoring',         label: 'Scoring Display'                    },
   { id: 'lower-third',     label: 'Lower Third'                        },
   { id: 'manual-skater',   label: 'Manual Skater'                      },
+  { id: 'interview',       label: 'Interview'                          },
   { id: 'standings',       label: 'Rank 6 (corner)'                   },
   { id: 'officials',       label: 'Officials'                          },
   { id: 'elements',        label: 'Elements Tracker'                   },
@@ -1093,7 +1094,7 @@ const TEMPLATES = [
 const NATURAL_WIDTHS = {
   'starting-order': 880, 'rankings': 880, 'officials': 900,
   'standings': 600, 'elements': 420, 'scoring': 880,
-  'lower-third': 1200, 'manual-skater': 1200, 'skater-profile': 880,
+  'lower-third': 1200, 'manual-skater': 1200, 'interview': 1200, 'skater-profile': 880,
   'messages': 1920,
   'clock': 320,
   'time-of-day': 320,
@@ -1781,7 +1782,9 @@ function makeSlidersTypeable() {
   });
 }
 
-const LOGO_TEMPLATES = ['starting-order', 'officials', 'rankings', 'scoring', 'standings', 'elements', 'skater-profile', 'lower-third', 'manual-skater', 'messages'];
+const LOGO_TEMPLATES = ['starting-order', 'officials', 'rankings', 'scoring', 'standings', 'elements', 'skater-profile', 'lower-third', 'manual-skater', 'interview', 'messages'];
+// Templates with an operator-toggleable right-side flag
+const FLAG_TOGGLE_TEMPLATES = ['manual-skater', 'interview'];
 // Templates that actually render a header title element. Scoring has no title
 // (it's a corner score panel) so it's intentionally excluded — putting a Title
 // Source dropdown there would be dead UI.
@@ -1823,8 +1826,16 @@ function setPosUI(id, pos) {
   sv(`pos-cr-${id}`, p.radius ?? 20);        st(`pv-cr-${id}`, `${p.radius ?? 20}px`);
   const cbEl = g(`pos-round-${id}`);
   if (cbEl) { cbEl.checked = p.rounded !== false; syncRadiusSlider(id, p.rounded !== false); }
-  // Lower-third specific
+  // Lower-third / manual-skater specific
   sv(`pos-fh-${id}`, p.ltFlagHeight ?? 68);  st(`pv-fh-${id}`, `${p.ltFlagHeight ?? 68}px`);
+  if (FLAG_TOGGLE_TEMPLATES.includes(id)) {
+    const fsEl = g(`pos-flag-show-${id}`);
+    if (fsEl) fsEl.checked = p.ltShowFlag !== false;
+  }
+  if (id === 'interview') {
+    sv('pos-l2src-interview', p.ltLine2Source || 'club');
+    sv('pos-l2custom-interview', p.ltLine2Custom || '');
+  }
   if (id === 'lower-third') {
     sv(`pos-fp-${id}`, p.ltFlagPad ?? 24);  st(`pv-fp-${id}`, `${p.ltFlagPad ?? 24}px`);
     sv(`pos-fx-${id}`, p.ltFlagX  ?? 0);    st(`pv-fx-${id}`, `${p.ltFlagX ?? 0}px`);
@@ -2046,6 +2057,9 @@ function readPos(id) {
     rounded:      g(`pos-round-${id}`)?.checked !== false,
     radius:       Number(g(`pos-cr-${id}`)?.value ?? 20),
     ltFlagHeight: Number(g(`pos-fh-${id}`)?.value ?? 68),
+    ltShowFlag:   FLAG_TOGGLE_TEMPLATES.includes(id) ? (g(`pos-flag-show-${id}`)?.checked !== false) : undefined,
+    ltLine2Source: id === 'interview' ? (g('pos-l2src-interview')?.value || 'club') : undefined,
+    ltLine2Custom: id === 'interview' ? (g('pos-l2custom-interview')?.value || '') : undefined,
     ltFlagPad:    id === 'lower-third' ? Number(g(`pos-fp-${id}`)?.value ?? 24) : undefined,
     ltFlagX:      id === 'lower-third' ? Number(g(`pos-fx-${id}`)?.value ?? 0)  : undefined,
     ltFlagY:      id === 'lower-third' ? Number(g(`pos-fy-${id}`)?.value ?? 0)  : undefined,
@@ -2370,7 +2384,10 @@ async function savePositionObj(id, pos) {
     const positions = cfg.positions || {};
     positions[id] = pos;
     await api('POST', '/api/config', { positions });
-  } catch {}
+  } catch (e) {
+    console.warn(`[layout] save failed for ${id}:`, e.message);
+    toast(`⚠ Layout save failed: ${e.message}`, 'err');
+  }
 }
 
 async function resetPos(id) {
@@ -3372,6 +3389,42 @@ function buildCards() {
               <input type="range" id="pos-lt-flag-opacity-${t.id}" min="0" max="100" value="100" step="5"
                      oninput="onPosChange('${t.id}')">
               <span class="pos-val" id="pv-lt-flag-opacity-${t.id}">100%</span>
+            </div>
+            ` : ''}
+            ${t.id === 'interview' ? `
+            <div style="margin:8px 0 2px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);grid-column:1/-1;">Line 2 Content</div>
+            <div class="pos-row" style="grid-template-columns:auto 1fr;">
+              <label>Source</label>
+              <select id="pos-l2src-interview" onchange="onPosChange('interview')"
+                      style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;grid-column:2/4;width:100%;">
+                <option value="club">Club</option>
+                <option value="category">Category</option>
+                <option value="custom">Custom text</option>
+              </select>
+            </div>
+            <div class="pos-row" style="grid-template-columns:auto 1fr;">
+              <label>Custom</label>
+              <input type="text" id="pos-l2custom-interview" placeholder="Used when Source = Custom"
+                     onchange="onPosChange('interview')"
+                     style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;grid-column:2/4;width:100%;" />
+            </div>
+            ` : ''}
+            ${FLAG_TOGGLE_TEMPLATES.includes(t.id) ? `
+            <div style="margin:8px 0 2px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);grid-column:1/-1;">Flag (Right Side)</div>
+            <div class="pos-row">
+              <label>Show Flag</label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;grid-column:2/4;">
+                <input type="checkbox" id="pos-flag-show-${t.id}" checked
+                       onchange="onPosChange('${t.id}')"
+                       style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;" />
+                <span style="font-size:12px;color:var(--text2);">Display province flag</span>
+              </label>
+            </div>
+            <div class="pos-row">
+              <label>Flag Height</label>
+              <input type="range" id="pos-fh-${t.id}" min="20" max="500" value="68" step="2"
+                     oninput="onPosChange('${t.id}')">
+              <span class="pos-val" id="pv-fh-${t.id}">68px</span>
             </div>
             ` : ''}
             ${LOGO_TEMPLATES.includes(t.id) ? `

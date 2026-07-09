@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Interview — Control</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #1a1a1e;
+    --surface:  #24242a;
+    --surface2: #2c2c34;
+    --border:   rgba(255,255,255,0.08);
+    --text:     #f0f0f2;
+    --text2:    #8888a0;
+    --gold:     #c9a227;
+    --gold2:    #e7c65a;
+    --green:    #81c784;
+    --red:      #ef5350;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  #app { max-width: 520px; margin: 0 auto; padding: 14px 12px 40px; }
+
+  header {
+    display: flex; align-items: center; gap: 10px;
+    padding-bottom: 12px; margin-bottom: 14px;
+    border-bottom: 2px solid rgba(201,162,39,0.35);
+  }
+  header h1 { font-size: 15px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: var(--gold2); flex: 1; }
+  #ws-dot { width: 8px; height: 8px; border-radius: 50%; background: #555; }
+  #ws-dot.ok { background: var(--green); }
+  #ws-dot.err { background: var(--red); }
+  #onair {
+    font-size: 10px; font-weight: 800; letter-spacing: 1.5px;
+    padding: 3px 10px; border-radius: 12px;
+    background: rgba(255,255,255,0.06); color: var(--text2);
+  }
+  #onair.live { background: rgba(244,67,54,0.25); color: #ff8a80; animation: pulse 1.4s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.45} }
+
+  .lbl {
+    font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--text2); margin: 12px 0 4px;
+  }
+  input[type="text"], select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+  input[type="text"]:focus, select:focus { outline: none; border-color: var(--gold); }
+  select option { background: var(--surface2); }
+
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+
+  .check {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; color: var(--text2); cursor: pointer;
+    padding: 10px 0 0;
+  }
+  .check input { width: 16px; height: 16px; accent-color: var(--gold); cursor: pointer; }
+
+  .actions { display: flex; gap: 8px; margin-top: 18px; }
+  button {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 700;
+    padding: 12px 8px;
+    cursor: pointer;
+    transition: background 120ms, border-color 120ms;
+  }
+  button:hover { border-color: var(--gold); }
+  .btn-show { background: rgba(76,175,80,0.15); border-color: rgba(76,175,80,0.35); color: var(--green); }
+  .btn-show:hover { background: rgba(76,175,80,0.28); border-color: rgba(76,175,80,0.6); }
+  .btn-hide { background: rgba(244,67,54,0.12); border-color: rgba(244,67,54,0.30); color: var(--red); }
+  .btn-hide:hover { background: rgba(244,67,54,0.24); border-color: rgba(244,67,54,0.55); }
+
+  /* Presets */
+  #presets { display: flex; flex-direction: column; gap: 6px; }
+  .preset {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    cursor: pointer;
+    transition: border-color 120ms;
+  }
+  .preset:hover { border-color: var(--gold); }
+  .preset-text { flex: 1; min-width: 0; }
+  .preset-name { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .preset-sub  { font-size: 11px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .preset-del {
+    flex: 0 0 auto; width: 26px; padding: 4px 0;
+    font-size: 12px; color: var(--text2);
+    background: none; border: none;
+  }
+  .preset-del:hover { color: var(--red); }
+  #preset-empty { font-size: 12px; color: var(--text2); padding: 6px 2px; }
+
+  #toast {
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 16px; font-size: 12px;
+    opacity: 0; transition: opacity 200ms, transform 200ms;
+    pointer-events: none; z-index: 999; white-space: nowrap;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <div id="ws-dot" title="Server connection"></div>
+    <h1>Interview</h1>
+    <div id="onair">HIDDEN</div>
+  </header>
+
+  <div class="lbl">Name</div>
+  <input type="text" id="iv-name" placeholder="Guest name" autocomplete="off" />
+
+  <div class="lbl">Line 2</div>
+  <input type="text" id="iv-line2" placeholder="e.g. Coach — Sunset FSC, or leave blank" autocomplete="off" />
+
+  <div class="row" style="margin-top:12px;">
+    <div>
+      <div class="lbl" style="margin-top:0;">Flag</div>
+      <select id="iv-flag-sel">
+        <option value="">No flag</option>
+        <option value="/assets/flags/AB.png">Alberta</option>
+        <option value="/assets/flags/BC.png">BC / Yukon</option>
+        <option value="/assets/flags/MB.png">Manitoba</option>
+        <option value="/assets/flags/NB.png">New Brunswick</option>
+        <option value="/assets/flags/NL.png">Newfoundland &amp; Labrador</option>
+        <option value="/assets/flags/NS.png">Nova Scotia</option>
+        <option value="/assets/flags/NT.png">Northern Ontario</option>
+        <option value="/assets/flags/NU.png">Nunavut</option>
+        <option value="/assets/flags/NWT.png">Northwest Territories</option>
+        <option value="/assets/flags/ON.png">Ontario</option>
+        <option value="/assets/flags/PE.png">PEI</option>
+        <option value="/assets/flags/QC.png">Quebec</option>
+        <option value="/assets/flags/SK.png">Saskatchewan</option>
+        <option value="/assets/flags/HQ.png">Skate Canada</option>
+        <option value="/assets/flags/ISU.png">ISU</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn-show" onclick="ivShow()">▶ Show</button>
+    <button onclick="ivUpdate()">↻ Update</button>
+    <button class="btn-hide" onclick="ivHide()">■ Hide</button>
+  </div>
+
+  <div class="lbl" style="margin-top:22px;">Saved Presets</div>
+  <div id="presets"></div>
+  <div id="preset-empty" style="display:none;">No presets yet — fill the fields and save.</div>
+  <div class="actions" style="margin-top:8px;">
+    <button onclick="presetSave()">＋ Save Current as Preset</button>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+let _toastTimer = null;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(path, opts);
+  if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || r.statusText); }
+  return r.json();
+}
+
+function payload() {
+  return {
+    line1:   document.getElementById('iv-name').value.trim(),
+    line2:   document.getElementById('iv-line2').value.trim(),
+    flagUrl: document.getElementById('iv-flag-sel').value,
+    source:  'manual',
+  };
+}
+
+async function ivShow() {
+  const data = payload();
+  if (!data.line1) { toast('Enter a name first'); return; }
+  try {
+    await api('POST', '/api/graphics/interview/show', { data });
+    toast(`✓ Shown: ${data.line1}`);
+  } catch(e) { toast(`Error: ${e.message}`); }
+}
+
+async function ivUpdate() {
+  const data = payload();
+  if (!data.line1) { toast('Enter a name first'); return; }
+  try {
+    await api('POST', '/api/graphics/interview/update', { data });
+    toast('✓ Updated');
+  } catch(e) { toast(`Error: ${e.message}`); }
+}
+
+async function ivHide() {
+  try {
+    await api('POST', '/api/graphics/interview/hide');
+    toast('✓ Hidden');
+  } catch(e) { toast(`Error: ${e.message}`); }
+}
+
+// ── Presets (localStorage) ──────────────────────────────────────────
+const PRESET_KEY = 'interview-presets';
+
+function presetLoad() {
+  try { return JSON.parse(localStorage.getItem(PRESET_KEY)) || []; }
+  catch { return []; }
+}
+
+function presetStore(list) {
+  localStorage.setItem(PRESET_KEY, JSON.stringify(list));
+  presetRender();
+}
+
+function presetSave() {
+  const data = payload();
+  if (!data.line1) { toast('Enter a name first'); return; }
+  const list = presetLoad();
+  list.push(data);
+  presetStore(list);
+  toast('✓ Preset saved');
+}
+
+function presetApply(i) {
+  const p = presetLoad()[i];
+  if (!p) return;
+  document.getElementById('iv-name').value = p.line1 || '';
+  document.getElementById('iv-line2').value = p.line2 || '';
+  document.getElementById('iv-flag-sel').value = p.flagUrl || '';
+  toast(`Loaded: ${p.line1}`);
+}
+
+function presetDelete(i, ev) {
+  ev.stopPropagation();
+  const list = presetLoad();
+  list.splice(i, 1);
+  presetStore(list);
+}
+
+function presetRender() {
+  const wrap = document.getElementById('presets');
+  const empty = document.getElementById('preset-empty');
+  const list = presetLoad();
+  wrap.innerHTML = '';
+  empty.style.display = list.length ? 'none' : '';
+  list.forEach((p, i) => {
+    const row = document.createElement('div');
+    row.className = 'preset';
+    row.onclick = () => presetApply(i);
+    const text = document.createElement('div');
+    text.className = 'preset-text';
+    const n = document.createElement('div');
+    n.className = 'preset-name';
+    n.textContent = p.line1;
+    const s = document.createElement('div');
+    s.className = 'preset-sub';
+    s.textContent = p.line2 || '—';
+    text.appendChild(n); text.appendChild(s);
+    const del = document.createElement('button');
+    del.className = 'preset-del';
+    del.textContent = '✕';
+    del.title = 'Delete preset';
+    del.onclick = ev => presetDelete(i, ev);
+    row.appendChild(text);
+    row.appendChild(del);
+    wrap.appendChild(row);
+  });
+}
+
+// ── Live status via WebSocket ───────────────────────────────────────
+function setOnAir(visible) {
+  const el = document.getElementById('onair');
+  el.textContent = visible ? 'ON AIR' : 'HIDDEN';
+  el.classList.toggle('live', !!visible);
+}
+
+function connectWs() {
+  const dot = document.getElementById('ws-dot');
+  const ws = new WebSocket(`ws://${location.host}`);
+  ws.onopen = () => dot.className = 'ok';
+  ws.onmessage = evt => {
+    let msg;
+    try { msg = JSON.parse(evt.data); } catch { return; }
+    if (msg.type === 'update' && msg.template === 'interview') {
+      setOnAir(msg.payload?.control?.visible);
+    }
+  };
+  ws.onclose = () => { dot.className = 'err'; setTimeout(connectWs, 3000); };
+  ws.onerror = () => ws.close();
+}
+
+// ── Init ────────────────────────────────────────────────────────────
+presetRender();
+connectWs();
+
+// Load current on-air state + last data
+api('GET', '/api/graphics/interview/data').then(d => {
+  setOnAir(d?.control?.visible);
+  if (d?.data?.line1) {
+    document.getElementById('iv-name').value = d.data.line1;
+    document.getElementById('iv-line2').value = d.data.line2 || '';
+    document.getElementById('iv-flag-sel').value = d.data.flagUrl || '';
+  }
+}).catch(() => {});
+</script>
+</body>
+</html>

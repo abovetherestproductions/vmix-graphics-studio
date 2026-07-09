@@ -5,10 +5,6 @@
   const textColEl = root.querySelector('.lt-text-col');
   const flagWrapEl = document.getElementById('lt-flag-wrap');
   const flagImgEl  = document.getElementById('lt-flag');
-  const infoCardEl = document.getElementById('lt-info-card');
-  const infoCategoryEl = document.getElementById('lt-info-category');
-  const infoSegmentEl = document.getElementById('lt-info-segment');
-  const infoGroupEl = document.getElementById('lt-info-group');
 
   let currentRevision = null;
   let currentVisible = false;
@@ -16,73 +12,30 @@
   let queuedPayload = null;
   let lastData = null;
 
-  function groupLabelFromData(data = {}) {
-    const explicit = data.groupNumber ?? data.group ?? data.groupNo;
-    if (explicit !== undefined && explicit !== null && String(explicit).trim() !== '') {
-      return `Group ${String(explicit).trim()}`;
-    }
-
-    const category = data.categoryName || data.category || '';
-    const match = String(category).match(/\bgroup\s*([A-Za-z0-9]+)\b/i);
-    return match ? `Group ${match[1]}` : '';
-  }
-
-  function categoryWithoutParsedGroup(category, groupLabel) {
-    if (!category || !groupLabel) return category || '';
-    const groupNumber = groupLabel.replace(/^group\s*/i, '').trim();
-    return String(category)
-      .replace(new RegExp(`\\s*[-–—]?\\s*group\\s*${groupNumber}\\s*$`, 'i'), '')
-      .trim();
-  }
-
-  function setInfoLine(element, value) {
-    if (!element) return false;
-    const text = String(value || '').trim();
-    element.replaceChildren();
-    if (text) element.textContent = text;
-    element.classList.toggle('is-visible', !!text);
-    return !!text;
-  }
-
-  function renderInfoCard(data = {}) {
-    if (!infoCardEl) return;
-    const lang = document.documentElement.lang || 'en';
-    // Same precedence chain as the lower-third info card:
-    //   1. Per-template ltInfoText (most specific)
-    //   2. Global Detail Override (operator-level)
-    //   3. Fall back to whatever the workbook's Category column says.
-    const override = window.configHeaderOverrides?.['manual-skater']?.ltInfoText || '';
-    const globalDetail = lang === 'fr'
-      ? (window.globalDetailOverrideFr || window.globalDetailOverride || '')
-      : (window.globalDetailOverride   || window.globalDetailOverrideFr || '');
-    // Strip redundant "Singles" from the workbook category for singles
-    // events. Pairs/Dance categories pass through unchanged.
-    const rawCat = String(data.category || '').trim();
-    const cleanedCat = window.GraphicsUtils.cleanCategoryName(rawCat) || rawCat;
-    const details = override.trim()
-      || globalDetail.trim()
-      || cleanedCat;
-
-    const hasInfo = setInfoLine(infoCategoryEl, details);
-    setInfoLine(infoSegmentEl, '');
-    setInfoLine(infoGroupEl, '');
-
-    infoCardEl.classList.toggle('has-info', hasInfo);
-    infoCardEl.setAttribute('aria-hidden', hasInfo ? 'false' : 'true');
+  // Line 2 for auto-filled data follows the operator's "Line 2 Source" layout
+  // setting (Club / Category / Custom). Explicit pushes from the interview
+  // panel/page carry source:'manual' and always show their line2 as-is.
+  function resolveLine2(data) {
+    if ((data.source || 'auto') === 'manual') return data.line2 || '';
+    const ovr = window.configHeaderOverrides?.['interview'] || {};
+    const src = ovr.ltLine2Source || 'club';
+    if (src === 'category') return data.categoryName || '';
+    if (src === 'custom')   return ovr.ltLine2Custom || '';
+    return data.club || data.line2 || '';
   }
 
   function render(data = {}) {
     lastData = data;
     const name = data.line1 || data.name || '';
-    const club = data.line2 || data.club || '';
+    const sub  = resolveLine2(data);
     window.GraphicsUtils.applyInitialsIfNeeded(line1El, name);
-    line2El.textContent = club;
-    line2El.style.display = club ? '' : 'none';
+    line2El.textContent = sub;
+    line2El.style.display = sub ? '' : 'none';
 
-    // Flag box: show when flagUrl is present and the operator hasn't disabled it.
+    // Flag: needs a flagUrl in the data AND the operator toggle left on.
     if (flagWrapEl && flagImgEl) {
       const flagUrl = String(data.flagUrl || '').trim();
-      const showFlag = window.configHeaderOverrides?.['manual-skater']?.ltShowFlag !== false;
+      const showFlag = window.configHeaderOverrides?.['interview']?.ltShowFlag !== false;
       if (flagUrl && showFlag) {
         window.GraphicsUtils.wireFlagFallback(flagImgEl, flagWrapEl);
         if (flagImgEl.getAttribute('src') !== flagUrl) flagImgEl.src = flagUrl;
@@ -92,8 +45,6 @@
         flagImgEl.removeAttribute('src');
       }
     }
-
-    renderInfoCard(data);
   }
 
   function animateIn(payload) {
@@ -119,7 +70,7 @@
   async function animateUpdate(payload) {
     const nextData = payload.data || {};
     const nextLine1 = nextData.line1 || nextData.name || '';
-    const nextLine2 = nextData.line2 || nextData.club || '';
+    const nextLine2 = resolveLine2(nextData);
     const currentLine1 = line1El.textContent || '';
     const currentLine2 = line2El.textContent || '';
 
@@ -163,13 +114,13 @@
   }
 
   new window.JsonPoller({
-    url: '/data/manual-skater.json',
+    url: '/data/interview.json',
     intervalMs: window.GraphicsConfig?.pollIntervalMs || 500,
     onData: handlePayload,
-    onError: e => console.error('[manual-skater] poll error:', e),
+    onError: e => console.error('[interview] poll error:', e),
   }).start();
 
-  if (window.WsListener) window.WsListener.subscribe('manual-skater', handlePayload);
+  if (window.WsListener) window.WsListener.subscribe('interview', handlePayload);
 
   window.addEventListener('graphics-config-updated', () => {
     if (lastData) render(lastData);

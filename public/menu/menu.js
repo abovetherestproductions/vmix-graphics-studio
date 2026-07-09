@@ -10,6 +10,7 @@
     ['Final Rankings', '/graphics/rankings/'],
     ['Messages', '/graphics/messages/'],
     ['Manual Skater', '/graphics/manual-skater/'],
+    ['Interview', '/graphics/interview/'],
   ];
 
   const pages = [
@@ -17,6 +18,7 @@
     ['Preview Wall', '/preview/'],
     ['Messages Control', '/messages/'],
     ['Manual Skater Control', '/manual-skaters/'],
+    ['Interview Control', '/operator/interview.html'],
     ['Production Control', '/production-control/'],
   ];
 

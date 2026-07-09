@@ -1,0 +1,42 @@
+@import url("/graphics/lower-third/style.css");
+
+/* Interview bar — same geometry as the lower-third, but a graphite/slate
+   gradient with a gold keyline instead of the competition red. Reads as
+   "special segment" without labelling itself. Operators can still override
+   via --lt-bar-bg like the other bars. */
+.interview::before {
+  background: var(--lt-bar-bg, linear-gradient(105deg, #14161d 0%, #1d2130 55%, rgba(44,52,78,0.92) 100%));
+}
+
+/* Gold keyline along the bottom edge of the bar */
+.interview::after {
+  content: '';
+  position: absolute;
+  left: var(--panel-radius);
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  z-index: 1;
+  border-radius: 0 0 var(--panel-radius) var(--panel-radius);
+  background: linear-gradient(90deg, rgba(201,162,39,0.0) 0%, #c9a227 18%, #e7c65a 55%, rgba(201,162,39,0.25) 100%);
+  pointer-events: none;
+}
+
+.interview .lt-text-col {
+  transition: opacity 220ms ease;
+}
+
+.interview .lt-text-col.lt-text-fading {
+  opacity: 0;
+}
+
+/* Decorative rings — repositioned like the manual-skater variant */
+.interview .lt-body::before {
+  left: 60px;
+  border-color: rgba(231,198,90,0.10);
+}
+
+.interview .lt-body::after {
+  right: 300px;
+  border-color: rgba(231,198,90,0.07);
+}
