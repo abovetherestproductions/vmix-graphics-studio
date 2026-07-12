@@ -3305,30 +3305,28 @@ async function applyScApiManualSkater(entryId) {
   // StreamDeck-triggered next/prev updates the on-page highlight too.
   broadcast({ type: 'sc-api-selection', entryId, name: data.name });
 
-  // Interview bar follows the selected skater by default. Skipped while the
-  // interview graphic is on air so a roster click can't rewrite a live
-  // interview — operator overrides happen via the interview panel/page.
+  // Interview bar follows the selected skater, exactly like the manual-skater
+  // bar — including live updates while it's on air. Operator overrides happen
+  // via the interview panel/page (those pushes are tagged source:'manual').
   const iv = readData('interview') || {
     meta:    { template: 'interview', revision: 0, updatedAt: new Date().toISOString() },
     control: { visible: false, state: 'hidden' },
     data:    {},
   };
-  if (!iv.control?.visible) {
-    iv.data = {
-      line1:        data.name,
-      line2:        data.club,
-      name:         data.name,
-      club:         data.club,
-      flagUrl:      data.flagUrl,
-      categoryName: data.categoryName,
-      source:       'auto',
-    };
-    iv.meta.revision  = Date.now();
-    iv.meta.updatedAt = new Date().toISOString();
-    writeData('interview', iv);
-    graphicState['interview'] = { visible: iv.control.visible, state: iv.control.state };
-    broadcast({ type: 'update', template: 'interview', payload: iv });
-  }
+  iv.data = {
+    line1:        data.name,
+    line2:        data.club,
+    name:         data.name,
+    club:         data.club,
+    flagUrl:      data.flagUrl,
+    categoryName: data.categoryName,
+    source:       'auto',
+  };
+  iv.meta.revision  = Date.now();
+  iv.meta.updatedAt = new Date().toISOString();
+  writeData('interview', iv);
+  graphicState['interview'] = { visible: iv.control.visible, state: iv.control.state };
+  broadcast({ type: 'update', template: 'interview', payload: iv });
 
   const cfg = readConfig();
   const segCode = (data.segmentName || '').replace(/.*\b(SP|FS|RD|FD|SD|PD)\b.*/i, '$1').toUpperCase();

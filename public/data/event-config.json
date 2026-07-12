@@ -1,5 +1,5 @@
 {
-  "language": "en",
+  "language": "fr",
   "eventName": "2026 NextGen Competition",
   "eventNameFr": "Compétition NextGen 2026",
   "eventSubtitle": "Senior Women Singles — Free Program",
@@ -63,12 +63,12 @@
     "scApi": {
       "baseUrl": "https://sc-css-public-api-cmh9d3htgxfpdkb7.canadacentral-01.azurewebsites.net",
       "eventId": "019f2d40-acbc-777d-bd66-1d55ee9029fc",
-      "categoryId": "019f2e23-9408-777d-bd6a-e2da128db6df",
-      "segmentId": "019f2e23-9412-777d-bd6a-f08a76af7d55",
+      "categoryId": "019f2d84-1673-777d-bd68-4ef124520c9a",
+      "segmentId": "019f2d84-167f-777d-bd68-521b6b17ca33",
       "pollIntervalMs": 2000,
       "officialsPollIntervalMs": 30000,
-      "segmentName": "Rhythm Dance",
-      "discipline": "Ice Dance"
+      "segmentName": "Short Program",
+      "discipline": "Singles"
     }
   },
   "messages": {
@@ -464,10 +464,10 @@
       }
     }
   },
-  "categoryName": "Junior Ice Dance",
-  "categoryNameFr": "Junior — Danse sur glace",
-  "segmentName": "Rhythm Dance",
-  "segmentNameFr": "Danse Rythmique",
+  "categoryName": "Junior Men",
+  "categoryNameFr": "Hommes Junior",
+  "segmentName": "Short Program",
+  "segmentNameFr": "Programme court",
   "eventLocationFr": "Fleetwood Arena  Surrey  BC",
   "elementsLayoutMode": "list",
   "globalHeaderOverride": "",
