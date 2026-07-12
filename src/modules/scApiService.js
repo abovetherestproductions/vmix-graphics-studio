@@ -418,9 +418,9 @@ function createScApiService({
       entries: entries.map(e => ({
         id:       newApi.safeStr(e.competitorEntryId),
         name:     newApi.safeStr(e.competitorName),
-        club:     newApi.safeStr(e.competitorClub || e.competitorCombinedClubNames),
+        club:     newApi.entryClub(e),
         section:  newApi.safeStr(e.competitorSection),
-        flagUrl:  newApi.sectionFlagUrl(e.competitorSection),
+        flagUrl:  newApi.sectionFlagUrl(e.competitorSection, e.competitorCombinedClubNames),
         group:    e.warmUpGroup ?? null,
         position: e.sortOrder  ?? null,
         rank:     e.segmentRank ?? null,
@@ -449,9 +449,9 @@ function createScApiService({
       categoryDto.disciplineName = cfg.discipline;
     }
     const name     = newApi.safeStr(entry?.competitorName);
-    const club     = newApi.safeStr(entry?.competitorClub || entry?.competitorCombinedClubNames);
+    const club     = newApi.entryClub(entry);
     const section  = newApi.safeStr(entry?.competitorSection);
-    const flagUrl  = newApi.sectionFlagUrl(section);
+    const flagUrl  = newApi.sectionFlagUrl(section, entry?.competitorCombinedClubNames);
     const catName  = newApi.catEn(categoryDto);
     const catNameFr = newApi.catFr(categoryDto) || catName;
     const segName  = newApi.safeStr(segmentDto?.segmentName);

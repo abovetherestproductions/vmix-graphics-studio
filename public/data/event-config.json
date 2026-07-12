@@ -1,9 +1,9 @@
 {
   "language": "fr",
-  "eventName": "2026 NextGen Competition",
-  "eventNameFr": "Compétition NextGen 2026",
+  "eventName": "Ontario Sectional Series–August 2026",
+  "eventNameFr": "Ontario Sectional Series–August 2026",
   "eventSubtitle": "Senior Women Singles — Free Program",
-  "eventLocation": "Slush Puppie Centre, Gatineau Québec",
+  "eventLocation": "RIM Park, 2001 University Ave. E Waterloo, Ontario",
   "eventDate": "May 15  2026 - May 17  2026",
   "headerSubtitle": "Novice Women Short Program",
   "logoFile": "SC-Emblem_RGB-White NO LETTERS.png",
@@ -62,9 +62,9 @@
     },
     "scApi": {
       "baseUrl": "https://sc-css-public-api-cmh9d3htgxfpdkb7.canadacentral-01.azurewebsites.net",
-      "eventId": "019f2d40-acbc-777d-bd66-1d55ee9029fc",
-      "categoryId": "019f2d84-1673-777d-bd68-4ef124520c9a",
-      "segmentId": "019f2d84-167f-777d-bd68-521b6b17ca33",
+      "eventId": "019f1484-46ae-777d-bd01-80551b9a9d79",
+      "categoryId": "019f4844-fa78-7111-a26d-01d747816f71",
+      "segmentId": "019f4844-fa95-7111-a26d-0d95dc1f2859",
       "pollIntervalMs": 2000,
       "officialsPollIntervalMs": 30000,
       "segmentName": "Short Program",
@@ -464,8 +464,8 @@
       }
     }
   },
-  "categoryName": "Junior Men",
-  "categoryNameFr": "Hommes Junior",
+  "categoryName": "Junior Women",
+  "categoryNameFr": "Femmes Junior",
   "segmentName": "Short Program",
   "segmentNameFr": "Programme court",
   "eventLocationFr": "Fleetwood Arena  Surrey  BC",

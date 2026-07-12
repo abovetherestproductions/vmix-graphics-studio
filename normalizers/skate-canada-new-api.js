@@ -81,19 +81,107 @@ const SECTION_FLAG_MAP = [
   ['SK',            'SK'],
   ['YT',            'YT'],
   ['HQ',            'HQ'],
-  ['ISU',           'ISU'],
+  // NOTE: no 'ISU' entry — internationals carry the literal section "ISU",
+  // which is NOT a country; their country lives in competitorCombinedClubNames.
 ];
+
+// International entries: ISU country codes + display names, used to resolve a
+// flag from the section token (step 2) or the combined club names (step 3).
+// Flag assets live at /assets/flags/<CODE>.png — if an asset doesn't exist the
+// graphics hide the flag gracefully, so unmatched countries simply show none.
+const COUNTRY_FLAGS = [
+  ['USA', ['United States']],           ['JPN', ['Japan']],
+  ['KOR', ['South Korea']],             ['PRK', ['North Korea']],
+  ['CHN', ['China']],                   ['TPE', ['Chinese Taipei', 'Taiwan']],
+  ['ISR', ['Israel']],                  ['GBR', ['Great Britain', 'United Kingdom']],
+  ['FRA', ['France']],                  ['GER', ['Germany']],
+  ['ITA', ['Italy']],                   ['ESP', ['Spain']],
+  ['SUI', ['Switzerland']],             ['AUT', ['Austria']],
+  ['BEL', ['Belgium']],                 ['NED', ['Netherlands']],
+  ['SWE', ['Sweden']],                  ['NOR', ['Norway']],
+  ['DEN', ['Denmark']],                 ['FIN', ['Finland']],
+  ['ISL', ['Iceland']],                 ['IRL', ['Ireland']],
+  ['POL', ['Poland']],                  ['CZE', ['Czechia', 'Czech Republic']],
+  ['SVK', ['Slovakia']],                ['SLO', ['Slovenia']],
+  ['HUN', ['Hungary']],                 ['ROU', ['Romania']],
+  ['BUL', ['Bulgaria']],                ['CRO', ['Croatia']],
+  ['SRB', ['Serbia']],                  ['MNE', ['Montenegro']],
+  ['BIH', ['Bosnia and Herzegovina']],  ['MKD', ['North Macedonia']],
+  ['GRE', ['Greece']],                  ['CYP', ['Cyprus']],
+  ['TUR', ['Turkey']],                  ['UKR', ['Ukraine']],
+  ['BLR', ['Belarus']],                 ['RUS', ['Russia']],
+  ['EST', ['Estonia']],                 ['LAT', ['Latvia']],
+  ['LTU', ['Lithuania']],               ['GEO', ['Georgia']],
+  ['ARM', ['Armenia']],                 ['AZE', ['Azerbaijan']],
+  ['KAZ', ['Kazakhstan']],              ['UZB', ['Uzbekistan']],
+  ['KGZ', ['Kyrgyzstan']],              ['MGL', ['Mongolia']],
+  ['IND', ['India']],                   ['PHI', ['Philippines']],
+  ['THA', ['Thailand']],                ['MAS', ['Malaysia']],
+  ['SGP', ['Singapore']],               ['INA', ['Indonesia']],
+  ['VIE', ['Vietnam']],                 ['HKG', ['Hong Kong']],
+  ['AUS', ['Australia']],               ['NZL', ['New Zealand']],
+  ['MEX', ['Mexico']],                  ['BRA', ['Brazil']],
+  ['ARG', ['Argentina']],               ['RSA', ['South Africa']],
+  ['MDA', ['Moldova']],                 ['MON', ['Monaco']],
+  ['AND', ['Andorra']],                 ['LIE', ['Liechtenstein']],
+  ['LUX', ['Luxembourg']],              ['POR', ['Portugal']],
+  ['CAN', ['Canada']],
+];
+const COUNTRY_CODES = new Set(COUNTRY_FLAGS.map(([code]) => code));
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-function safeStr(v) { return v != null ? String(v).trim() : ''; }
+// Collapse ALL internal whitespace to single spaces (skater-override entries
+// arrive with a TAB between first/last name) and trim.
+function safeStr(v) { return v != null ? String(v).replace(/\s+/g, ' ').trim() : ''; }
 function safeNum(v) { const n = parseFloat(v); return isNaN(n) ? null : n; }
 
-function sectionFlagUrl(section) {
-  if (!section) return null;
-  const upper = String(section).toUpperCase().trim();
-  for (const [key, code] of SECTION_FLAG_MAP) {
-    if (upper === key || upper.includes(key)) return `/assets/flags/${code}.png`;
+/**
+ * Club/team display for an entry. competitorClub is mojibake for
+ * international entries (non-Latin club names destroyed upstream), so prefer
+ * competitorCombinedClubNames, which is clean ("Israel"). A string with no
+ * letters/digits at all (e.g. "???? ??? ????") is treated as empty.
+ */
+function entryClub(e) {
+  const readable = s => (s && /[\p{L}\p{N}]/u.test(s)) ? s : '';
+  return readable(safeStr(e?.competitorCombinedClubNames))
+      || readable(safeStr(e?.competitorClub));
+}
+
+/**
+ * Flag resolution, strictest first — never defaults:
+ *   1. Section vs Canadian provinces (exact / whole-token / multi-word keys)
+ *   2. Section tokens vs ISU country codes (whole tokens only — the literal
+ *      section "ISU" matches nothing and must not)
+ *   3. Country display names vs combinedClubNames with strict word boundaries
+ *      ("Georgian Bay" must not match GEORGIA)
+ *   4. No match → null (no flag). A missing flag asset also renders as no
+ *      flag via the graphics' broken-image fallback.
+ */
+function sectionFlagUrl(section, combinedClubNames) {
+  const upper = safeStr(section).toUpperCase();
+  if (upper) {
+    const tokens = upper.split(/[^A-Z0-9]+/).filter(Boolean);
+    for (const [key, code] of SECTION_FLAG_MAP) {
+      const match = upper === key
+        || tokens.includes(key)
+        || (key.includes(' ') && upper.includes(key));
+      if (match) return `/assets/flags/${code}.png`;
+    }
+    for (const t of tokens) {
+      if (COUNTRY_CODES.has(t)) return `/assets/flags/${t}.png`;
+    }
+  }
+  const combined = safeStr(combinedClubNames);
+  if (combined) {
+    for (const [code, names] of COUNTRY_FLAGS) {
+      for (const name of names) {
+        const esc = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        if (new RegExp(`\\b${esc}\\b`, 'i').test(combined)) {
+          return `/assets/flags/${code}.png`;
+        }
+      }
+    }
   }
   return null;
 }
@@ -234,9 +322,9 @@ function normalizeStartingOrder(entries, categoryDto, segmentDto, requestedGroup
   const toRow = (e, g) => ({
     position:    e.sortOrder   ?? null,
     name:        safeStr(e.competitorName),
-    club:        safeStr(e.competitorClub || e.competitorCombinedClubNames),
+    club:        entryClub(e),
     section:     safeStr(e.competitorSection),
-    flagUrl:     sectionFlagUrl(e.competitorSection),
+    flagUrl:     sectionFlagUrl(e.competitorSection, e.competitorCombinedClubNames),
     status:      rowStatus(e),
     entryId:     safeStr(e.competitorEntryId),
     warmUpGroup: g,
@@ -302,9 +390,9 @@ function normalizeScoring(entry, components, adjustments, categoryDto, segmentDt
       categoryNameFr: catNameFr,
       groupNumber:    entry.warmUpGroup ?? null,
       name:           safeStr(entry.competitorName),
-      club:           safeStr(entry.competitorClub || entry.competitorCombinedClubNames),
+      club:           entryClub(entry),
       section:        safeStr(entry.competitorSection),
-      flagUrl:        sectionFlagUrl(entry.competitorSection),
+      flagUrl:        sectionFlagUrl(entry.competitorSection, entry.competitorCombinedClubNames),
       rank:           entry.segmentRank   ?? null,
       catRank:        entry.categoryRank  ?? null,
       tes:            tes  ?? null,
@@ -334,8 +422,8 @@ function normalizeLowerThird(entry, categoryDto, segmentDto, existingControl) {
     control: preserveControl(existingControl),
     data: {
       line1:          safeStr(entry.competitorName),
-      line2:          safeStr(entry.competitorClub || entry.competitorCombinedClubNames),
-      flagUrl:        sectionFlagUrl(entry.competitorSection),
+      line2:          entryClub(entry),
+      flagUrl:        sectionFlagUrl(entry.competitorSection, entry.competitorCombinedClubNames),
       categoryName:   catName,
       categoryNameFr: catNameFr,
       segmentName:    segName,
@@ -363,9 +451,9 @@ function normalizeRankings(entries, categoryDto, segmentDto, lang, rowsPerPage, 
   const allRows = ranked.map(e => ({
     rank:     e.segmentRank  ?? null,
     name:     safeStr(e.competitorName),
-    club:     safeStr(e.competitorClub || e.competitorCombinedClubNames),
+    club:     entryClub(e),
     section:  safeStr(e.competitorSection),
-    flagUrl:  sectionFlagUrl(e.competitorSection),
+    flagUrl:  sectionFlagUrl(e.competitorSection, e.competitorCombinedClubNames),
     total:    safeNum(e.score),
     segScore: safeNum(e.score),
     onIce:    !!e.onice,
@@ -417,9 +505,9 @@ function normalizeStandings(entries, categoryDto, segmentDto, lang, existingCont
   const rows = top6.map(e => ({
     rank:    e.segmentRank ?? null,
     name:    safeStr(e.competitorName),
-    club:    safeStr(e.competitorClub || e.competitorCombinedClubNames),
+    club:    entryClub(e),
     section: safeStr(e.competitorSection),
-    flagUrl: sectionFlagUrl(e.competitorSection),
+    flagUrl: sectionFlagUrl(e.competitorSection, e.competitorCombinedClubNames),
     total:   safeNum(e.score),
     onIce:   !!e.onice,
     entryId: safeStr(e.competitorEntryId),
@@ -570,6 +658,7 @@ module.exports = {
   normalizeElements,
   // Shared utilities
   sectionFlagUrl,
+  entryClub,
   safeStr,
   safeNum,
   tr,
