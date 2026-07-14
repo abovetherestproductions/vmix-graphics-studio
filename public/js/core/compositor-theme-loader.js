@@ -242,6 +242,8 @@
         ltShowFlag:     pos.ltShowFlag !== false,
         ltLine2Source:  pos.ltLine2Source     || 'club',
         ltLine2Custom:  pos.ltLine2Custom     || '',
+        msgLine1Size:   pos.msgLine1Size      ?? 40,
+        msgLine2Size:   pos.msgLine2Size      ?? 20,
       };
 
       // Apply title override for custom/event sources

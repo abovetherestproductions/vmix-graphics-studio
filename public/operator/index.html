@@ -1963,6 +1963,8 @@ function setPosUI(id, pos) {
   if (id === 'lower-third') {
     sv(`pos-lt-line1-${id}`, p.ltLine1Size ?? 40);  st(`pv-lt-line1-${id}`, `${p.ltLine1Size ?? 40}px`);
     sv(`pos-lt-line2-${id}`, p.ltLine2Size ?? 20);  st(`pv-lt-line2-${id}`, `${p.ltLine2Size ?? 20}px`);
+    sv(`pos-msg-line1-${id}`, p.msgLine1Size ?? 40);  st(`pv-msg-line1-${id}`, `${p.msgLine1Size ?? 40}px`);
+    sv(`pos-msg-line2-${id}`, p.msgLine2Size ?? 20);  st(`pv-msg-line2-${id}`, `${p.msgLine2Size ?? 20}px`);
   }
   // Skater-profile font sizes
   if (id === 'skater-profile') {
@@ -2119,6 +2121,8 @@ function readPos(id) {
     stScoreSize:    id === 'standings' ? Number(g(`pos-st-score-${id}`)?.value ?? 22) : undefined,
     ltLine1Size:    id === 'lower-third' ? Number(g(`pos-lt-line1-${id}`)?.value ?? 40) : undefined,
     ltLine2Size:    id === 'lower-third' ? Number(g(`pos-lt-line2-${id}`)?.value ?? 20) : undefined,
+    msgLine1Size:   id === 'messages' ? Number(g(`pos-msg-line1-${id}`)?.value ?? 40) : undefined,
+    msgLine2Size:   id === 'messages' ? Number(g(`pos-msg-line2-${id}`)?.value ?? 20) : undefined,
     spNameSize:     id === 'skater-profile' ? Number(g(`pos-sp-name-${id}`)?.value ?? 44) : undefined,
     spClubSize:     id === 'skater-profile' ? Number(g(`pos-sp-club-${id}`)?.value ?? 18) : undefined,
     spStatSize:     id === 'skater-profile' ? Number(g(`pos-sp-stat-${id}`)?.value ?? 32) : undefined,
@@ -2278,6 +2282,10 @@ function onPosChange(id) {
 	    st(`pv-lt-line1-${id}`, `${p.ltLine1Size}px`);
 	    st(`pv-lt-line2-${id}`, `${p.ltLine2Size}px`);
 	  }
+	  if (id === 'messages') {
+	    st(`pv-msg-line1-${id}`, `${p.msgLine1Size}px`);
+	    st(`pv-msg-line2-${id}`, `${p.msgLine2Size}px`);
+	  }
 	  if (id === 'elements') {
 	    st(`pv-el-title-x-${id}`, `${p.elTitleX ?? 0}px`);
 	    st(`pv-el-title-y-${id}`, `${p.elTitleY ?? 0}px`);
@@ -2404,11 +2412,12 @@ async function resetPos(id) {
   const scDefaults   = id === 'scoring'     ? { scScoreSize:28, scLabelSize:11, scTotalSize:36, scRevealDelayMs:3000, scFlagX:0, scFlagY:0, scPanelBg:'rgba(14,14,18,0.92)', scLogoBg:'rgba(0,0,0,0.18)', scRankBg:'rgba(0,0,0,0.28)' } : {};
 	  const elDefaults   = id === 'elements'    ? { elSkaterSize:18, elTotalSize:26, elLabelSize:9, elCodeSize:15, elValueSize:14, elTitleX:0, elTitleY:0, elAutoFit:false, elBodyDelay:2000, elHighestLabelSize:0, elHighestScoreSize:0, elHighestLabelColor:'#ffc848', elHighestScoreColor:'#ffc848' } : {};
   const ofDefaults   = id === 'officials'   ? { ofRoleAlign:'right' } : {};
+  const msgDefaults  = id === 'messages'    ? { msgLine1Size:40, msgLine2Size:20 } : {};
   const defaults = { x:0, y:0, scale:1, width: NATURAL_WIDTHS[id]||880, height:0,
                      zoom:100, rowPad:0, rounded:true, radius:20, ltFlagHeight:68,
                      animPreset:'default', animSpeed:420, animEasing:'smooth',
                      caps: {},
-                     ...logoDefaults, ...colDefaults, ...flagDefaults, ...ltDefaults, ...infoDefaults, ...scDefaults, ...elDefaults, ...ofDefaults };
+                     ...logoDefaults, ...colDefaults, ...flagDefaults, ...ltDefaults, ...infoDefaults, ...scDefaults, ...elDefaults, ...ofDefaults, ...msgDefaults };
   setPosUI(id, defaults);
   await savePositionObj(id, defaults);
   toast(`↺ ${id} reset`);
@@ -3806,6 +3815,20 @@ function buildCards() {
               <input type="range" id="pos-lt-line2-${t.id}" min="10" max="40" value="20" step="1" oninput="onPosChange('${t.id}')">
               <span class="pos-val" id="pv-lt-line2-${t.id}">20px</span>
             </div>
+            ` : ''}
+            ${t.id === 'messages' ? `
+            <div style="margin:8px 0 2px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);grid-column:1/-1;">Font Sizes</div>
+            <div class="pos-row">
+              <label>Line 1</label>
+              <input type="range" id="pos-msg-line1-${t.id}" min="16" max="72" value="40" step="1" oninput="onPosChange('${t.id}')">
+              <span class="pos-val" id="pv-msg-line1-${t.id}">40px</span>
+            </div>
+            <div class="pos-row">
+              <label>Line 2</label>
+              <input type="range" id="pos-msg-line2-${t.id}" min="10" max="40" value="20" step="1" oninput="onPosChange('${t.id}')">
+              <span class="pos-val" id="pv-msg-line2-${t.id}">20px</span>
+            </div>
+            <div class="hint" style="grid-column:1/-1;">Long lines auto-shrink to fit below this size if needed — these sliders set the target size.</div>
             ` : ''}
             ${t.id === 'scoring' ? `
             <div style="margin:8px 0 2px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);grid-column:1/-1;">More Font Sizes</div>

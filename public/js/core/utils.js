@@ -374,4 +374,33 @@ window.GraphicsUtils = {
       el.textContent = shortened;
     }));
   },
+
+  /**
+   * Shrink an element's font-size (via inline style) until its content fits
+   * its own width, down to a floor ratio of the base size. For arbitrary
+   * text (titles, messages) where truncating or abbreviating words would
+   * be wrong — unlike applyInitialsIfNeeded, this never rewrites the text.
+   * Re-entrant: always resets to baseSizePx before each measurement pass,
+   * so it recovers correctly if the text later gets shorter.
+   *
+   * @param {HTMLElement} el         - element whose textContent is already set
+   * @param {number} baseSizePx      - the operator-configured font size
+   * @param {number} minRatio        - floor as a fraction of baseSizePx (default 0.6)
+   */
+  autoFitText(el, baseSizePx, minRatio = 0.6) {
+    if (!el || !baseSizePx) return;
+    el.style.fontSize = `${baseSizePx}px`;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const ow = el.offsetWidth || 0;
+      if (ow <= 0) return; // layout not ready — leave at base size
+      const minPx = baseSizePx * minRatio;
+      let size = baseSizePx;
+      // A handful of steps is enough to converge; avoids an unbounded loop
+      // if scrollWidth measurement is ever flaky.
+      for (let i = 0; i < 12 && el.scrollWidth > el.offsetWidth && size > minPx; i++) {
+        size = Math.max(minPx, size - 2);
+        el.style.fontSize = `${size}px`;
+      }
+    }));
+  },
 };

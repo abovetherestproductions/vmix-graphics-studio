@@ -14,9 +14,12 @@
     lastData = data;
     const line1 = data.line1 || data.top || '';
     const line2 = data.line2 || data.bottom || '';
-    window.GraphicsUtils.applyInitialsIfNeeded(line1El, line1);
+    const pos = (window.configHeaderOverrides || {})['messages'] || {};
+    line1El.textContent = line1;
+    window.GraphicsUtils.autoFitText(line1El, pos.msgLine1Size ?? 40);
     line2El.textContent = line2;
     line2El.style.display = line2 ? '' : 'none';
+    if (line2) window.GraphicsUtils.autoFitText(line2El, pos.msgLine2Size ?? 20);
   }
 
   function animateIn(payload) {
