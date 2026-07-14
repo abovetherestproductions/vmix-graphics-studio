@@ -59,13 +59,17 @@ function createMessagesService({ rootDir, readConfig, writeConfig, readData, wri
     }
 
     const rows = rawRows
-      .map((row, index) => ({
-        index,
-        excelRow: Number(row.__rowNum__) ? Number(row.__rowNum__) + 1 : index + 2,
+      .map((row, rawIndex) => ({
+        excelRow: Number(row.__rowNum__) ? Number(row.__rowNum__) + 1 : rawIndex + 2,
         top: findValue(row, cfg.topHeader, 0),
         bottom: findValue(row, cfg.bottomHeader, 1),
       }))
-      .filter(row => row.top || row.bottom);
+      .filter(row => row.top || row.bottom)
+      // index must reflect position in THIS filtered array — selectedRow()
+      // below does rows[index], so assigning index before the filter (as
+      // this used to) drifts by one for every blank/spacer row skipped,
+      // landing clicks on the wrong row the further down the list you go.
+      .map((row, index) => ({ ...row, index }));
 
     return {
       workbookPath: resolvedPath,
