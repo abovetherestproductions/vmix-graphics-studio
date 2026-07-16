@@ -1586,6 +1586,18 @@ async function loadAllConfig() {
       setPosUI(t.id, pos);
     });
 
+    // Skater extras workbook paths (quote + music card) — don't clobber the
+    // fields while the operator is typing in one of them.
+    const sx = cfg.skaterExtras || {};
+    [
+      ['ms-extras-music-path',   sx.musicWorkbookPath   || ''],
+      ['ms-extras-quotes-path',  sx.quotesWorkbookPath  || ''],
+      ['ms-extras-coaches-path', sx.coachesWorkbookPath || ''],
+    ].forEach(([fid, value]) => {
+      const el = g(fid);
+      if (el && document.activeElement !== el) el.value = value;
+    });
+
     // Elements font sizes + display mode toggle
     const elPos = positions['elements'] || {};
     const setNum = (id, val, def) => { const e = g(id); if (e) e.value = val ?? def; };
@@ -1602,6 +1614,8 @@ async function loadAllConfig() {
     if (hideRailEl) hideRailEl.checked = !!cfg.elementsHideLightRail;
     const hideHiEl = document.getElementById('el-hide-highest');
     if (hideHiEl) hideHiEl.checked = !!cfg.elementsHideHighest;
+    const showNameEl = document.getElementById('el-highest-show-name');
+    if (showNameEl) showNameEl.checked = !!cfg.elementsHighestShowName;
     // Clock font sizes
     const clockPos = positions['clock'] || {};
     setNum('clock-value-size', clockPos.clockValueSize, 72);
@@ -1832,6 +1846,14 @@ function setPosUI(id, pos) {
     const fsEl = g(`pos-flag-show-${id}`);
     if (fsEl) fsEl.checked = p.ltShowFlag !== false;
   }
+  if (id === 'manual-skater') {
+    const exEl = g(`pos-ms-extras-${id}`);
+    if (exEl) exEl.checked = p.msExtrasEnabled !== false;
+    sv(`pos-ms-quote-secs-${id}`, p.msQuoteSecs ?? 4);
+    st(`pv-ms-quote-secs-${id}`, `${p.msQuoteSecs ?? 4}s`);
+    sv(`pos-ms-coach-secs-${id}`, p.msCoachSecs ?? 4);
+    st(`pv-ms-coach-secs-${id}`, `${p.msCoachSecs ?? 4}s`);
+  }
   if (id === 'interview') {
     sv('pos-l2src-interview', p.ltLine2Source || 'club');
     sv('pos-l2custom-interview', p.ltLine2Custom || '');
@@ -2060,6 +2082,9 @@ function readPos(id) {
     radius:       Number(g(`pos-cr-${id}`)?.value ?? 20),
     ltFlagHeight: Number(g(`pos-fh-${id}`)?.value ?? 68),
     ltShowFlag:   FLAG_TOGGLE_TEMPLATES.includes(id) ? (g(`pos-flag-show-${id}`)?.checked !== false) : undefined,
+    msExtrasEnabled: id === 'manual-skater' ? (g(`pos-ms-extras-${id}`)?.checked !== false) : undefined,
+    msQuoteSecs:     id === 'manual-skater' ? Number(g(`pos-ms-quote-secs-${id}`)?.value ?? 4) : undefined,
+    msCoachSecs:     id === 'manual-skater' ? Number(g(`pos-ms-coach-secs-${id}`)?.value ?? 4) : undefined,
     ltLine2Source: id === 'interview' ? (g('pos-l2src-interview')?.value || 'club') : undefined,
     ltLine2Custom: id === 'interview' ? (g('pos-l2custom-interview')?.value || '') : undefined,
     ltFlagPad:    id === 'lower-third' ? Number(g(`pos-fp-${id}`)?.value ?? 24) : undefined,
@@ -2286,6 +2311,10 @@ function onPosChange(id) {
 	    st(`pv-msg-line1-${id}`, `${p.msgLine1Size}px`);
 	    st(`pv-msg-line2-${id}`, `${p.msgLine2Size}px`);
 	  }
+	  if (id === 'manual-skater') {
+	    st(`pv-ms-quote-secs-${id}`, `${p.msQuoteSecs}s`);
+	    st(`pv-ms-coach-secs-${id}`, `${p.msCoachSecs}s`);
+	  }
 	  if (id === 'elements') {
 	    st(`pv-el-title-x-${id}`, `${p.elTitleX ?? 0}px`);
 	    st(`pv-el-title-y-${id}`, `${p.elTitleY ?? 0}px`);
@@ -2386,6 +2415,38 @@ function updateOfRoleButtons(id, align) {
   rb.style.color        = align === 'right' ? '#fff'          : 'var(--text)';
 }
 
+// ── Skater extras (quote + music workbooks) ────────────────────────────
+async function refreshSkaterExtrasStatus() {
+  const el = g('ms-extras-status');
+  if (!el) return;
+  try {
+    const s = await api('GET', '/api/skater-extras/status');
+    if (!s.musicPath && !s.quotesPath && !s.coachesPath) { el.textContent = 'No workbooks configured'; return; }
+    el.textContent = s.errors?.length
+      ? `⚠ ${s.errors.join(' · ')}`
+      : `✓ ${s.skaters} skaters, ${s.quotes} quotes, ${s.coaches ?? 0} coach lists loaded`;
+    el.style.color = s.errors?.length ? 'var(--red, #ef5350)' : 'var(--green, #81c784)';
+  } catch (e) {
+    el.textContent = `⚠ ${e.message}`;
+  }
+}
+
+async function saveSkaterExtras() {
+  try {
+    await api('POST', '/api/config', {
+      skaterExtras: {
+        musicWorkbookPath: g('ms-extras-music-path')?.value.trim() || '',
+        quotesWorkbookPath: g('ms-extras-quotes-path')?.value.trim() || '',
+        coachesWorkbookPath: g('ms-extras-coaches-path')?.value.trim() || '',
+      },
+    });
+    await refreshSkaterExtrasStatus();
+    toast('✓ Quote & music workbooks saved');
+  } catch (e) {
+    toast(`Error: ${e.message}`, 'err');
+  }
+}
+
 async function savePositionObj(id, pos) {
   try {
     const cfg = await api('GET', '/api/config');
@@ -2413,11 +2474,12 @@ async function resetPos(id) {
 	  const elDefaults   = id === 'elements'    ? { elSkaterSize:18, elTotalSize:26, elLabelSize:9, elCodeSize:15, elValueSize:14, elTitleX:0, elTitleY:0, elAutoFit:false, elBodyDelay:2000, elHighestLabelSize:0, elHighestScoreSize:0, elHighestLabelColor:'#ffc848', elHighestScoreColor:'#ffc848' } : {};
   const ofDefaults   = id === 'officials'   ? { ofRoleAlign:'right' } : {};
   const msgDefaults  = id === 'messages'    ? { msgLine1Size:40, msgLine2Size:20 } : {};
+  const msExtrasDefaults = id === 'manual-skater' ? { msExtrasEnabled:true, msQuoteSecs:4, msCoachSecs:4 } : {};
   const defaults = { x:0, y:0, scale:1, width: NATURAL_WIDTHS[id]||880, height:0,
                      zoom:100, rowPad:0, rounded:true, radius:20, ltFlagHeight:68,
                      animPreset:'default', animSpeed:420, animEasing:'smooth',
                      caps: {},
-                     ...logoDefaults, ...colDefaults, ...flagDefaults, ...ltDefaults, ...infoDefaults, ...scDefaults, ...elDefaults, ...ofDefaults, ...msgDefaults };
+                     ...logoDefaults, ...colDefaults, ...flagDefaults, ...ltDefaults, ...infoDefaults, ...scDefaults, ...elDefaults, ...ofDefaults, ...msgDefaults, ...msExtrasDefaults };
   setPosUI(id, defaults);
   await savePositionObj(id, defaults);
   toast(`↺ ${id} reset`);
@@ -2877,6 +2939,13 @@ async function setElementsHideHighest(hide) {
   } catch(e) { toast(`Error: ${e.message}`, 'err'); }
 }
 
+async function setElementsHighestShowName(show) {
+  try {
+    await api('POST', '/api/config', { elementsHighestShowName: !!show });
+    toast(`Leader's name ${show ? 'shown' : 'hidden'} on Highest TES row`);
+  } catch(e) { toast(`Error: ${e.message}`, 'err'); }
+}
+
 async function saveElementsLabel() {
   const en = document.getElementById('el-total-label-en')?.value?.trim() || 'TES';
   const fr = document.getElementById('el-total-label-fr')?.value?.trim() || 'NTÉ';
@@ -2952,6 +3021,12 @@ function buildCards() {
             <input type="checkbox" id="el-hide-highest" onchange="setElementsHideHighest(this.checked)"
                    style="width:14px;height:14px;accent-color:var(--accent);cursor:pointer;" />
             Hide Highest TES row
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;margin-left:14px;"
+                 title="Adds the leading skater's name under the Highest TES label (SC API mode)">
+            <input type="checkbox" id="el-highest-show-name" onchange="setElementsHighestShowName(this.checked)"
+                   style="width:14px;height:14px;accent-color:var(--accent);cursor:pointer;" />
+            Show leader's name
           </label>
         </div>
         <div style="margin-top:12px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);">
@@ -3416,6 +3491,52 @@ function buildCards() {
               <input type="text" id="pos-l2custom-interview" placeholder="Used when Source = Custom"
                      onchange="onPosChange('interview')"
                      style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;grid-column:2/4;width:100%;" />
+            </div>
+            ` : ''}
+            ${t.id === 'manual-skater' ? `
+            <div style="margin:8px 0 2px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);grid-column:1/-1;">Coaches, Quote &amp; Music Card</div>
+            <div class="pos-row">
+              <label>Enabled</label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;grid-column:2/4;">
+                <input type="checkbox" id="pos-ms-extras-${t.id}" checked
+                       onchange="onPosChange('${t.id}')"
+                       style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;" />
+                <span style="font-size:12px;color:var(--text2);">Coaches, then quote, then program music, on the slide-down card</span>
+              </label>
+            </div>
+            <div class="pos-row">
+              <label>Coaches Time</label>
+              <input type="range" id="pos-ms-coach-secs-${t.id}" min="2" max="10" value="4" step="0.5"
+                     oninput="onPosChange('${t.id}')" title="How long the coaches show before switching to the quote">
+              <span class="pos-val" id="pv-ms-coach-secs-${t.id}">4s</span>
+            </div>
+            <div class="pos-row">
+              <label>Quote Time</label>
+              <input type="range" id="pos-ms-quote-secs-${t.id}" min="2" max="10" value="4" step="0.5"
+                     oninput="onPosChange('${t.id}')" title="How long the quote shows before switching to music">
+              <span class="pos-val" id="pv-ms-quote-secs-${t.id}">4s</span>
+            </div>
+            <div class="pos-row" style="grid-template-columns:auto 1fr;">
+              <label>Music File</label>
+              <input type="text" id="ms-extras-music-path" placeholder="e.g. NextGen 26 Music Titles.xlsx"
+                     style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;grid-column:2/4;width:100%;" />
+            </div>
+            <div class="pos-row" style="grid-template-columns:auto 1fr;">
+              <label>Quotes File</label>
+              <input type="text" id="ms-extras-quotes-path" placeholder="e.g. NextGen26 Quotes for Streaming.xlsx"
+                     style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;grid-column:2/4;width:100%;" />
+            </div>
+            <div class="pos-row" style="grid-template-columns:auto 1fr;">
+              <label>Coaches File</label>
+              <input type="text" id="ms-extras-coaches-path" placeholder="e.g. Skater + Coach List 26NextGen.xlsx"
+                     style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;grid-column:2/4;width:100%;" />
+            </div>
+            <div class="pos-row" style="grid-template-columns:auto 1fr;">
+              <label></label>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;grid-column:2/4;">
+                <button class="btn btn-fetch btn-sm" onclick="saveSkaterExtras()">Save Workbooks</button>
+                <span id="ms-extras-status" style="font-size:11px;color:var(--text2);"></span>
+              </div>
             </div>
             ` : ''}
             ${FLAG_TOGGLE_TEMPLATES.includes(t.id) ? `
@@ -4460,6 +4581,7 @@ function buildLayoutCards() {
 // ── Init ───────────────────────────────────────────────────────────────
 buildCards();
 buildLayoutCards();
+refreshSkaterExtrasStatus();
 makeSlidersTypeable();
 loadAllConfig();
 connectWs();

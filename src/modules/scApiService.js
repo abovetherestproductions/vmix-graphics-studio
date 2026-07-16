@@ -196,6 +196,25 @@ function createScApiService({
       );
       writeAndBroadcast('standings', stPayload, { force });
 
+      // Segment-wide Highest TES benchmark — official per-skater TES straight
+      // from the entries feed. Excludes the on-ice skater (their TES isn't
+      // final), so the row can appear as soon as the FIRST skater's score is
+      // posted, and it resets automatically when the segment changes because
+      // it's recomputed from the new segment's entries every poll.
+      let highestTes = 0, highestTesName = '', scoredCount = 0;
+      for (const e of entries) {
+        if (e.onice) continue;
+        const t = newApi.safeNum(e.tes);
+        if (t == null || t <= 0) continue;
+        scoredCount++;
+        if (t > highestTes) { highestTes = t; highestTesName = newApi.safeStr(e.competitorName); }
+      }
+      const segmentStats = {
+        highestTes: Math.round(highestTes * 100) / 100,
+        highestTesName,
+        scoredCount,
+      };
+
       // On-ice skater → scoring, lower-third, elements
       const onIce      = entries.find(e => e.onice);
       const prevOnIceId = lastOnIceEntryId;
@@ -221,26 +240,28 @@ function createScApiService({
         );
         if (ltPayload) writeAndBroadcast('lower-third', ltPayload);
 
-        // Elements: fetch when the on-ice skater changes
-        if (onIceChanged) {
-          try {
-            const elements = await fetchElements(onIceId, true);
-            if (myGen !== pollGeneration) return;
-            const existingEl = readData('elements');
-            const elPayload  = newApi.normalizeElements(
-              elements, onIce, categoryDto, segmentDto, existingEl?.control
-            );
-            writeAndBroadcast('elements', elPayload);
+        // Elements: fetch EVERY poll while a skater is on ice, so the tracker
+        // updates live as the tech panel enters/adjusts elements. (It used to
+        // fetch only when the skater changed — the panel froze mid-program in
+        // sc-api mode.) writeAndBroadcast skips identical data, so unchanged
+        // polls cost nothing downstream.
+        try {
+          const elements = await fetchElements(onIceId, true);
+          if (myGen !== pollGeneration) return;
+          const existingEl = readData('elements');
+          const elPayload  = newApi.normalizeElements(
+            elements, onIce, categoryDto, segmentDto, existingEl?.control, segmentStats
+          );
+          writeAndBroadcast('elements', elPayload);
 
-            // Fire elements-ready callback once per skater — this is the
-            // verified signal used by auto-record to confirm the correct filename.
-            if (onIceId !== lastElementsReadyId && typeof onSkaterElementsReady === 'function') {
-              lastElementsReadyId = onIceId;
-              try { onSkaterElementsReady(onIce, segmentDto, categoryDto); } catch (e) { /* non-fatal */ }
-            }
-          } catch (err) {
-            console.warn('[sc-api] elements fetch error:', err.message);
+          // Fire elements-ready callback once per skater — this is the
+          // verified signal used by auto-record to confirm the correct filename.
+          if (onIceId !== lastElementsReadyId && typeof onSkaterElementsReady === 'function') {
+            lastElementsReadyId = onIceId;
+            try { onSkaterElementsReady(onIce, segmentDto, categoryDto); } catch (e) { /* non-fatal */ }
           }
+        } catch (err) {
+          console.warn('[sc-api] elements fetch error:', err.message);
         }
 
       } else {
@@ -250,6 +271,17 @@ function createScApiService({
           if (typeof onSkaterLeftIce === 'function') {
             try { onSkaterLeftIce(entries); } catch (e) { /* non-fatal */ }
           }
+        }
+        // Keep the benchmark fresh between skaters — a final score usually
+        // posts after the skater has left the ice, and the next skater may
+        // not step on for a while.
+        const existingEl = readData('elements');
+        if (existingEl?.data && (
+          existingEl.data.highestTes !== segmentStats.highestTes ||
+          existingEl.data.scoredCount !== segmentStats.scoredCount
+        )) {
+          const patched = { ...existingEl, data: { ...existingEl.data, ...segmentStats } };
+          writeAndBroadcast('elements', patched);
         }
       }
 

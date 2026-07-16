@@ -109,6 +109,7 @@
     window.elementsHideTotalLabel = !!config.elementsHideTotalLabel;
     window.elementsHideLightRail  = !!config.elementsHideLightRail;
     window.elementsHideHighest    = !!config.elementsHideHighest;
+    window.elementsHighestShowName = !!config.elementsHighestShowName;
 
     const totalLabelEl = document.getElementById('el-total-label');
     if (totalLabelEl) {
@@ -244,6 +245,9 @@
         ltLine2Custom:  pos.ltLine2Custom     || '',
         msgLine1Size:   pos.msgLine1Size      ?? 40,
         msgLine2Size:   pos.msgLine2Size      ?? 20,
+        msExtrasEnabled: pos.msExtrasEnabled !== false,
+        msQuoteMs:      (Number(pos.msQuoteSecs) || 4) * 1000,
+        msCoachMs:      (Number(pos.msCoachSecs) || 4) * 1000,
       };
 
       // Apply title override for custom/event sources

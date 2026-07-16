@@ -250,6 +250,26 @@
   text-shadow: 0 0 8px color-mix(in srgb, var(--el-highest-score-color, #ffc848) 25%, transparent);
 }
 
+/* Leader name under the Highest TES label (operator opt-in). Body font,
+   normal case, softened toward white so the gold label stays the headline. */
+.el-row.el-summary .el-summary-label-text {
+  display: block;
+}
+.el-row.el-summary .el-summary-name {
+  display: block;
+  font-family: var(--font-body);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  font-size: calc(var(--el-highest-label-size, calc(var(--el-code-size, 15px) * 0.85)) * 0.92);
+  color: color-mix(in srgb, var(--el-highest-label-color, #ffc848) 55%, #ffffff);
+  opacity: 0.92;
+  margin-top: 1px;
+}
+.el-row.el-summary .el-summary-name:empty {
+  display: none;
+}
+
 .el-light-rail {
   display: none;
   align-items: center;

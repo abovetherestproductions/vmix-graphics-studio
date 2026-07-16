@@ -282,14 +282,20 @@
     const elements = Array.isArray(data.elements) ? data.elements : [];
     const currentIdx = data.currentIndex ?? (elements.length - 1);
 
-    // Update the rolling highest TES for this skater's segment, then read back
-    // the leader for the bottom-of-tracker "Highest TES" row. The row only
-    // renders once at least one skater has FINISHED (i.e. from the second
-    // skater onward) and shows that finished leader's score as a fixed
-    // benchmark — never the current skater's still-updating total.
-    const tesEntry         = updateHighestFor(data);
-    const highest          = tesEntry.high;
-    const completedSkaters = tesEntry.completed;
+    // "Highest TES" benchmark. Preferred source: server-computed value in the
+    // payload (sc-api mode) — official per-skater TES from the segment
+    // entries, already excluding the on-ice skater, resetting with the
+    // segment. Fallback (CSV/live modes): the legacy client-side tracker that
+    // infers completion from panel changes.
+    let highest, completedSkaters;
+    if (data.highestTes != null) {
+      highest          = Number(data.highestTes) || 0;
+      completedSkaters = Number(data.scoredCount) || 0;
+    } else {
+      const tesEntry   = updateHighestFor(data);
+      highest          = tesEntry.high;
+      completedSkaters = tesEntry.completed;
+    }
 
     const layoutMode = (window.elementsLayoutMode === 'single') ? 'single' : 'list';
     root.classList.toggle('layout-single', layoutMode === 'single');
@@ -361,17 +367,25 @@
     // Operator toggle: when checked, the Highest TES row is suppressed
     // regardless of how many skaters have appeared on the panel.
     const showHighest = !window.elementsHideHighest;
+    // Leader name — operator opt-in, and only available when the server
+    // supplies it (sc-api mode). The name can change mid-segment when a new
+    // leader posts, so the patch path updates it too.
+    const leaderName = (window.elementsHighestShowName === true)
+      ? String(data.highestTesName || '').trim()
+      : '';
     const wantSummary = showHighest && !!bodyEl && highest > 0 && completedSkaters >= 1;
     const existingSummary = bodyEl?.querySelector('.el-summary');
     if (!wantSummary) {
       if (existingSummary) existingSummary.remove();
     } else if (existingSummary) {
-      // Patch score in place — label and empty cells never change mid-skater.
+      // Patch score + leader name in place — label never changes mid-skater.
       const scoreEl = existingSummary.querySelector('.el-score');
       if (scoreEl) {
         const next = fmt(highest);
         if (scoreEl.textContent !== next) scoreEl.textContent = next;
       }
+      const nameEl = existingSummary.querySelector('.el-summary-name');
+      if (nameEl && nameEl.textContent !== leaderName) nameEl.textContent = leaderName;
     } else {
       const summary = document.createElement('div');
       summary.className = 'el-row el-summary no-anim row-in';
@@ -380,7 +394,14 @@
       const isFr = (document.documentElement.lang || 'en') === 'fr';
       const hiEn = window.elementsHighestLabel   || 'Highest Technical Score';
       const hiFr = window.elementsHighestLabelFr || 'Meilleur Score Technique';
-      label.textContent = isFr ? hiFr : hiEn;
+      const labelText = document.createElement('span');
+      labelText.className = 'el-summary-label-text';
+      labelText.textContent = isFr ? hiFr : hiEn;
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'el-summary-name';
+      nameSpan.textContent = leaderName;
+      label.appendChild(labelText);
+      label.appendChild(nameSpan);
       const bv = document.createElement('div');
       bv.className = 'el-bv';
       const goe = document.createElement('div');

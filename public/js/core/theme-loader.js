@@ -38,6 +38,7 @@
       elementsHideTotalLabel: !!config.elementsHideTotalLabel,
       elementsHideLightRail: !!config.elementsHideLightRail,
       elementsHideHighest:   !!config.elementsHideHighest,
+      elementsHighestShowName: !!config.elementsHighestShowName,
       elementsLayoutMode: config.elementsLayoutMode || 'list',
       globalHeaderOverride:   config.globalHeaderOverride   || '',
       globalHeaderOverrideFr: config.globalHeaderOverrideFr || '',
@@ -352,6 +353,9 @@
         ltLine2Custom:  pos.ltLine2Custom     || '',
         msgLine1Size:   pos.msgLine1Size      ?? 40,
         msgLine2Size:   pos.msgLine2Size      ?? 20,
+        msExtrasEnabled: pos.msExtrasEnabled !== false,
+        msQuoteMs:      (Number(pos.msQuoteSecs) || 4) * 1000,
+        msCoachMs:      (Number(pos.msCoachSecs) || 4) * 1000,
       };
 
     }
@@ -532,6 +536,8 @@
     window.elementsHideLightRail  = !!config.elementsHideLightRail;
     // Operator option: hide the Highest TES summary row entirely
     window.elementsHideHighest    = !!config.elementsHideHighest;
+    // Operator option: show the leader's name under the Highest TES label
+    window.elementsHighestShowName = !!config.elementsHighestShowName;
 
     // Notify any open graphics JS that config has changed (e.g. elements re-render)
     window.dispatchEvent(new CustomEvent('graphics-config-updated', { detail: { config } }));

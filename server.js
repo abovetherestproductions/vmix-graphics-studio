@@ -22,6 +22,7 @@ const { createDailymotionService } = require('./src/modules/dailymotion');
 const { registerProductionRoutes } = require('./src/modules/productionRoutes');
 const { createMessagesService } = require('./src/modules/messages');
 const { createManualSkatersService } = require('./src/modules/manualSkaters');
+const { createSkaterExtrasService } = require('./src/modules/skaterExtras');
 const { createScApiService }         = require('./src/modules/scApiService');
 const { createVmixClient }           = require('./src/modules/vmixClient');
 
@@ -543,6 +544,11 @@ const manualSkatersService = createManualSkatersService({
     graphicState['manual-skater'] = { visible: payload.control?.visible, state: payload.control?.state };
     broadcast({ type: 'update', template: 'manual-skater', payload });
   },
+});
+
+const skaterExtrasService = createSkaterExtrasService({
+  rootDir: __dirname,
+  readConfig,
 });
 
 // ── vMix auto-record ──────────────────────────────────────────────────────────
@@ -3273,6 +3279,11 @@ app.post('/api/sc-api/refresh', async (_req, res) => {
   }
 });
 
+// Skater extras (quotes + music workbooks) — load status for the operator UI
+app.get('/api/skater-extras/status', (_req, res) => {
+  res.json({ ok: true, ...skaterExtrasService.status() });
+});
+
 // Tracks the entryId most recently pushed to the manual-skater graphic
 let scApiSelectedEntryId = null;
 
@@ -3283,6 +3294,11 @@ async function applyScApiManualSkater(entryId) {
     control: { visible: false, state: 'hidden' },
     data:    {},
   };
+  // Coaches + quote + program music from the event-supplied workbooks (if
+  // configured). The graphic's slide-down card shows coaches, then the quote,
+  // then the music for the active segment. Missing skater / missing files →
+  // empty strings, card falls back to the category detail text.
+  const extras = skaterExtrasService.lookup(data.name);
   existing.data = {
     line1:          data.name,
     line2:          data.club,
@@ -3294,6 +3310,9 @@ async function applyScApiManualSkater(entryId) {
     segmentName:    data.segmentName,
     segmentNameFr:  data.segmentNameFr,
     groupNumber:    data.groupNumber,
+    coaches:        extras?.coaches || '',
+    quote:          extras?.quote || '',
+    musicTitle:     skaterExtrasService.musicForSegment(extras, data.segmentName),
   };
   existing.meta.revision  = Date.now();
   existing.meta.updatedAt = new Date().toISOString();

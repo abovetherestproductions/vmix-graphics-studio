@@ -601,7 +601,7 @@ function normalizeOfficials(officials, categoryDto, segmentDto, lang, existingCo
  * Elements tracker — SkateElementDto[] for the on-ice skater.
  * Matches the shape produced by csvAdapter's element normalizer.
  */
-function normalizeElements(elements, entry, categoryDto, segmentDto, existingControl) {
+function normalizeElements(elements, entry, categoryDto, segmentDto, existingControl, segmentStats) {
   const catName    = catEn(categoryDto);
   const catNameFr  = catFr(categoryDto) || catName;
   const segName    = safeStr(segmentDto?.segmentName);
@@ -635,14 +635,29 @@ function normalizeElements(elements, entry, categoryDto, segmentDto, existingCon
     meta:    nowMeta('elements'),
     control: preserveControl(existingControl),
     data: {
+      // Field names the elements graphic actually renders (name /
+      // runningTotal / currentIndex / elements). The old skaterName /
+      // totalTes / rows keys are kept as aliases for anything else reading
+      // this file.
+      name:           skaterName,
       skaterName,
       categoryName:   catName,
       categoryNameFr: catNameFr,
       segmentName:    segName,
       segmentNameFr:  segNameFr,
+      groupNumber:    entry?.warmUpGroup ?? null,
+      runningTotal:   totalTes,
       totalTes,
+      currentIndex:   rows.length - 1,
+      elements:       rows,
       rowCount:       rows.length,
       rows,
+      // Segment-wide benchmark, computed server-side from the segment's
+      // entries (official per-skater TES) — authoritative, unlike the old
+      // client-side inference from panel changes.
+      highestTes:     segmentStats?.highestTes ?? null,
+      highestTesName: segmentStats?.highestTesName ?? '',
+      scoredCount:    segmentStats?.scoredCount ?? 0,
     },
   };
 }
