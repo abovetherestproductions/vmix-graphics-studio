@@ -490,28 +490,68 @@ function normalizeRankings(entries, categoryDto, segmentDto, lang, rowsPerPage, 
 /**
  * Rank-6 corner standings — top 6 by segmentRank.
  */
-function normalizeStandings(entries, categoryDto, segmentDto, lang, existingControl) {
+function normalizeStandings(entries, categoryDto, segmentDto, lang, existingControl, pivotEntryId) {
   const segName   = safeStr(segmentDto?.segmentName);
   const segNameFr = safeStr(segmentDto?.segmentFrenchName) || tr(segName);
   const catName   = catEn(categoryDto);
   const catNameFr = catFr(categoryDto) || catName;
 
   const allEntries = Array.isArray(entries) ? entries : [];
-  const top6 = allEntries
-    .filter(e => e.segmentRank != null || e.score != null)
-    .sort((a, b) => (a.segmentRank ?? 999) - (b.segmentRank ?? 999))
-    .slice(0, 6);
+  const allRows = allEntries
+    .filter(e => e.segmentRank != null)
+    .sort((a, b) => a.segmentRank - b.segmentRank)
+    .map(e => ({
+      rank:    e.segmentRank,
+      name:    safeStr(e.competitorName),
+      club:    entryClub(e),
+      section: safeStr(e.competitorSection),
+      flagUrl: sectionFlagUrl(e.competitorSection, e.competitorCombinedClubNames),
+      total:   safeNum(e.score),
+      onIce:   !!e.onice,
+      entryId: safeStr(e.competitorEntryId),
+    }));
 
-  const rows = top6.map(e => ({
-    rank:    e.segmentRank ?? null,
-    name:    safeStr(e.competitorName),
-    club:    entryClub(e),
-    section: safeStr(e.competitorSection),
-    flagUrl: sectionFlagUrl(e.competitorSection, e.competitorCombinedClubNames),
-    total:   safeNum(e.score),
-    onIce:   !!e.onice,
-    entryId: safeStr(e.competitorEntryId),
-  }));
+  // Rank-6 CONTEXT rules (ported from the legacy adapter): always show the
+  // top 3, then the just-skated skater with their neighbours above and below
+  // (with a "···" separator when there's a gap), filled to 6 rows.
+  // Pivot = the skater whose score most recently posted (the scoring-hold
+  // entry), falling back to the last-ranked row like the old mode did.
+  const pivotIdx  = pivotEntryId ? allRows.findIndex(r => r.entryId === pivotEntryId) : -1;
+  const pivot     = allRows[pivotIdx >= 0 ? pivotIdx : allRows.length - 1] || null;
+  const pivotRank = pivot ? pivot.rank : null;
+
+  const selected = new Set();
+  const result   = [];
+  allRows.filter(r => r.rank <= 3).forEach(r => {
+    selected.add(r.rank);
+    result.push({ ...r, separator: false });
+  });
+
+  if (pivotRank != null) {
+    const contextRanks = [pivotRank - 1, pivotRank, pivotRank + 1]
+      .filter(n => n >= 1)
+      .filter(n => !selected.has(n));
+    const contextRows = allRows.filter(r => contextRanks.includes(r.rank));
+
+    const lastTop3Rank = result.length ? result[result.length - 1].rank : 0;
+    const firstCtxRank = contextRows.length ? contextRows[0].rank : null;
+    const needsSep     = firstCtxRank !== null && firstCtxRank > lastTop3Rank + 1;
+
+    contextRows.forEach((r, i) => {
+      selected.add(r.rank);
+      result.push({ ...r, separator: i === 0 && needsSep });
+    });
+  }
+
+  // Fill to at least 6 rows (or total ranked skaters if fewer)
+  const targetCount = Math.min(6, allRows.length);
+  while (result.length < targetCount) {
+    const lastRank = result[result.length - 1]?.rank ?? 0;
+    const nextRow  = allRows.find(r => r.rank > lastRank && !selected.has(r.rank));
+    if (!nextRow) break;
+    result.push({ ...nextRow, separator: nextRow.rank > lastRank + 1 });
+    selected.add(nextRow.rank);
+  }
 
   return {
     meta:    nowMeta('standings'),
@@ -525,8 +565,9 @@ function normalizeStandings(entries, categoryDto, segmentDto, lang, existingCont
       segmentName:    segName,
       segmentNameFr:  segNameFr,
       subtitle:       '',
-      rowCount:       rows.length,
-      rows,
+      pivotRank,
+      rowCount:       result.length,
+      rows:           result,
     },
   };
 }
@@ -612,14 +653,40 @@ function normalizeElements(elements, entry, categoryDto, segmentDto, existingCon
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
     .map(el => {
       const bv  = safeNum(el.base_value);
-      const goe = safeNum(el.goe_score ?? el.goe_trimmed_mean);
-      const val = (bv != null && goe != null) ? Math.round((bv + goe) * 100) / 100 : bv;
+      // Field semantics (verified against live data): goe_trimmed_mean is the
+      // GOE in points (signed); goe_score is the element's TOTAL scored value
+      // (base_value + GOE) — NOT a GOE, despite the name. Using goe_score as
+      // the GOE showed positive numbers on negative-GOE elements and
+      // double-counted the base value in totals.
+      const goe    = safeNum(el.goe_trimmed_mean);
+      const scored = safeNum(el.goe_score);
+      const val = scored != null
+        ? Math.round(scored * 100) / 100
+        : (bv != null && goe != null) ? Math.round((bv + goe) * 100) / 100 : bv;
       const goeScores = Array.isArray(el.official_goe_scores)
-        ? el.official_goe_scores.map(s => safeNum(s.goe ?? s.score ?? s.value))
+        ? el.official_goe_scores.map(s => safeNum(s.goe_value ?? s.goe ?? s.score ?? s.value))
         : [];
+      // Full element name for the operator's "Full Name" display mode —
+      // lives in subElements[].elementDefinition.name; combos join per-jump.
+      // The official names append tech-panel call flags spelled out
+      // ("Triple Flip Attention and Quarter") — strip the trailing call
+      // chain so only the element name airs. Spin/step levels are kept
+      // (they're part of the element, not a call).
+      const CALL = '(?:Attention|Wrong Edge|Quarter|Under[ -]?Rotated?|Downgraded?|Invalid|No Value)';
+      const CALL_CHAIN = new RegExp('\\s+' + CALL + '(?:\\s+and\\s+' + CALL + ')*\\s*$', 'i');
+      const cleanElementName = n => n.replace(CALL_CHAIN, '').trim();
+      const fullName = Array.isArray(el.subElements)
+        ? el.subElements
+            .slice()
+            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+            .map(s => cleanElementName(safeStr(s.elementDefinition?.name)))
+            .filter(Boolean)
+            .join(' + ')
+        : '';
       return {
         order:     el.order     ?? null,
         code:      safeStr(el.code),
+        name:      fullName,
         baseValue: bv,
         goe,
         value:     val,
