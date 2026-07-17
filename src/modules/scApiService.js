@@ -32,6 +32,12 @@ function createScApiService({
   let pollGeneration     = 0;
   let lastOnIceEntryId      = null;
   let lastElementsReadyId   = null; // guard: only fire onSkaterElementsReady once per skater
+  // Score hold: which entry drives the SCORING graphic. When the next skater
+  // goes on ice, the scoring bar stays pinned on the previous skater until
+  // their segment score has posted AND the configured hold time has passed
+  // (positions.scoring.scHoldSecs, default 30s). Prevents the just-skated
+  // skater's score from vanishing the moment the DS activates the next one.
+  let scoringHold = null; // { entryId, heldSince, scoreSeenAt }
   // Cache segment/category DTOs so we don't fetch them every single poll tick
   let _segmentCache  = { id: null, dto: null };
   let _categoryCache = { id: null, dto: null };
@@ -86,10 +92,17 @@ function createScApiService({
     return data?.CompetitorEntry || data;
   }
 
-  async function fetchElements(entryId, latest = true) {
+  // NOTE: ?latest=true makes the API return ONE element object (the most
+  // recently entered), not the list — the live tracker needs the full list,
+  // so callers should pass latest=false. The single-object shape is still
+  // handled defensively in case anything asks for latest.
+  async function fetchElements(entryId, latest = false) {
     const url = apiUrl(`/entry/${entryId}/elements${latest ? '?latest=true' : ''}`);
     const data = await fetchJson(url);
-    return data?.SkateElements || (Array.isArray(data) ? data : []);
+    if (data?.SkateElements) return data.SkateElements;
+    if (Array.isArray(data)) return data;
+    if (data && data.code !== undefined) return [data]; // single element (latest=true)
+    return [];
   }
 
   async function fetchComponents(entryId) {
@@ -134,6 +147,7 @@ function createScApiService({
     _eventCache         = { id: null, dto: null };
     lastOnIceEntryId    = null;
     lastElementsReadyId = null;
+    scoringHold         = null;
   }
 
   // ── Main poll ─────────────────────────────────────────────────────────────
@@ -219,6 +233,41 @@ function createScApiService({
       const onIce      = entries.find(e => e.onice);
       const prevOnIceId = lastOnIceEntryId;
 
+      // ── Score hold: pick which entry drives the scoring graphic ─────────
+      // Stays on the previous skater until their score posts + hold time,
+      // and keeps updating them in the gap when nobody is on ice (scores
+      // usually post after the skater has left the ice).
+      const holdSecsCfg = Number(getConfig().positions?.scoring?.scHoldSecs);
+      const holdMs      = (holdSecsCfg > 0 ? holdSecsCfg : 30) * 1000;
+      const MAX_HOLD_MS = 5 * 60 * 1000; // safety cap when a score never posts (WD etc.)
+      const onIceIdNow  = onIce ? newApi.safeStr(onIce.competitorEntryId) : null;
+
+      if (scoringHold) {
+        const held     = entries.find(e => newApi.safeStr(e.competitorEntryId) === scoringHold.entryId);
+        const scoreVal = held ? newApi.safeNum(held.score) : null;
+        if (scoreVal != null && !scoringHold.scoreSeenAt) scoringHold.scoreSeenAt = Date.now();
+        const expired = !held || (scoringHold.scoreSeenAt
+          ? Date.now() - scoringHold.scoreSeenAt > holdMs
+          : Date.now() - scoringHold.heldSince   > MAX_HOLD_MS);
+        if (expired && onIceIdNow && onIceIdNow !== scoringHold.entryId) {
+          scoringHold = { entryId: onIceIdNow, heldSince: Date.now(), scoreSeenAt: null };
+        }
+      }
+      if (!scoringHold && onIceIdNow) {
+        scoringHold = { entryId: onIceIdNow, heldSince: Date.now(), scoreSeenAt: null };
+      }
+      const scoringEntry = scoringHold
+        ? entries.find(e => newApi.safeStr(e.competitorEntryId) === scoringHold.entryId) || onIce
+        : onIce;
+
+      if (scoringEntry) {
+        const existingSc = readData('scoring');
+        const scPayload  = newApi.normalizeScoring(
+          scoringEntry, [], [], categoryDto, segmentDto, lang, existingSc?.control
+        );
+        if (scPayload) writeAndBroadcast('scoring', scPayload);
+      }
+
       if (onIce) {
         const onIceId      = newApi.safeStr(onIce.competitorEntryId);
         const onIceChanged = onIceId !== lastOnIceEntryId;
@@ -227,12 +276,6 @@ function createScApiService({
         if (onIceChanged && typeof onSkaterOnIce === 'function') {
           try { onSkaterOnIce(onIce, segmentDto, categoryDto); } catch (e) { /* non-fatal */ }
         }
-
-        const existingSc = readData('scoring');
-        const scPayload  = newApi.normalizeScoring(
-          onIce, [], [], categoryDto, segmentDto, lang, existingSc?.control
-        );
-        if (scPayload) writeAndBroadcast('scoring', scPayload);
 
         const existingLt = readData('lower-third');
         const ltPayload  = newApi.normalizeLowerThird(
@@ -246,7 +289,7 @@ function createScApiService({
         // sc-api mode.) writeAndBroadcast skips identical data, so unchanged
         // polls cost nothing downstream.
         try {
-          const elements = await fetchElements(onIceId, true);
+          const elements = await fetchElements(onIceId, false);
           if (myGen !== pollGeneration) return;
           const existingEl = readData('elements');
           const elPayload  = newApi.normalizeElements(

@@ -1890,6 +1890,7 @@ function setPosUI(id, pos) {
     sv(`pos-sc-nc-gap-${id}`,  p.scNameClubGap ?? 8);  st(`pv-sc-nc-gap-${id}`,  `${p.scNameClubGap ?? 8}px`);
     sv(`pos-sc-ranknum-${id}`, p.scRankNumSize ?? 42); st(`pv-sc-ranknum-${id}`, `${p.scRankNumSize ?? 42}px`);
     sv(`pos-sc-reveal-delay-${id}`, p.scRevealDelayMs ?? 3000); st(`pv-sc-reveal-delay-${id}`, `${p.scRevealDelayMs ?? 3000}ms`);
+    sv(`pos-sc-hold-secs-${id}`, p.scHoldSecs ?? 30); st(`pv-sc-hold-secs-${id}`, `${p.scHoldSecs ?? 30}s`);
     sv(`pos-sc-flag-x-${id}`, p.scFlagX ?? 0); st(`pv-sc-flag-x-${id}`, `${p.scFlagX ?? 0}px`);
     sv(`pos-sc-flag-y-${id}`, p.scFlagY ?? 0); st(`pv-sc-flag-y-${id}`, `${p.scFlagY ?? 0}px`);
     const [pc, pa] = parseLtBg(p.scPanelBg);
@@ -2110,6 +2111,7 @@ function readPos(id) {
     scNameClubGap:  id === 'scoring' ? Number(g(`pos-sc-nc-gap-${id}`)?.value ?? 8)   : undefined,
     scRankNumSize:  id === 'scoring' ? Number(g(`pos-sc-ranknum-${id}`)?.value ?? 42) : undefined,
     scRevealDelayMs:id === 'scoring' ? Number(g(`pos-sc-reveal-delay-${id}`)?.value ?? 3000) : undefined,
+    scHoldSecs:     id === 'scoring' ? Number(g(`pos-sc-hold-secs-${id}`)?.value ?? 30) : undefined,
     scFlagX:        id === 'scoring' ? Number(g(`pos-sc-flag-x-${id}`)?.value ?? 0) : undefined,
     scFlagY:        id === 'scoring' ? Number(g(`pos-sc-flag-y-${id}`)?.value ?? 0) : undefined,
     scPanelBg:      id === 'scoring' ? buildLtBg(`pos-sc-panel-bg-${id}`, `pos-sc-panel-bg-a-${id}`) : undefined,
@@ -2268,6 +2270,7 @@ function onPosChange(id) {
     st(`pv-sc-nc-gap-${id}`,    `${p.scNameClubGap ?? 8}px`);
     st(`pv-sc-ranknum-${id}`,   `${p.scRankNumSize}px`);
     st(`pv-sc-reveal-delay-${id}`, `${p.scRevealDelayMs ?? 3000}ms`);
+    st(`pv-sc-hold-secs-${id}`, `${p.scHoldSecs ?? 30}s`);
     st(`pv-sc-flag-x-${id}`, `${p.scFlagX ?? 0}px`);
     st(`pv-sc-flag-y-${id}`, `${p.scFlagY ?? 0}px`);
     st(`pv-sc-panel-bg-a-${id}`, `${g(`pos-sc-panel-bg-a-${id}`)?.value ?? 92}%`);
@@ -2470,7 +2473,7 @@ async function resetPos(id) {
   const infoDefaults = INFO_CARD_TEMPLATES.includes(id)
     ? { ltInfoText:'', ltInfoBg:'rgba(6,7,11,0.94)', ltInfoColor:'#ffffff', ltInfoSize:18, ltInfoRight:20, ltInfoRadius:18, ltInfoMaxWidth:760 }
     : {};
-  const scDefaults   = id === 'scoring'     ? { scScoreSize:28, scLabelSize:11, scTotalSize:36, scRevealDelayMs:3000, scFlagX:0, scFlagY:0, scPanelBg:'rgba(14,14,18,0.92)', scLogoBg:'rgba(0,0,0,0.18)', scRankBg:'rgba(0,0,0,0.28)' } : {};
+  const scDefaults   = id === 'scoring'     ? { scScoreSize:28, scLabelSize:11, scTotalSize:36, scRevealDelayMs:3000, scHoldSecs:30, scFlagX:0, scFlagY:0, scPanelBg:'rgba(14,14,18,0.92)', scLogoBg:'rgba(0,0,0,0.18)', scRankBg:'rgba(0,0,0,0.28)' } : {};
 	  const elDefaults   = id === 'elements'    ? { elSkaterSize:18, elTotalSize:26, elLabelSize:9, elCodeSize:15, elValueSize:14, elTitleX:0, elTitleY:0, elAutoFit:false, elBodyDelay:2000, elHighestLabelSize:0, elHighestScoreSize:0, elHighestLabelColor:'#ffc848', elHighestScoreColor:'#ffc848' } : {};
   const ofDefaults   = id === 'officials'   ? { ofRoleAlign:'right' } : {};
   const msgDefaults  = id === 'messages'    ? { msgLine1Size:40, msgLine2Size:20 } : {};
@@ -3671,6 +3674,12 @@ function buildCards() {
               <input type="range" id="pos-sc-reveal-delay-${t.id}" min="0" max="8000" value="3000" step="100"
                      oninput="onPosChange('${t.id}')">
               <span class="pos-val" id="pv-sc-reveal-delay-${t.id}">3000ms</span>
+            </div>
+            <div class="pos-row">
+              <label title="After a skater's score posts, the scoring bar keeps showing THEM for this long — even if the next skater is already on the ice.">Score Hold</label>
+              <input type="range" id="pos-sc-hold-secs-${t.id}" min="5" max="180" value="30" step="5"
+                     oninput="onPosChange('${t.id}')">
+              <span class="pos-val" id="pv-sc-hold-secs-${t.id}">30s</span>
             </div>
             <div class="pos-row">
               <label>Flag X</label>
