@@ -520,6 +520,11 @@ function normalizeStandings(entries, categoryDto, segmentDto, lang, existingCont
   const pivot     = allRows[pivotIdx >= 0 ? pivotIdx : allRows.length - 1] || null;
   const pivotRank = pivot ? pivot.rank : null;
 
+  // Red row highlight (the graphic's `on-ice` style): the API's onice flag
+  // points at the NEXT skater by the time scores post, so re-point it at the
+  // pivot — the most recently scored skater — matching the old mode's look.
+  allRows.forEach(r => { r.onIce = pivot ? r.entryId === pivot.entryId : false; });
+
   const selected = new Set();
   const result   = [];
   allRows.filter(r => r.rank <= 3).forEach(r => {
