@@ -68,7 +68,7 @@
       "pollIntervalMs": 2000,
       "officialsPollIntervalMs": 30000,
       "segmentName": "Short Program",
-      "discipline": "Singles"
+      "discipline": null
     }
   },
   "messages": {
@@ -76,7 +76,11 @@
     "sheetName": "",
     "topHeader": "",
     "bottomHeader": "",
+<<<<<<< Updated upstream
     "selectedIndex": 0
+=======
+    "selectedIndex": 26
+>>>>>>> Stashed changes
   },
   "manualSkaters": {
     "workbookPath": "D:\\vmix presets\\2026 VDI - RINK 1\\vmix-infosheet-2026-bc-yt-super-series-victoria-day-rink-1.xlsx",
@@ -486,5 +490,6 @@
     "musicWorkbookPath": "NextGen 26 Music Titles.xlsx",
     "quotesWorkbookPath": "NextGen26 Quotes for Streaming.xlsx",
     "coachesWorkbookPath": "Skater + Coach List 26NextGen.xlsx"
-  }
+  },
+  "elementsHighestShowName": true
 }
