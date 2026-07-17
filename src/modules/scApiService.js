@@ -205,8 +205,10 @@ function createScApiService({
 
       // Rank-6 corner standings
       const existingSt = readData('standings');
+      // Pivot on the scoring-hold skater (the one who just skated / was just
+      // scored) so the Rank 6 context always frames THEIR placement.
       const stPayload  = newApi.normalizeStandings(
-        entries, categoryDto, segmentDto, lang, existingSt?.control
+        entries, categoryDto, segmentDto, lang, existingSt?.control, scoringHold?.entryId
       );
       writeAndBroadcast('standings', stPayload, { force });
 
