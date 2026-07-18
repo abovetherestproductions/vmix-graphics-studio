@@ -365,7 +365,7 @@ function normalizeStartingOrder(entries, categoryDto, segmentDto, requestedGroup
  * Scoring display — for the skater currently on ice.
  * Pass null for entry to clear. Components and adjustments are optional.
  */
-function normalizeScoring(entry, components, adjustments, categoryDto, segmentDto, lang, existingControl) {
+function normalizeScoring(entry, components, adjustments, categoryDto, segmentDto, lang, existingControl, catTotal = null) {
   if (!entry) return null;
 
   const segName   = safeStr(segmentDto?.segmentName);
@@ -400,7 +400,10 @@ function normalizeScoring(entry, components, adjustments, categoryDto, segmentDt
       bonuses:        bon  ?? 0,
       deductions:     ded  ?? 0,
       total:          tot  ?? null,
-      catTotal:       null,
+      // Cumulative category total (computed by the service from the
+      // category's other segments) — the graphic reveals it after the
+      // operator's delay when it exceeds the segment total.
+      catTotal:       safeNum(catTotal),
       startOrder:     entry.sortOrder ?? null,
     },
   };
@@ -490,26 +493,34 @@ function normalizeRankings(entries, categoryDto, segmentDto, lang, rowsPerPage, 
 /**
  * Rank-6 corner standings — top 6 by segmentRank.
  */
-function normalizeStandings(entries, categoryDto, segmentDto, lang, existingControl, pivotEntryId) {
+function normalizeStandings(entries, categoryDto, segmentDto, lang, existingControl, pivotEntryId, priorBySkater) {
   const segName   = safeStr(segmentDto?.segmentName);
   const segNameFr = safeStr(segmentDto?.segmentFrenchName) || tr(segName);
   const catName   = catEn(categoryDto);
   const catNameFr = catFr(categoryDto) || catName;
 
+  // CATEGORY standings: rank by categoryRank and show the cumulative total
+  // (prior segments' scores + this segment's). During the first segment the
+  // prior map is empty, so this degrades to segment rank/score naturally.
+  const prior = priorBySkater instanceof Map ? priorBySkater : new Map();
   const allEntries = Array.isArray(entries) ? entries : [];
   const allRows = allEntries
-    .filter(e => e.segmentRank != null)
-    .sort((a, b) => a.segmentRank - b.segmentRank)
-    .map(e => ({
-      rank:    e.segmentRank,
-      name:    safeStr(e.competitorName),
-      club:    entryClub(e),
-      section: safeStr(e.competitorSection),
-      flagUrl: sectionFlagUrl(e.competitorSection, e.competitorCombinedClubNames),
-      total:   safeNum(e.score),
-      onIce:   !!e.onice,
-      entryId: safeStr(e.competitorEntryId),
-    }));
+    .filter(e => e.score != null && (e.categoryRank != null || e.segmentRank != null))
+    .map(e => {
+      const sc = safeNum(e.score) ?? 0;
+      const priorSum = prior.get(safeStr(e.skaterId || e.skatingCompetitorId)) || 0;
+      return {
+        rank:    e.categoryRank ?? e.segmentRank,
+        name:    safeStr(e.competitorName),
+        club:    entryClub(e),
+        section: safeStr(e.competitorSection),
+        flagUrl: sectionFlagUrl(e.competitorSection, e.competitorCombinedClubNames),
+        total:   Math.round((priorSum + sc) * 100) / 100,
+        onIce:   !!e.onice,
+        entryId: safeStr(e.competitorEntryId),
+      };
+    })
+    .sort((a, b) => a.rank - b.rank);
 
   // Rank-6 CONTEXT rules (ported from the legacy adapter): always show the
   // top 3, then the just-skated skater with their neighbours above and below
