@@ -232,11 +232,23 @@ function createScApiService({
       rankingsCache.rowsPerPage = rpp;
 
       // Rank-6 corner standings
+      // Prior-segment scores (cached 5 min) — used by BOTH the Rank 6
+      // standings (cumulative category totals) and the scoring reveal.
+      let priorBySkater = new Map();
+      if (categoryId) {
+        try {
+          priorBySkater = await getPriorSegmentScores(categoryId, segmentId);
+          if (myGen !== pollGeneration) return;
+        } catch (err) {
+          console.warn('[sc-api] prior-segment scores error:', err.message);
+        }
+      }
+
       const existingSt = readData('standings');
       // Pivot on the scoring-hold skater (the one who just skated / was just
       // scored) so the Rank 6 context always frames THEIR placement.
       const stPayload  = newApi.normalizeStandings(
-        entries, categoryDto, segmentDto, lang, existingSt?.control, scoringHold?.entryId
+        entries, categoryDto, segmentDto, lang, existingSt?.control, scoringHold?.entryId, priorBySkater
       );
       writeAndBroadcast('standings', stPayload, { force });
 
@@ -292,19 +304,13 @@ function createScApiService({
 
       if (scoringEntry) {
         // Cumulative category total = this segment's score + the skater's
-        // scores from the category's earlier segments (fetched + cached).
+        // scores from the category's earlier segments (priorBySkater, cached).
         let catTotal = null;
-        try {
-          const segScore = newApi.safeNum(scoringEntry.score);
-          if (segScore != null && categoryId) {
-            const prior = await getPriorSegmentScores(categoryId, segmentId);
-            if (myGen !== pollGeneration) return;
-            const sk = newApi.safeStr(scoringEntry.skaterId || scoringEntry.skatingCompetitorId);
-            const priorSum = sk ? (prior.get(sk) || 0) : 0;
-            if (priorSum > 0) catTotal = Math.round((priorSum + segScore) * 100) / 100;
-          }
-        } catch (err) {
-          console.warn('[sc-api] prior-segment scores error:', err.message);
+        const segScore = newApi.safeNum(scoringEntry.score);
+        if (segScore != null) {
+          const sk = newApi.safeStr(scoringEntry.skaterId || scoringEntry.skatingCompetitorId);
+          const priorSum = sk ? (priorBySkater.get(sk) || 0) : 0;
+          if (priorSum > 0) catTotal = Math.round((priorSum + segScore) * 100) / 100;
         }
 
         const existingSc = readData('scoring');
