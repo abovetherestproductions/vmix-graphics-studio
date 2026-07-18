@@ -350,6 +350,13 @@ window.GraphicsUtils = {
    * e.g. "Steve Muff / Sherry Parker" → "S. Muff / S. Parker"
    */
   applyInitialsIfNeeded(el, fullText) {
+    // Memo: graphics that re-render on every data tick (elements tracker
+    // updates on each entered element) pass the SAME name repeatedly. Without
+    // this guard the text resets to the full name and re-shortens a frame
+    // later — a visible flicker/jump on pairs/dance names. Same input on the
+    // same element → leave the settled (possibly shortened) text alone.
+    if (el.dataset.initialsInput === fullText) return;
+    el.dataset.initialsInput = fullText;
     el.textContent = fullText;
     if (!fullText.includes(' / ')) return; // only pairs/dance
     // Double rAF so we measure AFTER the parent grid has fully laid out —
