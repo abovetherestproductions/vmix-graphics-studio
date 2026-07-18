@@ -365,7 +365,7 @@ function normalizeStartingOrder(entries, categoryDto, segmentDto, requestedGroup
  * Scoring display — for the skater currently on ice.
  * Pass null for entry to clear. Components and adjustments are optional.
  */
-function normalizeScoring(entry, components, adjustments, categoryDto, segmentDto, lang, existingControl) {
+function normalizeScoring(entry, components, adjustments, categoryDto, segmentDto, lang, existingControl, catTotal = null) {
   if (!entry) return null;
 
   const segName   = safeStr(segmentDto?.segmentName);
@@ -400,7 +400,10 @@ function normalizeScoring(entry, components, adjustments, categoryDto, segmentDt
       bonuses:        bon  ?? 0,
       deductions:     ded  ?? 0,
       total:          tot  ?? null,
-      catTotal:       null,
+      // Cumulative category total (computed by the service from the
+      // category's other segments) — the graphic reveals it after the
+      // operator's delay when it exceeds the segment total.
+      catTotal:       safeNum(catTotal),
       startOrder:     entry.sortOrder ?? null,
     },
   };

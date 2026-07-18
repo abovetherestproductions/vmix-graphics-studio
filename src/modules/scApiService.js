@@ -38,6 +38,33 @@ function createScApiService({
   // (positions.scoring.scHoldSecs, default 30s). Prevents the just-skated
   // skater's score from vanishing the moment the DS activates the next one.
   let scoringHold = null; // { entryId, heldSince, scoreSeenAt }
+  // Cross-segment totals: skaterId → summed score from the category's OTHER
+  // segments (e.g. the SP score while polling the FP). Lets the scoring
+  // graphic reveal the cumulative category total, which the entry DTO
+  // doesn't carry. Prior segments are final, so a 5-minute cache is plenty.
+  let priorScores = { key: null, bySkater: new Map(), fetchedAt: 0 };
+
+  async function getPriorSegmentScores(categoryId, currentSegmentId) {
+    const key = `${categoryId}|${currentSegmentId}`;
+    const FRESH_MS = 5 * 60 * 1000;
+    if (priorScores.key === key && Date.now() - priorScores.fetchedAt < FRESH_MS) {
+      return priorScores.bySkater;
+    }
+    const segs = await fetchSegments(categoryId);
+    const bySkater = new Map();
+    for (const s of segs) {
+      const sid = newApi.safeStr(s.segmentId);
+      if (!sid || sid === currentSegmentId) continue;
+      const ents = await fetchEntries(sid);
+      for (const e of ents) {
+        const sk = newApi.safeStr(e.skaterId || e.skatingCompetitorId);
+        const sc = newApi.safeNum(e.score);
+        if (sk && sc != null) bySkater.set(sk, (bySkater.get(sk) || 0) + sc);
+      }
+    }
+    priorScores = { key, bySkater, fetchedAt: Date.now() };
+    return bySkater;
+  }
   // Cache segment/category DTOs so we don't fetch them every single poll tick
   let _segmentCache  = { id: null, dto: null };
   let _categoryCache = { id: null, dto: null };
@@ -148,6 +175,7 @@ function createScApiService({
     lastOnIceEntryId    = null;
     lastElementsReadyId = null;
     scoringHold         = null;
+    priorScores         = { key: null, bySkater: new Map(), fetchedAt: 0 };
   }
 
   // ── Main poll ─────────────────────────────────────────────────────────────
@@ -263,9 +291,25 @@ function createScApiService({
         : onIce;
 
       if (scoringEntry) {
+        // Cumulative category total = this segment's score + the skater's
+        // scores from the category's earlier segments (fetched + cached).
+        let catTotal = null;
+        try {
+          const segScore = newApi.safeNum(scoringEntry.score);
+          if (segScore != null && categoryId) {
+            const prior = await getPriorSegmentScores(categoryId, segmentId);
+            if (myGen !== pollGeneration) return;
+            const sk = newApi.safeStr(scoringEntry.skaterId || scoringEntry.skatingCompetitorId);
+            const priorSum = sk ? (prior.get(sk) || 0) : 0;
+            if (priorSum > 0) catTotal = Math.round((priorSum + segScore) * 100) / 100;
+          }
+        } catch (err) {
+          console.warn('[sc-api] prior-segment scores error:', err.message);
+        }
+
         const existingSc = readData('scoring');
         const scPayload  = newApi.normalizeScoring(
-          scoringEntry, [], [], categoryDto, segmentDto, lang, existingSc?.control
+          scoringEntry, [], [], categoryDto, segmentDto, lang, existingSc?.control, catTotal
         );
         if (scPayload) writeAndBroadcast('scoring', scPayload);
       }
