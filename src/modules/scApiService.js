@@ -219,21 +219,8 @@ function createScApiService({
       );
       writeAndBroadcast('starting-order', soPayload, { force });
 
-      // Full segment rankings
-      const existingRk  = readData('rankings');
-      const rpp         = rankingsCache.rowsPerPage || existingRk?.data?.rowsPerPage || 6;
-      const currentPage = existingRk?.data?.page || 1;
-      const rkPayload   = newApi.normalizeRankings(
-        entries, categoryDto, segmentDto, lang, rpp, currentPage, existingRk?.control
-      );
-      writeAndBroadcast('rankings', rkPayload, { force });
-      // Keep shared cache in sync so page controls work
-      rankingsCache.allRows     = rkPayload.data.allRows || [];
-      rankingsCache.rowsPerPage = rpp;
-
-      // Rank-6 corner standings
-      // Prior-segment scores (cached 5 min) — used by BOTH the Rank 6
-      // standings (cumulative category totals) and the scoring reveal.
+      // Prior-segment scores (cached 5 min) — cumulative category totals for
+      // the Final Rankings, Rank 6 standings, and the scoring reveal.
       let priorBySkater = new Map();
       if (categoryId) {
         try {
@@ -244,6 +231,19 @@ function createScApiService({
         }
       }
 
+      // Full rankings — category standings with cumulative totals
+      const existingRk  = readData('rankings');
+      const rpp         = rankingsCache.rowsPerPage || existingRk?.data?.rowsPerPage || 6;
+      const currentPage = existingRk?.data?.page || 1;
+      const rkPayload   = newApi.normalizeRankings(
+        entries, categoryDto, segmentDto, lang, rpp, currentPage, existingRk?.control, priorBySkater
+      );
+      writeAndBroadcast('rankings', rkPayload, { force });
+      // Keep shared cache in sync so page controls work
+      rankingsCache.allRows     = rkPayload.data.allRows || [];
+      rankingsCache.rowsPerPage = rpp;
+
+      // Rank-6 corner standings
       const existingSt = readData('standings');
       // Pivot on the scoring-hold skater (the one who just skated / was just
       // scored) so the Rank 6 context always frames THEIR placement.

@@ -440,28 +440,36 @@ function normalizeLowerThird(entry, categoryDto, segmentDto, existingControl) {
  * Segment leaderboard (full rankings graphic).
  * Sorted by segmentRank.
  */
-function normalizeRankings(entries, categoryDto, segmentDto, lang, rowsPerPage, currentPage, existingControl) {
+function normalizeRankings(entries, categoryDto, segmentDto, lang, rowsPerPage, currentPage, existingControl, priorBySkater) {
   const segName   = safeStr(segmentDto?.segmentName);
   const segNameFr = safeStr(segmentDto?.segmentFrenchName) || tr(segName);
   const catName   = catEn(categoryDto);
   const catNameFr = catFr(categoryDto) || catName;
 
+  // Final rankings = CATEGORY standings: categoryRank + cumulative total
+  // (prior segments + this one). First segment: prior map is empty, so this
+  // degrades to segment rank/score naturally.
+  const prior = priorBySkater instanceof Map ? priorBySkater : new Map();
   const allEntries = Array.isArray(entries) ? entries : [];
   const ranked = allEntries
-    .filter(e => e.segmentRank != null || e.score != null)
-    .sort((a, b) => (a.segmentRank ?? 999) - (b.segmentRank ?? 999));
+    .filter(e => e.score != null && (e.categoryRank != null || e.segmentRank != null))
+    .sort((a, b) => (a.categoryRank ?? a.segmentRank ?? 999) - (b.categoryRank ?? b.segmentRank ?? 999));
 
-  const allRows = ranked.map(e => ({
-    rank:     e.segmentRank  ?? null,
-    name:     safeStr(e.competitorName),
-    club:     entryClub(e),
-    section:  safeStr(e.competitorSection),
-    flagUrl:  sectionFlagUrl(e.competitorSection, e.competitorCombinedClubNames),
-    total:    safeNum(e.score),
-    segScore: safeNum(e.score),
-    onIce:    !!e.onice,
-    entryId:  safeStr(e.competitorEntryId),
-  }));
+  const allRows = ranked.map(e => {
+    const sc = safeNum(e.score) ?? 0;
+    const priorSum = prior.get(safeStr(e.skaterId || e.skatingCompetitorId)) || 0;
+    return {
+      rank:     e.categoryRank ?? e.segmentRank ?? null,
+      name:     safeStr(e.competitorName),
+      club:     entryClub(e),
+      section:  safeStr(e.competitorSection),
+      flagUrl:  sectionFlagUrl(e.competitorSection, e.competitorCombinedClubNames),
+      total:    Math.round((priorSum + sc) * 100) / 100,
+      segScore: safeNum(e.score),
+      onIce:    !!e.onice,
+      entryId:  safeStr(e.competitorEntryId),
+    };
+  });
 
   const rpp       = Math.max(1, rowsPerPage || 8);
   const pageCount = Math.max(1, Math.ceil(allRows.length / rpp));
