@@ -9,7 +9,24 @@ const DEFAULT_SETTINGS = {
     defaultBrowserInputName: 'GFX',
     defaultOverlayNumber: 1,
     overlayOutDelayMs: 900,
-    graphicOverlays: {},
+    // Studio-standard routing, so a new machine works without the operator
+    // having to work out input numbers. These are vMix INPUT NUMBERS, which
+    // depend on the order inputs sit in the vMix preset — they only line up if
+    // the machine is running the studio's preset. An operator whose preset
+    // differs overrides them in Production Control, or can type an input NAME
+    // instead of a number, which vMix also accepts and which survives
+    // re-ordering.
+    graphicOverlays: {
+      'starting-order': { inputName: '7',  overlayNumber: 3 },
+      'scoring':        { inputName: '3',  overlayNumber: 3 },
+      'lower-third':    { inputName: '2',  overlayNumber: 3 },
+      'manual-skater':  { inputName: '2',  overlayNumber: 3 },
+      'standings':      { inputName: '6',  overlayNumber: 3 },
+      'officials':      { inputName: '5',  overlayNumber: 3 },
+      'elements':       { inputName: '4',  overlayNumber: 1 },
+      'messages':       { inputName: '1',  overlayNumber: 3 },
+      'rankings':       { inputName: '11', overlayNumber: 3 },
+    },
   },
   localRecordingSorter: {
     // C: because most production machines are single-drive. Operators with a
