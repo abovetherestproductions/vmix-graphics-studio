@@ -20,11 +20,15 @@ per-machine via **Tools → Event Workbooks**.
 
 ## Installing on the vMix machine
 
-1. Copy the `deploy` folder onto the machine (USB stick or download).
-2. Right-click **`Install-VmixGraphics.ps1`** → **Run with PowerShell**.
-3. Accept the Windows permission prompt.
+1. Copy the whole `deploy` folder onto the machine (USB stick or download).
+2. Double-click **`INSTALL.cmd`**.
+3. Click **Yes** on the Windows permission prompt.
 
-That is the whole interaction — there is nothing to sign in to.
+That is the whole interaction — there is nothing to sign in to and nothing to
+type. Keep the files together in one folder; `INSTALL.cmd` looks for the
+installer sitting next to it.
+
+Safe to run again if it stops partway.
 
 The installer will:
 
@@ -36,6 +40,11 @@ The installer will:
 - open the operator page to confirm it works
 
 Takes about five minutes on a clean machine, mostly downloads.
+
+### What if it opens in Notepad?
+
+You double-clicked `Install-VmixGraphics.ps1` instead of `INSTALL.cmd`. Close
+Notepad and use `INSTALL.cmd`.
 
 ### If the machine has no `winget`
 
