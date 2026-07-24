@@ -53,3 +53,13 @@ TECHNICAL-BRIEF-FOR-CODEX-CLAUDE.md
 
 # Stale duplicate of an earlier build, kept locally for reference only
 scan this/
+
+# Dev-only reference material — not needed to run the app
+screenshots of current graphics/
+.claude/
+tools/write-sample-starting-order.js
+
+# Saved config presets are event- and machine-specific (they carry event names
+# and local workbook paths). Operators create their own from the operator UI.
+config/presets/
+
