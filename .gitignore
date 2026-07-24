@@ -28,6 +28,11 @@ CSV Data/
 manual skater list/
 # Operator-uploaded workbooks (messages, etc.) — machine-local, re-upload per install
 uploads/
+# Event spreadsheets — these carry skater and coach names, so they must never
+# ship to another install. Load them per-machine via Tools → Event Workbooks,
+# which stores them under uploads/.
+*.xlsx
+*.xls
 
 # macOS
 .DS_Store
