@@ -18,6 +18,11 @@ public/data/*.json
 !public/data/style-defaults.json
 config/current-state.json
 config/history/
+# vMix host/port, overlay mappings and recording folders — per-machine, and
+# Production Control writes to it. Tracking it would make a pull fail on any
+# machine whose operator has changed a setting. Defaults ship in
+# src/modules/settings.js and the file is recreated on first run.
+config/settings.json
 
 # Logs
 logs/

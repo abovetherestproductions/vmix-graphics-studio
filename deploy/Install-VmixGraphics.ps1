@@ -11,9 +11,8 @@
       Set-ExecutionPolicy -Scope Process Bypass -Force
       .\Install-VmixGraphics.ps1
 
-  You will be asked to paste a GitHub access token. It is written straight
-  into Windows Credential Manager and is never stored in this script or in
-  any file in the repo.
+  Nothing to sign in to — the repo is public, so there are no credentials to
+  enter and nothing that expires later.
 #>
 
 [CmdletBinding()]
@@ -39,6 +38,8 @@ Write-Host @"
   Install location : $InstallPath
   Service name     : $ServiceName
   Web address      : http://localhost:$Port/operator/
+
+  No GitHub account or password is needed.
 
 "@ -ForegroundColor White
 
@@ -82,34 +83,9 @@ $nodeMajor = (& node -p "process.versions.node.split('.')[0]") -as [int]
 if ($nodeMajor -lt 20) { Die "Node 20 or newer is required (found v$nodeMajor). Update Node.js and re-run." }
 Say "Node $(& node -v) / npm $(& npm -v)"
 
-# ------------------------------------------------------------- credentials
-Step "GitHub access"
-Say "The graphics repo is private, so this machine needs a read-only token"
-Say "to download updates. Create one at:"
-Say "  https://github.com/settings/personal-access-tokens"
-Say "  -> Fine-grained token, this repository only, Contents: Read-only"
-Write-Host ""
-
-git config --global credential.helper manager | Out-Null
-
-$secure = Read-Host "Paste the GitHub token (input is hidden)" -AsSecureString
-if ($secure.Length -eq 0) { Die "No token entered." }
-
-# Hand the token to Windows Credential Manager via git's credential helper and
-# drop the plaintext immediately. It is never written to disk by this script.
-$bstr  = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
-try {
-    $token = [Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
-    $cred  = "protocol=https`nhost=github.com`nusername=x-access-token`npassword=$token`n`n"
-    $cred | & git credential-manager store 2>$null
-    if ($LASTEXITCODE -ne 0) { $cred | & git credential approve }
-} finally {
-    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
-    Remove-Variable token, cred -ErrorAction SilentlyContinue
-}
-Say "Token handed to Windows Credential Manager"
-
 # ------------------------------------------------------------------- clone
+# The repo is public, so there is no token to enter and nothing to expire.
+# Updates keep working for the life of the machine.
 Step "Installing the graphics studio"
 if (Test-Path (Join-Path $InstallPath '.git')) {
     Say "Existing install found - updating instead of cloning"
@@ -122,7 +98,7 @@ if (Test-Path (Join-Path $InstallPath '.git')) {
     }
     git clone $RepoUrl $InstallPath
     if ($LASTEXITCODE -ne 0) {
-        Die "Clone failed. The token may be wrong, expired, or lack access to the repo."
+        Die "Clone failed. Check this machine's internet connection and that the repo URL is correct."
     }
 }
 Say "Source is in $InstallPath"

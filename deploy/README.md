@@ -8,21 +8,13 @@ logs in.
 
 ## Before you send this to anyone (studio checklist)
 
-**1. Create a read-only access token.** The repo is private, so each machine
-needs credentials to download updates.
+Nothing to prepare. The repo is public, so operators need no GitHub account,
+no token, and nothing that expires.
 
-- Go to <https://github.com/settings/personal-access-tokens>
-- **Fine-grained token** → *Only select repositories* → this repo
-- Permissions → **Contents: Read-only**
-- Set an expiry you will actually remember. When it expires, Check & Update
-  stops working on every machine until you issue a new one.
-
-Read-only means an operator can pull your updates but can never push anything
-back. Send the token to them over something private — not email.
-
-**2. Decide what ships.** Anything committed to the repo lands on every machine
-you deploy to, including git history. Event spreadsheets with skater and coach
-names should live in `uploads/` (already git-ignored), not in the repo.
+**Just remember what ships.** Anything committed lands on every machine you
+deploy to, and the repo is public — so it is visible to anyone. Event
+spreadsheets carry skater and coach names and are git-ignored; load them
+per-machine via **Tools → Event Workbooks**.
 
 ---
 
@@ -31,8 +23,8 @@ names should live in `uploads/` (already git-ignored), not in the repo.
 1. Copy the `deploy` folder onto the machine (USB stick or download).
 2. Right-click **`Install-VmixGraphics.ps1`** → **Run with PowerShell**.
 3. Accept the Windows permission prompt.
-4. Paste the access token when asked. The typing is hidden. It goes straight
-   into Windows Credential Manager — it is never written into a file.
+
+That is the whole interaction — there is nothing to sign in to.
 
 The installer will:
 
@@ -107,10 +99,16 @@ and the server rewrites it constantly — so its first pull will fail with
 ```powershell
 cd C:\vMixGraphics
 copy public\data\event-config.json "$env:USERPROFILE\Desktop\event-config-backup.json"
-git checkout -- public/data/event-config.json
+copy config\settings.json          "$env:USERPROFILE\Desktop\settings-backup.json"
+git checkout -- public/data/event-config.json config/settings.json
 git pull --ff-only
 copy "$env:USERPROFILE\Desktop\event-config-backup.json" public\data\event-config.json
+copy "$env:USERPROFILE\Desktop\settings-backup.json"     config\settings.json
 ```
+
+`config/settings.json` (vMix host, overlay mappings, recording folders) is now
+machine-local too, so it needs the same treatment — otherwise the pull fails on
+it, or the machine reverts to empty overlay mappings.
 
 Then restart the service. On boot the server splits that file into the new
 layout and the machine keeps its event selection, workbook paths, and settings.
@@ -147,8 +145,8 @@ cd C:\vMixGraphics\service
 .\VmixGraphicsStudio.exe uninstall
 ```
 
-Then delete `C:\vMixGraphics`. To also clear the saved token, remove the
-`github.com` entry from *Windows Credential Manager → Windows Credentials*.
+Then delete `C:\vMixGraphics`. Nothing else is left behind — no stored
+credentials, no registry entries beyond the service registration.
 
 **Another machine on the network needs to reach the graphics**
 
