@@ -62,7 +62,7 @@ function buildNeedsReviewFileName(snapshot = {}) {
 
 function buildCategoryFolder(snapshot, settings) {
   const sorter = settings.localRecordingSorter || {};
-  const root = sorter.outputRootFolder || 'D:\\SkatingVideos';
+  const root = sorter.outputRootFolder || 'C:\\SkatingVideos';
   const category = sanitizeFolderName(snapshot.categoryName || 'Unknown Category');
   const rawSeg = (snapshot.segmentName || '').replace(/\s+program$/i, '').trim();
   const segment = rawSeg ? sanitizeFolderName(rawSeg) : '';

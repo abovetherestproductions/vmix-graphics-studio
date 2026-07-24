@@ -46,3 +46,10 @@ uploads/
 # Environment / secrets (precaution)
 .env
 .env.*
+
+# Internal working notes — kept locally, not part of what ships
+PROMPT-FOR-CODEX-CLAUDE.md
+TECHNICAL-BRIEF-FOR-CODEX-CLAUDE.md
+
+# Stale duplicate of an earlier build, kept locally for reference only
+scan this/

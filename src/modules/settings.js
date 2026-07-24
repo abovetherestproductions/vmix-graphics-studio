@@ -12,8 +12,11 @@ const DEFAULT_SETTINGS = {
     graphicOverlays: {},
   },
   localRecordingSorter: {
-    outputRootFolder: 'D:\\SkatingVideos',
-    needsReviewFolder: 'D:\\SkatingVideos\\_Needs Review',
+    // C: because most production machines are single-drive. Operators with a
+    // dedicated media drive change these in Production Control; the folders
+    // are created on demand, so no drive needs to exist up front.
+    outputRootFolder: 'C:\\SkatingVideos',
+    needsReviewFolder: 'C:\\SkatingVideos\\_Needs Review',
     createCategoryFoldersAutomatically: true,
     filenameFormat: '{skaterName}.mp4',
     categoryRecordingFilenameFormat: '{eventName} - {categoryName} - Segment {segmentNumber}.mp4',
