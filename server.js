@@ -1847,7 +1847,17 @@ app.get('/api/version', (_req, res) => {
 // server afterward (Node can't reliably relaunch itself without a supervisor).
 app.post('/api/update', (_req, res) => {
   git(['pull', '--ff-only'], (err, out, stderr) => {
-    if (err) return res.status(500).json({ ok: false, error: stderr || out || err.message });
+    if (err) {
+      const raw = stderr || out || err.message || '';
+      // A non-fast-forward means this clone's history no longer matches what
+      // is published (the studio rewrote history). An operator cannot resolve
+      // that from here, so say so plainly instead of surfacing git's wording.
+      const diverged = /non-fast-forward|not possible to fast-forward|unrelated histories|diverged/i.test(raw);
+      const error = diverged
+        ? 'This install no longer matches the published version and cannot update itself. Your studio contact needs to reset it — event, settings and workbooks are not affected.'
+        : raw;
+      return res.status(500).json({ ok: false, error, diverged });
+    }
     const alreadyCurrent = /up to date/i.test(out);
 
     // Under the Windows service the wrapper restarts us on exit, so we can

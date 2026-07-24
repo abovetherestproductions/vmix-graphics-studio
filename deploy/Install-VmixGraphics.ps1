@@ -90,7 +90,25 @@ Step "Installing the graphics studio"
 if (Test-Path (Join-Path $InstallPath '.git')) {
     Say "Existing install found - updating instead of cloning"
     Push-Location $InstallPath
-    try { git pull --ff-only } finally { Pop-Location }
+    try {
+        git fetch origin 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) { Die "Could not reach GitHub. Check this machine's internet connection." }
+
+        git pull --ff-only 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            # A plain pull cannot cross a rewritten history, and silently
+            # carrying on here would leave the machine running old code while
+            # the installer reported success. Everything an operator owns —
+            # event state, settings, uploads — is git-ignored, so resetting
+            # onto the published history is safe and loses nothing.
+            Warn "This install cannot fast-forward, so it is being reset onto the published version."
+            git reset --hard origin/main 2>&1 | Out-Null
+            if ($LASTEXITCODE -ne 0) { Die "Could not reset this install. Delete $InstallPath and run the installer again." }
+            Say "Reset onto the current published version"
+        } else {
+            Say "Updated to the latest version"
+        }
+    } finally { Pop-Location }
 } else {
     if (Test-Path $InstallPath) {
         $items = Get-ChildItem -Force $InstallPath -ErrorAction SilentlyContinue
