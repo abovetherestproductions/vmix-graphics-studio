@@ -3,24 +3,9 @@
   "logoFile": "SC-Emblem_RGB-White NO LETTERS.png",
   "elementsDisplayMode": "name",
   "elementsTotalLabel": "TES",
-  "elementsTotalLabelFr": "NTÉ",
+  "elementsTotalLabelFr": "NT\u00c9",
   "season": "2025-26",
   "showHeaderRings": false,
-  "messages": {
-    "workbookPath": "uploads/messages/2026 NextGen Messages.xlsx",
-    "sheetName": "",
-    "topHeader": "",
-    "bottomHeader": "",
-    "selectedIndex": 0
-  },
-  "manualSkaters": {
-    "workbookPath": "D:\\vmix presets\\2026 VDI - RINK 1\\vmix-infosheet-2026-bc-yt-super-series-victoria-day-rink-1.xlsx",
-    "sheetName": "",
-    "nameHeader": "Name",
-    "clubHeader": "Club",
-    "categoryHeader": "Category",
-    "selectedIndex": 530
-  },
   "theme": {
     "accentColor": "#c8102e",
     "accentColorLight": "#fb4361",
@@ -415,9 +400,5 @@
   "elementsHideHighest": false,
   "elementsHideLightRail": false,
   "nameFormat": "firstlast",
-  "skaterExtras": {
-    "musicWorkbookPath": "NextGen 26 Music Titles.xlsx",
-    "quotesWorkbookPath": "NextGen26 Quotes for Streaming.xlsx",
-    "coachesWorkbookPath": "uploads/skater-extras/coaches-Skater  Coach List 26NextGen.xlsx"
-  }
+  "elementsHighestShowName": true
 }

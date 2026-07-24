@@ -36,25 +36,39 @@ const DATA_DIR   = path.join(__dirname, 'public', 'data');
 // so writeConfig/writeData never fail with ENOENT on a new install.
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
-// ── Split config: style (synced) vs event-state (machine-local) ─────────────
-// STYLE_FILE holds the durable look — theme, positions, logo, name format,
-// element labels, workbook paths — and is git-tracked so a studio machine can
-// push its look to every install.
-// STATE_FILE holds the volatile, per-machine event selection and the
-// API-derived event/category/segment names the poller rewrites every tick.
-// It is git-IGNORED, so pulling never clobbers a machine's active segment and
-// the tracked file stays clean.
-// readConfig() merges the two into one object, so all downstream code is
-// unchanged; writeConfig() routes each key back to its file.
+// ── Layered config: defaults (shipped) → style overrides → event state ──────
+// Three files, one merged view. The layering is what makes `git pull` a safe
+// update mechanism for installs out in the field:
+//
+//   style-defaults.json — TRACKED. The studio's look, shipped with every
+//                         update. Nothing on a user's machine writes here, so
+//                         it is never locally modified and a pull can always
+//                         fast-forward it.
+//   style-config.json   — IGNORED. Only the keys this machine has actually
+//                         CHANGED from the defaults (a minimal diff). Untouched
+//                         settings stay absent, so new studio defaults flow
+//                         through on update while local tweaks survive.
+//   event-state.json    — IGNORED. Machine-local event selection, workbook
+//                         paths, and the API-derived names the poller rewrites
+//                         every tick.
+//   event-config.json   — IGNORED. Derived merged cache the graphics read.
+//
+// readConfig() deep-merges defaults ← overrides ← state into one object, so all
+// downstream code is unchanged; writeConfig() routes each key back to its file.
+const STYLE_DEFAULTS_FILE = path.join(DATA_DIR, 'style-defaults.json');
 const STYLE_FILE  = path.join(DATA_DIR, 'style-config.json');
 const STATE_FILE  = path.join(DATA_DIR, 'event-state.json');
 const CONFIG_FILE = path.join(DATA_DIR, 'event-config.json'); // legacy — migration source only
 // Keys that live in event-state.json (machine-local). Everything else is style.
+// The workbook groups are here because their paths point at files under
+// uploads/ on THIS machine — shipping them to another install is meaningless
+// and would dirty a tracked file on every upload.
 const LOCAL_CONFIG_KEYS = new Set([
   'dataSource', 'machineName',
   'eventName', 'eventNameFr', 'eventLocation', 'eventLocationFr',
   'eventDate', 'eventDateFr', 'eventSubtitle', 'headerSubtitle', 'logoPath',
   'categoryName', 'categoryNameFr', 'segmentName', 'segmentNameFr', 'segmentNumber',
+  'messages', 'manualSkaters', 'skaterExtras',
 ]);
 const DEFAULT_CSV_FILES = {
   eventInfo: 'SC2_csslivetextEventInfo.csv',
@@ -175,24 +189,94 @@ function readJsonSafe(fp) {
   try { return JSON.parse(fs.readFileSync(fp, 'utf8')); } catch { return {}; }
 }
 
-// Migration — derives each split file independently from the legacy
-// event-config.json when it's missing. Handles two cases:
-//   • First run after the split lands (neither split file present) → create both.
-//   • A machine that PULLED style-config.json from another install but kept its
-//     own legacy event-config.json → style exists, state doesn't; derive state
-//     from the legacy file so the machine keeps ITS OWN event selection.
-// Idempotent: once both split files exist, does nothing.
+const isPlainObject = v => !!v && typeof v === 'object' && !Array.isArray(v);
+
+function deepEqual(a, b) {
+  if (a === b) return true;
+  if (isPlainObject(a) && isPlainObject(b)) {
+    const ak = Object.keys(a), bk = Object.keys(b);
+    if (ak.length !== bk.length) return false;
+    return ak.every(k => Object.prototype.hasOwnProperty.call(b, k) && deepEqual(a[k], b[k]));
+  }
+  if (Array.isArray(a) && Array.isArray(b)) {
+    return a.length === b.length && a.every((v, i) => deepEqual(v, b[i]));
+  }
+  return false;
+}
+
+// Layer `override` on top of `base`. Nested objects merge key-by-key so a
+// machine that changed one theme colour keeps inheriting the rest; arrays are
+// replaced wholesale (a partial array merge is never what you want here).
+function deepMerge(base, override) {
+  const out = isPlainObject(base) ? { ...base } : {};
+  for (const [k, v] of Object.entries(override || {})) {
+    out[k] = isPlainObject(v) && isPlainObject(out[k]) ? deepMerge(out[k], v) : v;
+  }
+  return out;
+}
+
+// Reduce a full style object to only what differs from the shipped defaults.
+// This is what keeps updates non-destructive: anything the operator never
+// touched is simply absent, so a new studio default reaches them untouched.
+function diffFromDefaults(obj, defaults) {
+  const out = {};
+  for (const [k, v] of Object.entries(obj || {})) {
+    const d = isPlainObject(defaults) ? defaults[k] : undefined;
+    if (isPlainObject(v) && isPlainObject(d)) {
+      const sub = diffFromDefaults(v, d);
+      if (Object.keys(sub).length) out[k] = sub;
+    } else if (!deepEqual(v, d)) {
+      out[k] = v;
+    }
+  }
+  return out;
+}
+
+function readStyleDefaults() { return readJsonSafe(STYLE_DEFAULTS_FILE); }
+
+// Migration + self-healing normalisation. Runs on every boot and is idempotent.
+// Handles, in order:
+//   • Legacy install (event-config.json only) → derive overrides + state.
+//   • A machine upgrading from the flat split, whose style-config.json holds a
+//     FULL copy of the style → compact it to a minimal diff so future studio
+//     defaults can reach it.
+//   • Machine-local keys (workbook paths) previously filed under style → move
+//     them into event-state.json where a pull can never touch them.
 function migrateConfigIfNeeded() {
-  const haveStyle = fs.existsSync(STYLE_FILE);
-  const haveState = fs.existsSync(STATE_FILE);
-  if (haveStyle && haveState) return;
-  if (!fs.existsSync(CONFIG_FILE)) return; // fresh install — nothing to migrate
-  const legacy = readJsonSafe(CONFIG_FILE);
-  const { style, state } = splitConfig(legacy);
+  const defaults = readStyleDefaults();
   try {
-    if (!haveStyle) fs.writeFileSync(STYLE_FILE, JSON.stringify(style, null, 2));
-    if (!haveState) fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
-    console.log(`[config] migrated event-config.json → ${!haveStyle ? 'style ' : ''}${!haveState ? 'state' : ''}`.trim());
+    let style = fs.existsSync(STYLE_FILE) ? readJsonSafe(STYLE_FILE) : null;
+    let state = fs.existsSync(STATE_FILE) ? readJsonSafe(STATE_FILE) : null;
+
+    // Legacy: derive whatever is missing from the old merged file.
+    if ((style === null || state === null) && fs.existsSync(CONFIG_FILE)) {
+      const split = splitConfig(readJsonSafe(CONFIG_FILE));
+      if (style === null) style = split.style;
+      if (state === null) state = split.state;
+      console.log('[config] migrated legacy event-config.json');
+    }
+    if (style === null && state === null) return; // fresh install — pure defaults
+    style = style || {};
+    state = state || {};
+
+    // Relocate machine-local keys that an older build filed under style.
+    let moved = 0;
+    for (const k of Object.keys(style)) {
+      if (!LOCAL_CONFIG_KEYS.has(k)) continue;
+      if (!(k in state)) state[k] = style[k];
+      delete style[k];
+      moved++;
+    }
+    if (moved) console.log(`[config] moved ${moved} machine-local key(s) into event-state.json`);
+
+    // Compact the overrides to a minimal diff against the shipped defaults.
+    const minimal = diffFromDefaults(style, defaults);
+    if (!deepEqual(style, minimal)) {
+      const dropped = Object.keys(style).length - Object.keys(minimal).length;
+      if (dropped > 0) console.log(`[config] ${dropped} setting(s) now match the shipped defaults — inheriting them`);
+    }
+    fs.writeFileSync(STYLE_FILE, JSON.stringify(minimal, null, 2));
+    fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
   } catch (e) {
     console.warn('[config] migration failed:', e.message);
   }
@@ -208,8 +292,9 @@ function splitConfig(cfg) {
 }
 
 function readConfig() {
-  // Merge style (base) + state (local overrides). Keys are disjoint by design.
-  return { ...readJsonSafe(STYLE_FILE), ...readJsonSafe(STATE_FILE) };
+  // defaults (shipped) ← style overrides (this machine) ← event state (local).
+  // Style and state keys are disjoint by design, so state applies flat on top.
+  return { ...deepMerge(readStyleDefaults(), readJsonSafe(STYLE_FILE)), ...readJsonSafe(STATE_FILE) };
 }
 
 migrateConfigIfNeeded();
@@ -250,13 +335,18 @@ function backupConfigFile() {
   } catch { /* ignore */ }
 }
 
-// Write the split sources of truth plus the derived merged cache that the
-// graphics + file-watcher consume. event-config.json is now a git-ignored
-// derived artifact; style-config.json (tracked) and event-state.json (local)
-// are authoritative.
+// Write the local sources of truth plus the derived merged cache that the
+// graphics + file-watcher consume. style-defaults.json is read-only here — the
+// studio ships it and nothing on this machine may dirty it, which is precisely
+// what lets `git pull --ff-only` keep working forever. Only the diff against
+// those defaults is persisted, so settings the operator never touched stay
+// inherited rather than frozen at today's value.
 function persistConfig(cfg, { skipStyle = false } = {}) {
   const { style, state } = splitConfig(cfg);
-  if (!skipStyle) fs.writeFileSync(STYLE_FILE, JSON.stringify(style, null, 2));
+  if (!skipStyle) {
+    const overrides = diffFromDefaults(style, readStyleDefaults());
+    fs.writeFileSync(STYLE_FILE, JSON.stringify(overrides, null, 2));
+  }
   fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2)); // derived cache
 }

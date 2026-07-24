@@ -2,15 +2,20 @@
 node_modules/
 
 # Live runtime data — changes per competition, not part of the codebase.
-# Config is split in two:
-#   style-config.json  — theme, positions, logo, labels → TRACKED (syncs the
-#                        studio's look to every install).
-#   event-state.json   — active segment selection + API-derived names →
-#                        IGNORED (machine-local; a pull never clobbers a
-#                        machine's live event, and the tracked file stays clean).
-#   event-config.json  — derived merged cache the graphics read → IGNORED.
+# Config is layered so that `git pull` can update installs in the field without
+# ever overwriting what an operator has changed:
+#   style-defaults.json — the studio's look → TRACKED. Ships with each update.
+#                         Nothing on a user's machine writes to it, so it is
+#                         never locally modified and a pull always fast-forwards.
+#   style-config.json   — ONLY the settings this machine changed from those
+#                         defaults → IGNORED. Untouched settings stay absent and
+#                         keep inheriting, so new defaults reach every install.
+#   event-state.json    — active segment, workbook paths, API-derived names →
+#                         IGNORED (machine-local; a pull never clobbers a
+#                         machine's live event).
+#   event-config.json   — derived merged cache the graphics read → IGNORED.
 public/data/*.json
-!public/data/style-config.json
+!public/data/style-defaults.json
 config/current-state.json
 config/history/
 
