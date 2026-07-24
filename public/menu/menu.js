@@ -2,14 +2,12 @@
   const graphics = [
     ['Starting Order', '/graphics/starting-order/'],
     ['Scoring Display', '/graphics/scoring/'],
-    ['Lower Third', '/graphics/lower-third/'],
     ['Rank 6 Context', '/graphics/standings/'],
     ['Officials', '/graphics/officials/'],
     ['Elements Tracker', '/graphics/elements/'],
-    ['Skater Profile', '/graphics/skater-profile/'],
     ['Final Rankings', '/graphics/rankings/'],
     ['Messages', '/graphics/messages/'],
-    ['Manual Skater', '/graphics/manual-skater/'],
+    ['Skater Name Bar', '/graphics/manual-skater/'],
     ['Interview', '/graphics/interview/'],
   ];
 
@@ -19,6 +17,7 @@
     ['Messages Control', '/messages/'],
     ['Manual Skater Control', '/manual-skaters/'],
     ['Interview Control', '/operator/interview.html'],
+    ['Clocks Control', '/operator/clocks.html'],
     ['Production Control', '/production-control/'],
   ];
 

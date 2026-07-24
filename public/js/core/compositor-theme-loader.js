@@ -79,7 +79,7 @@
     for (const [prop, value] of Object.entries(colorMap)) {
       if (value != null) docRoot.style.setProperty(prop, value);
     }
-    const showRings = config.showHeaderRings !== false;
+    const showRings = config.showHeaderRings === true;
     docRoot.style.setProperty('--header-rings-opacity', showRings ? '1' : '0');
 
     // ── 2. Language ───────────────────────────────────────────────────────
@@ -246,6 +246,10 @@
         msgLine1Size:   pos.msgLine1Size      ?? 40,
         msgLine2Size:   pos.msgLine2Size      ?? 20,
         msExtrasEnabled: pos.msExtrasEnabled !== false,
+        msShowCoaches:  pos.msShowCoaches !== false,
+        msShowQuote:    pos.msShowQuote !== false,
+        msShowMusic:    pos.msShowMusic !== false,
+        msShowCategory: pos.msShowCategory !== false,
         msQuoteMs:      (Number(pos.msQuoteSecs) || 4) * 1000,
         msCoachMs:      (Number(pos.msCoachSecs) || 4) * 1000,
       };

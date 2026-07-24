@@ -7,9 +7,9 @@ const http = require('http');
  * vMix listens on port 8088 by default and returns XML responses.
  * All we need is fire-and-forget for recording commands.
  */
-function createVmixClient({ getConfig }) {
+function createVmixClient({ getSettings }) {
 
-  function cfg()  { return getConfig().autoRecord || {}; }
+  function cfg()  { return getSettings().vmix || {}; }
   function host() { return cfg().vmixHost || 'localhost'; }
   function port() { return Number(cfg().vmixPort) || 8088; }
 

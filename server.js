@@ -35,7 +35,27 @@ const DATA_DIR   = path.join(__dirname, 'public', 'data');
 // Fresh clones don't have this folder (git ignores its contents) — create it
 // so writeConfig/writeData never fail with ENOENT on a new install.
 fs.mkdirSync(DATA_DIR, { recursive: true });
-const CONFIG_FILE = path.join(DATA_DIR, 'event-config.json');
+
+// ── Split config: style (synced) vs event-state (machine-local) ─────────────
+// STYLE_FILE holds the durable look — theme, positions, logo, name format,
+// element labels, workbook paths — and is git-tracked so a studio machine can
+// push its look to every install.
+// STATE_FILE holds the volatile, per-machine event selection and the
+// API-derived event/category/segment names the poller rewrites every tick.
+// It is git-IGNORED, so pulling never clobbers a machine's active segment and
+// the tracked file stays clean.
+// readConfig() merges the two into one object, so all downstream code is
+// unchanged; writeConfig() routes each key back to its file.
+const STYLE_FILE  = path.join(DATA_DIR, 'style-config.json');
+const STATE_FILE  = path.join(DATA_DIR, 'event-state.json');
+const CONFIG_FILE = path.join(DATA_DIR, 'event-config.json'); // legacy — migration source only
+// Keys that live in event-state.json (machine-local). Everything else is style.
+const LOCAL_CONFIG_KEYS = new Set([
+  'dataSource', 'machineName',
+  'eventName', 'eventNameFr', 'eventLocation', 'eventLocationFr',
+  'eventDate', 'eventDateFr', 'eventSubtitle', 'headerSubtitle', 'logoPath',
+  'categoryName', 'categoryNameFr', 'segmentName', 'segmentNameFr', 'segmentNumber',
+]);
 const DEFAULT_CSV_FILES = {
   eventInfo: 'SC2_csslivetextEventInfo.csv',
   startOrder: 'SC2_csslivetextStartOrder.csv',
@@ -124,7 +144,8 @@ TEMPLATES.forEach(t => {
 
 const settingsService = createSettingsService(__dirname);
 const stateService = createStateService(__dirname, {
-  eventConfigPath: CONFIG_FILE,
+  // event/category/segment names live in the local state file now
+  eventConfigPath: STATE_FILE,
   startingOrderPath: path.join(DATA_DIR, 'starting-order.json'),
   scoringPath: path.join(DATA_DIR, 'scoring.json'),
   manualSkaterPath: path.join(DATA_DIR, 'manual-skater.json'),
@@ -150,9 +171,48 @@ const dailymotionService = createDailymotionService(
 );
 
 // ── Helpers ────────────────────────────────────────────────────────────────
-function readConfig() {
-  try { return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8')); } catch { return {}; }
+function readJsonSafe(fp) {
+  try { return JSON.parse(fs.readFileSync(fp, 'utf8')); } catch { return {}; }
 }
+
+// Migration — derives each split file independently from the legacy
+// event-config.json when it's missing. Handles two cases:
+//   • First run after the split lands (neither split file present) → create both.
+//   • A machine that PULLED style-config.json from another install but kept its
+//     own legacy event-config.json → style exists, state doesn't; derive state
+//     from the legacy file so the machine keeps ITS OWN event selection.
+// Idempotent: once both split files exist, does nothing.
+function migrateConfigIfNeeded() {
+  const haveStyle = fs.existsSync(STYLE_FILE);
+  const haveState = fs.existsSync(STATE_FILE);
+  if (haveStyle && haveState) return;
+  if (!fs.existsSync(CONFIG_FILE)) return; // fresh install — nothing to migrate
+  const legacy = readJsonSafe(CONFIG_FILE);
+  const { style, state } = splitConfig(legacy);
+  try {
+    if (!haveStyle) fs.writeFileSync(STYLE_FILE, JSON.stringify(style, null, 2));
+    if (!haveState) fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
+    console.log(`[config] migrated event-config.json → ${!haveStyle ? 'style ' : ''}${!haveState ? 'state' : ''}`.trim());
+  } catch (e) {
+    console.warn('[config] migration failed:', e.message);
+  }
+}
+
+// Partition a merged config object into its style and local-state halves.
+function splitConfig(cfg) {
+  const style = {}, state = {};
+  for (const [k, v] of Object.entries(cfg || {})) {
+    (LOCAL_CONFIG_KEYS.has(k) ? state : style)[k] = v;
+  }
+  return { style, state };
+}
+
+function readConfig() {
+  // Merge style (base) + state (local overrides). Keys are disjoint by design.
+  return { ...readJsonSafe(STYLE_FILE), ...readJsonSafe(STATE_FILE) };
+}
+
+migrateConfigIfNeeded();
 
 // ── Config history (auto-backup) + presets ───────────────────────────────
 // Every save to event-config.json drops a timestamped snapshot into
@@ -169,11 +229,11 @@ function ensureDir(dir) {
 }
 
 function backupConfigFile() {
-  // Only back up if the file actually exists and parses — never snapshot
-  // a corrupt or empty config (would just be 20 useless snapshots).
-  let raw;
-  try { raw = fs.readFileSync(CONFIG_FILE, 'utf8'); } catch { return; }
-  try { JSON.parse(raw); } catch { return; }
+  // Snapshot the MERGED config (style + state) so a restore brings back
+  // everything. Skip empty configs — no point snapshotting nothing.
+  const merged = readConfig();
+  if (!merged || !Object.keys(merged).length) return;
+  const raw = JSON.stringify(merged, null, 2);
   ensureDir(CONFIG_HISTORY_DIR);
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   const fp = path.join(CONFIG_HISTORY_DIR, `event-config-${stamp}.json`);
@@ -190,11 +250,22 @@ function backupConfigFile() {
   } catch { /* ignore */ }
 }
 
+// Write the split sources of truth plus the derived merged cache that the
+// graphics + file-watcher consume. event-config.json is now a git-ignored
+// derived artifact; style-config.json (tracked) and event-state.json (local)
+// are authoritative.
+function persistConfig(cfg, { skipStyle = false } = {}) {
+  const { style, state } = splitConfig(cfg);
+  if (!skipStyle) fs.writeFileSync(STYLE_FILE, JSON.stringify(style, null, 2));
+  fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
+  fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2)); // derived cache
+}
+
 function writeConfig(cfg) {
   // Snapshot the PREVIOUS state before overwriting, so the most-recent
   // backup is always "the config as it was just before this save".
   backupConfigFile();
-  fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2));
+  persistConfig(cfg);
   broadcast({ type: 'config-update' });
 }
 
@@ -375,8 +446,11 @@ function applyEventInfoPatch(info) {
     // Suppress the file-watcher config-update broadcast for this write —
     // applyEventInfoPatch runs on every sc-api poll and must not flood the
     // operator with config-update messages that race with language changes.
+    // Only local-state keys change here, so the tracked style-config.json is
+    // rewritten with identical content (harmless) while event-state.json +
+    // the derived cache carry the churn. The watcher keys on the cache write.
     _silentConfigWriteCount++;
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2));
+    persistConfig(cfg, { skipStyle: true });
     return true;
   } catch {
     return false;
@@ -553,7 +627,11 @@ const skaterExtrasService = createSkaterExtrasService({
 
 // ── vMix auto-record ──────────────────────────────────────────────────────────
 
-const vmixClient = createVmixClient({ getConfig: readConfig });
+// Single source of truth for vMix host/port: settings.vmix.* (the same store
+// Production Control's "vMix" panel edits, and vmixService already reads).
+// Previously this read a separate autoRecord.vmixHost/vmixPort — consolidated
+// so there's exactly one place to configure the vMix connection.
+const vmixClient = createVmixClient({ getSettings: () => settingsService.readSettings() });
 
 const autoRecordState = {
   countdownTimer:    null,   // setTimeout handle for auto-record countdown
@@ -1565,7 +1643,7 @@ function stopAllPolling() {
 }
 
 // ── Middleware ─────────────────────────────────────────────────────────────
-app.use(express.json());
+app.use(express.json({ limit: '15mb' })); // headroom for base64 workbook uploads
 app.use(express.static(path.join(__dirname, 'public'), {
   etag: false, lastModified: false, cacheControl: false,
 }));
@@ -1598,6 +1676,11 @@ let _configChangeTimer = null;
 chokidar.watch(path.join(DATA_DIR, '*.json'), { ignoreInitial: true })
   .on('change', fp => {
     const template = path.basename(fp, '.json');
+    // event-config.json is the derived merged cache written by every config
+    // path (writeConfig + applyEventInfoPatch); it's the single change trigger.
+    // The split source files (style-config / event-state) are written together
+    // with it, so we ignore them here to keep the silent-write counter exact.
+    if (template === 'style-config' || template === 'event-state') return;
     if (template === 'event-config') {
       if (_silentConfigWriteCount > 0) { _silentConfigWriteCount--; }
       else { broadcast({ type: 'config-update' }); }
@@ -1650,6 +1733,33 @@ app.get('/api/status', (_req, res) => {
     livePollActive: isSourcePollingActive(),
     sourceMode: getDataSourceMode(cfg),
     language: cfg.language || 'en',
+  });
+});
+
+// ── Version + self-update (git) ─────────────────────────────────────────────
+const { execFile } = require('child_process');
+function git(args, cb) {
+  execFile('git', args, { cwd: __dirname, timeout: 30000 }, (err, stdout, stderr) =>
+    cb(err, String(stdout || '').trim(), String(stderr || '').trim()));
+}
+
+app.get('/api/version', (_req, res) => {
+  git(['log', '-1', '--format=%h|%cd|%s', '--date=format:%Y-%m-%d %H:%M'], (err, out) => {
+    if (err || !out) return res.json({ ok: true, available: false });
+    const [commit, date, subject] = out.split('|');
+    git(['rev-parse', '--abbrev-ref', 'HEAD'], (e2, branch) => {
+      res.json({ ok: true, available: true, commit, date, subject, branch: branch || '' });
+    });
+  });
+});
+
+// Pull the latest code. Reports the git output; the operator restarts the
+// server afterward (Node can't reliably relaunch itself without a supervisor).
+app.post('/api/update', (_req, res) => {
+  git(['pull', '--ff-only'], (err, out, stderr) => {
+    if (err) return res.status(500).json({ ok: false, error: stderr || out || err.message });
+    const alreadyCurrent = /up to date/i.test(out);
+    res.json({ ok: true, alreadyCurrent, output: out || stderr });
   });
 });
 
@@ -1928,7 +2038,7 @@ const PREVIEW_GRAPHIC_META = {
   officials: { title: 'OFFICIALS', sub: 'JUDGES', accent: '#e31b3f' },
   elements: { title: 'ELEMENTS', sub: 'GOE TRACKER', accent: '#e31b3f' },
   messages: { title: 'MESSAGES', sub: 'ANNOUNCE', accent: '#e31b3f' },
-  'manual-skater': { title: 'MANUAL', sub: 'SKATER', accent: '#e31b3f' },
+  'manual-skater': { title: 'SKATER', sub: 'NAME BAR', accent: '#e31b3f' },
   interview: { title: 'INTERVIEW', sub: 'NAME BAR', accent: '#c9a227' },
   'skater-profile': { title: 'PROFILE', sub: 'SKATER BIO', accent: '#e31b3f' },
   rankings: { title: 'RANKINGS', sub: 'FINAL', accent: '#e31b3f' },
@@ -2520,6 +2630,33 @@ app.post('/api/messages/config', (req, res) => {
     const settings = messagesService.saveSettings(req.body || {});
     const status = messagesService.current({ write: true });
     res.json({ ok: true, settings, rows: status.workbook.rows, headers: status.workbook.headers, sheetNames: status.workbook.sheetNames });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Upload a messages workbook straight from the operator's computer — no path
+// typing. Body: { filename, dataBase64 }. Saved under uploads/messages/ and
+// wired up as the active workbook, then the list refreshes.
+const UPLOADS_DIR = path.join(__dirname, 'uploads');
+app.post('/api/messages/upload', (req, res) => {
+  try {
+    const { filename, dataBase64 } = req.body || {};
+    if (!filename || !dataBase64) return res.status(400).json({ ok: false, error: 'filename and dataBase64 are required' });
+    if (!/\.(xlsx|xls|csv)$/i.test(filename)) return res.status(400).json({ ok: false, error: 'File must be .xlsx, .xls, or .csv' });
+    // Sanitize to a safe basename (strip any path components + odd chars).
+    const safe = path.basename(filename).replace(/[^a-zA-Z0-9._ -]/g, '').trim() || 'messages.xlsx';
+    const destDir = path.join(UPLOADS_DIR, 'messages');
+    ensureDir(destDir);
+    const buf = Buffer.from(String(dataBase64).replace(/^data:[^,]*,/, ''), 'base64');
+    if (buf.length > 15 * 1024 * 1024) return res.status(413).json({ ok: false, error: 'File too large (max 15 MB)' });
+    fs.writeFileSync(path.join(destDir, safe), buf);
+    // Relative path resolves against rootDir in the messages service.
+    const relPath = path.join('uploads', 'messages', safe);
+    messagesService.saveSettings({ workbookPath: relPath, sheetName: '' });
+    const status = messagesService.current({ write: true });
+    res.json({ ok: true, filename: safe, workbookPath: relPath,
+      rows: status.workbook.rows, headers: status.workbook.headers, sheetNames: status.workbook.sheetNames });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
@@ -3284,6 +3421,39 @@ app.get('/api/skater-extras/status', (_req, res) => {
   res.json({ ok: true, ...skaterExtrasService.status() });
 });
 
+// Upload a coaches / quotes / music workbook straight from the operator's
+// computer — no path typing, same pattern as /api/messages/upload. Body:
+// { kind: 'music'|'quotes'|'coaches', filename, dataBase64 }.
+const SKATER_EXTRAS_CONFIG_KEY = {
+  music:   'musicWorkbookPath',
+  quotes:  'quotesWorkbookPath',
+  coaches: 'coachesWorkbookPath',
+};
+app.post('/api/skater-extras/upload', (req, res) => {
+  try {
+    const { kind, filename, dataBase64 } = req.body || {};
+    const configKey = SKATER_EXTRAS_CONFIG_KEY[kind];
+    if (!configKey) return res.status(400).json({ ok: false, error: 'kind must be music, quotes, or coaches' });
+    if (!filename || !dataBase64) return res.status(400).json({ ok: false, error: 'filename and dataBase64 are required' });
+    if (!/\.(xlsx|xls|csv)$/i.test(filename)) return res.status(400).json({ ok: false, error: 'File must be .xlsx, .xls, or .csv' });
+    const safe = path.basename(filename).replace(/[^a-zA-Z0-9._ -]/g, '').trim() || `${kind}.xlsx`;
+    const destDir = path.join(UPLOADS_DIR, 'skater-extras');
+    ensureDir(destDir);
+    const buf = Buffer.from(String(dataBase64).replace(/^data:[^,]*,/, ''), 'base64');
+    if (buf.length > 15 * 1024 * 1024) return res.status(413).json({ ok: false, error: 'File too large (max 15 MB)' });
+    // Prefix with kind so music/quotes/coaches uploads never collide on name.
+    const storedName = `${kind}-${safe}`;
+    fs.writeFileSync(path.join(destDir, storedName), buf);
+    const relPath = path.join('uploads', 'skater-extras', storedName);
+    const cfg = readConfig();
+    cfg.skaterExtras = Object.assign({}, cfg.skaterExtras || {}, { [configKey]: relPath });
+    writeConfig(cfg);
+    res.json({ ok: true, kind, filename: safe, workbookPath: relPath, ...skaterExtrasService.status() });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // Tracks the entryId most recently pushed to the manual-skater graphic
 let scApiSelectedEntryId = null;
 
@@ -3469,8 +3639,15 @@ server.listen(PORT, () => {
   } catch (err) {
     console.warn('[migrate] elements label migration skipped:', err.message);
   }
-  try { messagesService.refresh(); } catch (err) { console.warn('[messages] startup refresh skipped:', err.message); }
-  try { manualSkatersService.refresh(); } catch (err) { console.warn('[manual-skaters] startup refresh skipped:', err.message); }
+  // Refresh workbook-backed graphics only if a workbook is actually
+  // configured — a fresh install has none, and that's normal, not an error.
+  const startupCfg = readConfig();
+  if (startupCfg.messages?.workbookPath) {
+    try { messagesService.refresh(); } catch (err) { console.warn('[messages] startup refresh skipped:', err.message); }
+  }
+  if (startupCfg.manualSkaters?.workbookPath) {
+    try { manualSkatersService.refresh(); } catch (err) { console.warn('[manual-skaters] startup refresh skipped:', err.message); }
+  }
   console.log(`\nvMix graphics server → http://127.0.0.1:${PORT}`);
   console.log(`  WebSocket           → ws://127.0.0.1:${PORT}`);
   console.log(`  Graphics menu       → http://127.0.0.1:${PORT}/menu/`);

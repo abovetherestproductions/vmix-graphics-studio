@@ -1,78 +1,13 @@
 {
   "language": "en",
-  "eventName": "2026 NextGen Competition",
-  "eventNameFr": "Compétition NextGen 2026",
-  "eventSubtitle": "Senior Women Singles — Free Program",
-  "eventLocation": "Slush Puppie Centre, Gatineau Québec",
-  "eventDate": "May 15  2026 - May 17  2026",
-  "headerSubtitle": "Novice Women Short Program",
   "logoFile": "SC-Emblem_RGB-White NO LETTERS.png",
   "elementsDisplayMode": "name",
   "elementsTotalLabel": "TES",
   "elementsTotalLabelFr": "NTÉ",
   "season": "2025-26",
   "showHeaderRings": false,
-  "logoPath": "https://scitops.blob.core.windows.net/assets/emailsignature22/Logo.png",
-  "dataSource": {
-    "mode": "sc-api",
-    "baseUrl": "https://sc-livestreamadaptor.westus2.cloudapp.azure.com/css26LiveStream",
-    "instance": "7206B6E9-C5E3-4B80-A0A2-CCD45F54D8C6",
-    "urls": {
-      "startOrder": "startOrder.php",
-      "currentSkater": "currentSkater.php",
-      "liveElements": "liveElementTracker.php",
-      "ranking": "ranking-seg.php",
-      "rankingContext": "ranking.php",
-      "officials": "officials.php",
-      "eventInfo": "eventInfo.php"
-    },
-    "csv": {
-      "folderPath": "\\\\100.67.118.127\\css_LiveText",
-      "pollIntervalMs": 1000,
-      "files": {
-        "eventInfo": "sqlexpress2014_csslivetextEventInfo.csv",
-        "startOrder": "sqlexpress2014_csslivetextStartOrder.csv",
-        "currentSkater": "sqlexpress2014_csslivetextCurrentSkater.csv",
-        "scores": "sqlexpress2014_csslivetextScores.csv",
-        "ranking": "sqlexpress2014_csslivetextRanking.csv",
-        "officials": "sqlexpress2014_csslivetextOfficials.csv",
-        "liveElements": "sqlexpress2014_csslivescoring.csv"
-      }
-    },
-    "livePoll": {
-      "enabled": true,
-      "intervals": {
-        "liveElements": 1000,
-        "currentSkater": 1000,
-        "ranking": 10000,
-        "rankingContext": 1000,
-        "startOrder": 10000,
-        "officials": 10000,
-        "eventInfo": 15000
-      },
-      "endpoints": {
-        "liveElements": true,
-        "currentSkater": true,
-        "ranking": true,
-        "rankingContext": true,
-        "startOrder": true,
-        "officials": true,
-        "eventInfo": true
-      }
-    },
-    "scApi": {
-      "baseUrl": "https://sc-css-public-api-cmh9d3htgxfpdkb7.canadacentral-01.azurewebsites.net",
-      "eventId": "019f2d40-acbc-777d-bd66-1d55ee9029fc",
-      "categoryId": "019f2d41-4bd5-777d-bd66-2e424cf790c7",
-      "segmentId": "019f2d41-4be0-777d-bd66-34ec1d7b256c",
-      "pollIntervalMs": 2000,
-      "officialsPollIntervalMs": 30000,
-      "segmentName": "Short Program",
-      "discipline": "Singles"
-    }
-  },
   "messages": {
-    "workbookPath": "2026 NextGen Messages.xlsx",
+    "workbookPath": "uploads/messages/2026 NextGen Messages.xlsx",
     "sheetName": "",
     "topHeader": "",
     "bottomHeader": "",
@@ -218,12 +153,14 @@
       "rounded": true,
       "radius": 20,
       "ltFlagHeight": 68,
+      "msgLine1Size": 40,
+      "msgLine2Size": 20,
       "animPreset": "rise",
       "animSpeed": 920,
       "animEasing": "smooth",
       "logoShow": true,
       "logoHeight": 68,
-      "logoX": 12,
+      "logoX": 21,
       "logoY": 0,
       "logoOpacity": 0.9
     },
@@ -240,8 +177,9 @@
       "radius": 20,
       "ltFlagHeight": 68,
       "ltShowFlag": true,
-      "msExtrasEnabled": true,
+      "msExtrasEnabled": false,
       "msQuoteSecs": 6,
+      "msCoachSecs": 4,
       "ltInfoText": "",
       "ltInfoBg": "rgba(6,7,11,0.94)",
       "ltInfoColor": "#ffffff",
@@ -271,13 +209,13 @@
       "rounded": true,
       "radius": 19,
       "ltFlagHeight": 68,
-      "titleSource": "category",
+      "titleSource": "auto",
       "subtitleSource": "fixed",
       "ofTitleSize": 38,
       "ofSubtitleSize": 25,
-      "ofRoleSize": 25,
+      "ofRoleSize": 26,
       "ofNameSize": 36,
-      "ofRoleAlign": "left",
+      "ofRoleAlign": "right",
       "animPreset": "default",
       "animSpeed": 420,
       "animEasing": "smooth",
@@ -466,11 +404,6 @@
       }
     }
   },
-  "categoryName": "Junior Women",
-  "categoryNameFr": "Femmes Junior",
-  "segmentName": "Short Program",
-  "segmentNameFr": "Programme court",
-  "eventLocationFr": "Fleetwood Arena  Surrey  BC",
   "elementsLayoutMode": "list",
   "globalHeaderOverride": "",
   "globalHeaderOverrideFr": "",
@@ -485,6 +418,6 @@
   "skaterExtras": {
     "musicWorkbookPath": "NextGen 26 Music Titles.xlsx",
     "quotesWorkbookPath": "NextGen26 Quotes for Streaming.xlsx",
-    "coachesWorkbookPath": "Skater + Coach List 26NextGen.xlsx"
+    "coachesWorkbookPath": "uploads/skater-extras/coaches-Skater  Coach List 26NextGen.xlsx"
   }
 }

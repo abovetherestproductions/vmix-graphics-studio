@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clocks — Control</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #1a1a1e;
+    --surface:  #24242a;
+    --surface2: #2c2c34;
+    --border:   rgba(255,255,255,0.08);
+    --text:     #f0f0f2;
+    --text2:    #8888a0;
+    --accent:   #5b8af5;
+    --green:    #81c784;
+    --red:      #ef5350;
+    --orange:   #ffb74d;
+  }
+
+  html, body {
+    min-height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  #app { max-width: 880px; margin: 0 auto; padding: 14px 14px 50px; }
+
+  header {
+    display: flex; align-items: center; gap: 10px;
+    padding-bottom: 12px; margin-bottom: 14px;
+    border-bottom: 2px solid rgba(91,138,245,0.35);
+  }
+  header h1 { font-size: 15px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); flex: 1; }
+  #ws-dot { width: 8px; height: 8px; border-radius: 50%; background: #555; }
+  #ws-dot.ok { background: var(--green); }
+  #ws-dot.err { background: var(--red); }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .panel-title {
+    font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--text2); margin-bottom: 12px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .panel-title .spacer { flex: 1; }
+
+  .onair {
+    font-size: 10px; font-weight: 800; letter-spacing: 1.5px;
+    padding: 3px 10px; border-radius: 12px;
+    background: rgba(255,255,255,0.06); color: var(--text2);
+  }
+  .onair.live { background: rgba(244,67,54,0.25); color: #ff8a80; animation: pulse 1.4s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.45} }
+
+  /* Big readouts */
+  .readout {
+    display: flex; align-items: baseline; gap: 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin-bottom: 12px;
+  }
+  .readout-time {
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size: 44px; font-weight: 700; line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .readout-state {
+    font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--text2);
+  }
+  .readout-state.running   { color: var(--green); }
+  .readout-state.paused    { color: var(--orange); }
+
+  .lbl {
+    font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--text2); margin: 10px 0 4px;
+  }
+  input[type="text"], input[type="number"], select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 8px 10px;
+    font-size: 14px;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--accent); }
+  select option { background: var(--surface2); }
+  input[type="color"] {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 2px; height: 34px; width: 100%; cursor: pointer;
+  }
+  input[type="range"] { accent-color: var(--accent); width: 100%; }
+
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+  button {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 700;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: background 120ms, border-color 120ms;
+  }
+  button:hover { border-color: var(--accent); }
+  .btn-go   { background: rgba(76,175,80,0.15); border-color: rgba(76,175,80,0.35); color: var(--green); }
+  .btn-go:hover { background: rgba(76,175,80,0.28); border-color: rgba(76,175,80,0.6); }
+  .btn-stop { background: rgba(244,67,54,0.12); border-color: rgba(244,67,54,0.30); color: var(--red); }
+  .btn-stop:hover { background: rgba(244,67,54,0.24); border-color: rgba(244,67,54,0.55); }
+  .btn-warn { background: rgba(255,152,0,0.12); border-color: rgba(255,152,0,0.30); color: var(--orange); }
+  .btn-warn:hover { background: rgba(255,152,0,0.24); border-color: rgba(255,152,0,0.55); }
+
+  .chip {
+    padding: 6px 12px; font-size: 12px; border-radius: 16px;
+  }
+  .chip:hover { border-color: var(--accent); color: #fff; }
+  .chip.active {
+    background: rgba(91,138,245,0.28); border-color: var(--accent); color: #fff;
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+
+  .check { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--text2); cursor: pointer; }
+  .check input { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; }
+
+  /* Style grid */
+  .style-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 700px) { .style-grid { grid-template-columns: 1fr; } }
+  .style-col-title { font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+  .style-row { display: grid; grid-template-columns: 108px 1fr auto; gap: 8px; align-items: center; margin-bottom: 7px; }
+  .style-row label { font-size: 11.5px; color: var(--text2); }
+  .style-row .val { font-size: 11px; color: var(--text2); min-width: 42px; text-align: right; font-variant-numeric: tabular-nums; }
+  .mini-reset {
+    padding: 4px 8px; font-size: 10px; border-radius: 6px; color: var(--text2);
+  }
+
+  #save-status { font-size: 11px; color: var(--text2); }
+  #save-status.ok { color: var(--green); }
+
+  pre { white-space: pre-wrap; word-break: break-all; color: var(--text2); font-size: 11.5px; line-height: 1.6; font-family: ui-monospace, Menlo, monospace; }
+
+  #toast {
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 16px; font-size: 12px;
+    opacity: 0; transition: opacity 200ms, transform 200ms;
+    pointer-events: none; z-index: 99999; white-space: nowrap;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<script src="/js/core/app-nav.js"></script>
+<div id="app">
+
+  <header>
+    <div id="ws-dot" title="Server connection"></div>
+    <h1>Clocks</h1>
+  </header>
+
+  <!-- ── Program clock (countdown / count-up) ─────────────────────────── -->
+  <div class="panel">
+    <div class="panel-title">Program Clock — Countdown / Count-up <span class="spacer"></span><span class="onair" id="clock-onair">HIDDEN</span></div>
+
+    <div class="readout">
+      <div class="readout-time" id="clock-display">0:00</div>
+      <div class="readout-state" id="clock-state">IDLE</div>
+    </div>
+
+    <div class="lbl">Countdown Duration</div>
+    <div class="row">
+      <input type="number" id="cd-min" min="0" max="99" value="6" style="width:70px;" title="Minutes" oninput="syncChipHighlight()"> <span style="color:var(--text2);">min</span>
+      <input type="number" id="cd-sec" min="0" max="59" value="0" style="width:70px;" title="Seconds" oninput="syncChipHighlight()"> <span style="color:var(--text2);">sec</span>
+      <span style="width:8px;"></span>
+      <button class="chip" data-min="1" data-sec="0" onclick="setDur(1,0)">1:00</button>
+      <button class="chip" data-min="2" data-sec="0" onclick="setDur(2,0)">2:00</button>
+      <button class="chip" data-min="3" data-sec="0" onclick="setDur(3,0)">3:00</button>
+      <button class="chip" data-min="5" data-sec="0" onclick="setDur(5,0)">5:00</button>
+      <button class="chip" data-min="6" data-sec="0" onclick="setDur(6,0)">6:00</button>
+      <button class="chip" data-min="10" data-sec="0" onclick="setDur(10,0)">10:00</button>
+    </div>
+
+    <div class="lbl">Label <span style="font-weight:400;text-transform:none;letter-spacing:0;">(optional — shows under the time, e.g. "Warm-up")</span></div>
+    <input type="text" id="clock-label" placeholder="Warm-up" style="width:100%;max-width:340px;">
+
+    <div class="row" style="margin-top:14px;">
+      <button class="btn-go" onclick="startCountdown()">▶ Start Countdown</button>
+      <button class="btn-go" onclick="startCountup()">▲ Start Count-up</button>
+      <button class="btn-warn" id="pause-btn" onclick="pauseResume()">⏸ Pause</button>
+      <button onclick="clockApi('reset')">↺ Reset</button>
+      <span style="flex:1;"></span>
+      <button onclick="clockApi('show')">Show</button>
+      <button class="btn-stop" onclick="clockApi('hide')">Hide</button>
+    </div>
+  </div>
+
+  <!-- ── Time of day ──────────────────────────────────────────────────── -->
+  <div class="panel">
+    <div class="panel-title">Time of Day <span class="spacer"></span><span class="onair" id="tod-onair">HIDDEN</span></div>
+
+    <div class="readout">
+      <div class="readout-time" id="tod-display" style="font-size:36px;">—:—</div>
+      <div class="readout-state" id="tod-zone-label"></div>
+    </div>
+
+    <div class="row">
+      <div>
+        <div class="lbl" style="margin-top:0;">Timezone</div>
+        <select id="tod-tz" onchange="saveTod()">
+          <option value="America/St_Johns">Newfoundland (St. John's)</option>
+          <option value="America/Halifax">Atlantic (Halifax)</option>
+          <option value="America/Toronto" selected>Eastern (Toronto)</option>
+          <option value="America/Winnipeg">Central (Winnipeg)</option>
+          <option value="America/Regina">Saskatchewan (Regina)</option>
+          <option value="America/Edmonton">Mountain (Edmonton)</option>
+          <option value="America/Vancouver">Pacific (Vancouver)</option>
+        </select>
+      </div>
+      <div>
+        <div class="lbl" style="margin-top:0;">Label <span style="font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></div>
+        <input type="text" id="tod-label" placeholder="Local Time" oninput="saveTodDebounced()" style="width:180px;">
+      </div>
+      <label class="check" style="margin-top:14px;"><input type="checkbox" id="tod-24h" checked onchange="saveTod()"> 24-hour</label>
+      <label class="check" style="margin-top:14px;"><input type="checkbox" id="tod-secs" checked onchange="saveTod()"> Show seconds</label>
+      <span style="flex:1;"></span>
+      <button onclick="todApi('show')" style="margin-top:8px;">Show</button>
+      <button class="btn-stop" onclick="todApi('hide')" style="margin-top:8px;">Hide</button>
+    </div>
+  </div>
+
+  <!-- ── Styling ──────────────────────────────────────────────────────── -->
+  <div class="panel">
+    <div class="panel-title">Style <span class="spacer"></span><span id="save-status"></span></div>
+    <div class="style-grid">
+
+      <div>
+        <div class="style-col-title">Program Clock</div>
+        <div class="style-row"><label>Time Size</label><input type="range" id="st-cd-vsize" min="24" max="200" step="2" oninput="stylesChanged()"><span class="val" id="v-cd-vsize"></span></div>
+        <div class="style-row"><label>Label Size</label><input type="range" id="st-cd-lsize" min="8" max="60" step="1" oninput="stylesChanged()"><span class="val" id="v-cd-lsize"></span></div>
+        <div class="style-row"><label>Time Colour</label><input type="color" id="st-cd-vcolor" value="#ffffff" oninput="colorTouched('cd-vcolor');stylesChanged()"><button class="mini-reset" onclick="resetColor('cd-vcolor')">theme</button></div>
+        <div class="style-row"><label>Label Colour</label><input type="color" id="st-cd-lcolor" value="#ffffff" oninput="colorTouched('cd-lcolor');stylesChanged()"><button class="mini-reset" onclick="resetColor('cd-lcolor')">theme</button></div>
+        <div class="style-row"><label>Background</label><input type="color" id="st-cd-bg" value="#0e0e12" oninput="stylesChanged()"><span></span></div>
+        <div class="style-row"><label>BG Opacity</label><input type="range" id="st-cd-bga" min="0" max="100" step="5" oninput="stylesChanged()"><span class="val" id="v-cd-bga"></span></div>
+        <div class="style-row"><label>Position X</label><input type="range" id="st-cd-x" min="-960" max="960" step="5" oninput="stylesChanged()"><span class="val" id="v-cd-x"></span></div>
+        <div class="style-row"><label>Position Y</label><input type="range" id="st-cd-y" min="-540" max="540" step="5" oninput="stylesChanged()"><span class="val" id="v-cd-y"></span></div>
+        <div class="style-row"><label>Scale</label><input type="range" id="st-cd-scale" min="30" max="250" step="5" oninput="stylesChanged()"><span class="val" id="v-cd-scale"></span></div>
+      </div>
+
+      <div>
+        <div class="style-col-title">Time of Day</div>
+        <div class="style-row"><label>Time Size</label><input type="range" id="st-td-vsize" min="24" max="200" step="2" oninput="stylesChanged()"><span class="val" id="v-td-vsize"></span></div>
+        <div class="style-row"><label>Label Size</label><input type="range" id="st-td-lsize" min="8" max="60" step="1" oninput="stylesChanged()"><span class="val" id="v-td-lsize"></span></div>
+        <div class="style-row"><label>Time Colour</label><input type="color" id="st-td-vcolor" value="#ffffff" oninput="colorTouched('td-vcolor');stylesChanged()"><button class="mini-reset" onclick="resetColor('td-vcolor')">theme</button></div>
+        <div class="style-row"><label>Label Colour</label><input type="color" id="st-td-lcolor" value="#ffffff" oninput="colorTouched('td-lcolor');stylesChanged()"><button class="mini-reset" onclick="resetColor('td-lcolor')">theme</button></div>
+        <div class="style-row"><label>Background</label><input type="color" id="st-td-bg" value="#0e0e12" oninput="stylesChanged()"><span></span></div>
+        <div class="style-row"><label>BG Opacity</label><input type="range" id="st-td-bga" min="0" max="100" step="5" oninput="stylesChanged()"><span class="val" id="v-td-bga"></span></div>
+        <div class="style-row"><label>Position X</label><input type="range" id="st-td-x" min="-960" max="960" step="5" oninput="stylesChanged()"><span class="val" id="v-td-x"></span></div>
+        <div class="style-row"><label>Position Y</label><input type="range" id="st-td-y" min="-540" max="540" step="5" oninput="stylesChanged()"><span class="val" id="v-td-y"></span></div>
+        <div class="style-row"><label>Scale</label><input type="range" id="st-td-scale" min="30" max="250" step="5" oninput="stylesChanged()"><span class="val" id="v-td-scale"></span></div>
+      </div>
+
+    </div>
+    <div style="font-size:11px;color:var(--text2);margin-top:10px;">Changes save automatically and apply live to the graphics. "theme" resets a colour to the event theme default.</div>
+  </div>
+
+  <!-- ── StreamDeck / Companion ───────────────────────────────────────── -->
+  <div class="panel">
+    <div class="panel-title">StreamDeck / Companion URLs</div>
+    <pre id="companion-urls"></pre>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+let _toastTimer = null;
+function toast(msg) {
+  const el = $('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(path, opts);
+  if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || r.statusText); }
+  return r.json();
+}
+
+// ── Program clock ────────────────────────────────────────────────────
+const clockState = { mode:'countdown', startedAt:null, durationMs:0, running:false, pausedAtMs:0, visible:false };
+
+function fmt(ms) {
+  const t = Math.max(0, Math.floor(ms / 1000));
+  return `${Math.floor(t / 60)}:${(t % 60).toString().padStart(2, '0')}`;
+}
+
+function renderClock() {
+  const s = clockState;
+  let ms;
+  if (s.startedAt == null) ms = Math.max(0, s.pausedAtMs || 0);
+  else if (s.running)      ms = Date.now() - s.startedAt;
+  else                     ms = Math.max(0, s.pausedAtMs || 0);
+  if (s.mode === 'countdown') ms = Math.max(0, (s.durationMs || 0) - ms);
+  $('clock-display').textContent = fmt(ms);
+
+  const stateEl = $('clock-state');
+  if (s.running) {
+    stateEl.textContent = s.mode === 'countdown' ? 'COUNTING DOWN' : 'COUNTING UP';
+    stateEl.className = 'readout-state running';
+  } else if (s.startedAt != null || s.pausedAtMs > 0) {
+    stateEl.textContent = 'PAUSED';
+    stateEl.className = 'readout-state paused';
+  } else {
+    stateEl.textContent = 'IDLE';
+    stateEl.className = 'readout-state';
+  }
+  $('pause-btn').textContent = s.running ? '⏸ Pause' : '▶ Resume';
+  $('clock-onair').textContent = s.visible ? 'ON AIR' : 'HIDDEN';
+  $('clock-onair').classList.toggle('live', !!s.visible);
+}
+setInterval(renderClock, 200);
+
+function applyClockPayload(p) {
+  Object.assign(clockState, p?.data || {});
+  clockState.visible = !!p?.control?.visible;
+  renderClock();
+}
+
+function setDur(m, s) {
+  $('cd-min').value = m;
+  $('cd-sec').value = s;
+  syncChipHighlight();
+}
+
+// Highlights whichever preset chip matches the current minute/second fields
+// (if any), so the operator can see at a glance which duration is loaded —
+// and clears the highlight if they type a custom value instead.
+function syncChipHighlight() {
+  const m = Number($('cd-min').value) || 0;
+  const s = Number($('cd-sec').value) || 0;
+  document.querySelectorAll('.chip').forEach(chip => {
+    const match = Number(chip.dataset.min) === m && Number(chip.dataset.sec) === s;
+    chip.classList.toggle('active', match);
+  });
+}
+
+async function startCountdown() {
+  const secs = (Number($('cd-min').value) || 0) * 60 + (Number($('cd-sec').value) || 0);
+  if (!secs) { toast('Set a duration first'); return; }
+  try {
+    await api('POST', '/api/clock/countdown', { seconds: secs, label: $('clock-label').value.trim() });
+    toast(`✓ Countdown ${fmt(secs * 1000)} started`);
+  } catch (e) { toast(`Error: ${e.message}`); }
+}
+
+async function startCountup() {
+  try {
+    await api('POST', '/api/clock/countup', { label: $('clock-label').value.trim() });
+    toast('✓ Count-up started');
+  } catch (e) { toast(`Error: ${e.message}`); }
+}
+
+async function pauseResume() {
+  try {
+    await api('POST', `/api/clock/${clockState.running ? 'pause' : 'resume'}`);
+  } catch (e) { toast(`Error: ${e.message}`); }
+}
+
+async function clockApi(action) {
+  try {
+    await api('POST', `/api/clock/${action}`);
+    if (action === 'show' || action === 'hide') toast(`✓ Clock ${action === 'show' ? 'shown' : 'hidden'}`);
+  } catch (e) { toast(`Error: ${e.message}`); }
+}
+
+// ── Time of day ──────────────────────────────────────────────────────
+const todState = { timezone: 'America/Toronto', format24: true, showSeconds: true, visible: false };
+
+function renderTod() {
+  let f;
+  try {
+    f = new Intl.DateTimeFormat('en-CA', {
+      timeZone: todState.timezone || undefined,
+      hour12: !todState.format24, hour: 'numeric', minute: '2-digit',
+      ...(todState.showSeconds ? { second: '2-digit' } : {}),
+    });
+  } catch {
+    f = new Intl.DateTimeFormat('en-CA', { hour12: !todState.format24, hour: 'numeric', minute: '2-digit' });
+  }
+  $('tod-display').textContent = f.format(new Date())
+    .replace(/\s?a\.?m\.?$/i, ' AM').replace(/\s?p\.?m\.?$/i, ' PM');
+  $('tod-zone-label').textContent = (todState.timezone || '').split('/').pop().replace('_', ' ');
+  $('tod-onair').textContent = todState.visible ? 'ON AIR' : 'HIDDEN';
+  $('tod-onair').classList.toggle('live', !!todState.visible);
+}
+setInterval(renderTod, 500);
+
+function applyTodPayload(p) {
+  Object.assign(todState, p?.data || {});
+  todState.visible = !!p?.control?.visible;
+  const tz = $('tod-tz');
+  if (todState.timezone && document.activeElement !== tz) tz.value = todState.timezone;
+  $('tod-24h').checked = todState.format24 !== false;
+  $('tod-secs').checked = todState.showSeconds !== false;
+  const lbl = $('tod-label');
+  if (document.activeElement !== lbl && todState.label !== undefined) lbl.value = todState.label || '';
+  renderTod();
+}
+
+let _todTimer = null;
+function saveTodDebounced() { clearTimeout(_todTimer); _todTimer = setTimeout(saveTod, 300); }
+async function saveTod() {
+  try {
+    await api('POST', '/api/time-of-day/config', {
+      timezone:    $('tod-tz').value,
+      format24:    $('tod-24h').checked,
+      showSeconds: $('tod-secs').checked,
+      label:       $('tod-label').value.trim(),
+    });
+    Object.assign(todState, {
+      timezone: $('tod-tz').value, format24: $('tod-24h').checked, showSeconds: $('tod-secs').checked,
+    });
+    renderTod();
+  } catch (e) { toast(`Error: ${e.message}`); }
+}
+
+async function todApi(action) {
+  try {
+    await api('POST', `/api/time-of-day/${action}`);
+    toast(`✓ Time of day ${action === 'show' ? 'shown' : 'hidden'}`);
+  } catch (e) { toast(`Error: ${e.message}`); }
+}
+
+// ── Styling (auto-saved into config.positions) ───────────────────────
+// Colour inputs: '' in config means "theme default". We track cleared
+// state per input; touching the picker un-clears it.
+const clearedColors = { 'cd-vcolor': true, 'cd-lcolor': true, 'td-vcolor': true, 'td-lcolor': true };
+function colorTouched(key) { clearedColors[key] = false; }
+function resetColor(key) {
+  clearedColors[key] = true;
+  stylesChanged();
+  toast('Colour reset to theme default');
+}
+
+function rgba(hex, alphaPct) {
+  const a = Math.round(Number(alphaPct)) / 100;
+  const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${a.toFixed(2)})`;
+}
+function parseRgba(v) {
+  if (!v) return ['#0e0e12', 0];
+  const m = String(v).match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+  if (!m) return [v.startsWith('#') ? v : '#0e0e12', 92];
+  const hex = '#' + [m[1], m[2], m[3]].map(x => Number(x).toString(16).padStart(2, '0')).join('');
+  return [hex, Math.round(parseFloat(m[4] ?? 0.92) * 100)];
+}
+
+function updateStyleLabels() {
+  $('v-cd-vsize').textContent = $('st-cd-vsize').value + 'px';
+  $('v-cd-lsize').textContent = $('st-cd-lsize').value + 'px';
+  $('v-cd-bga').textContent   = $('st-cd-bga').value + '%';
+  $('v-cd-x').textContent     = $('st-cd-x').value + 'px';
+  $('v-cd-y').textContent     = $('st-cd-y').value + 'px';
+  $('v-cd-scale').textContent = $('st-cd-scale').value + '%';
+  $('v-td-vsize').textContent = $('st-td-vsize').value + 'px';
+  $('v-td-lsize').textContent = $('st-td-lsize').value + 'px';
+  $('v-td-bga').textContent   = $('st-td-bga').value + '%';
+  $('v-td-x').textContent     = $('st-td-x').value + 'px';
+  $('v-td-y').textContent     = $('st-td-y').value + 'px';
+  $('v-td-scale').textContent = $('st-td-scale').value + '%';
+}
+
+let _styleTimer = null;
+function stylesChanged() {
+  updateStyleLabels();
+  $('save-status').textContent = 'saving…';
+  $('save-status').className = '';
+  clearTimeout(_styleTimer);
+  _styleTimer = setTimeout(saveStyles, 400);
+}
+
+async function saveStyles() {
+  try {
+    const cfg = await api('GET', '/api/config');
+    const positions = cfg.positions || {};
+    positions.clock = Object.assign({}, positions.clock || {}, {
+      x: Number($('st-cd-x').value), y: Number($('st-cd-y').value),
+      scale: Number($('st-cd-scale').value) / 100,
+      clockValueSize: Number($('st-cd-vsize').value),
+      clockLabelSize: Number($('st-cd-lsize').value),
+      clockValueColor: clearedColors['cd-vcolor'] ? '' : $('st-cd-vcolor').value,
+      clockLabelColor: clearedColors['cd-lcolor'] ? '' : $('st-cd-lcolor').value,
+      clockPanelBg: Number($('st-cd-bga').value) > 0 ? rgba($('st-cd-bg').value, $('st-cd-bga').value) : '',
+    });
+    positions['time-of-day'] = Object.assign({}, positions['time-of-day'] || {}, {
+      x: Number($('st-td-x').value), y: Number($('st-td-y').value),
+      scale: Number($('st-td-scale').value) / 100,
+      todValueSize: Number($('st-td-vsize').value),
+      todLabelSize: Number($('st-td-lsize').value),
+      todValueColor: clearedColors['td-vcolor'] ? '' : $('st-td-vcolor').value,
+      todLabelColor: clearedColors['td-lcolor'] ? '' : $('st-td-lcolor').value,
+      todPanelBg: Number($('st-td-bga').value) > 0 ? rgba($('st-td-bg').value, $('st-td-bga').value) : '',
+    });
+    await api('POST', '/api/config', { positions });
+    $('save-status').textContent = '✓ saved';
+    $('save-status').className = 'ok';
+  } catch (e) {
+    $('save-status').textContent = '⚠ ' + e.message;
+  }
+}
+
+function loadStyles(cfg) {
+  const c = cfg.positions?.clock || {};
+  const t = cfg.positions?.['time-of-day'] || {};
+  $('st-cd-vsize').value = c.clockValueSize ?? 72;
+  $('st-cd-lsize').value = c.clockLabelSize ?? 16;
+  $('st-cd-x').value     = c.x ?? 0;
+  $('st-cd-y').value     = c.y ?? 0;
+  $('st-cd-scale').value = Math.round((c.scale ?? 1) * 100);
+  if (c.clockValueColor) { $('st-cd-vcolor').value = c.clockValueColor; clearedColors['cd-vcolor'] = false; }
+  if (c.clockLabelColor) { $('st-cd-lcolor').value = c.clockLabelColor; clearedColors['cd-lcolor'] = false; }
+  const [cbg, cba] = parseRgba(c.clockPanelBg);
+  $('st-cd-bg').value = cbg; $('st-cd-bga').value = c.clockPanelBg ? cba : 0;
+
+  $('st-td-vsize').value = t.todValueSize ?? 72;
+  $('st-td-lsize').value = t.todLabelSize ?? 16;
+  $('st-td-x').value     = t.x ?? 0;
+  $('st-td-y').value     = t.y ?? 0;
+  $('st-td-scale').value = Math.round((t.scale ?? 1) * 100);
+  if (t.todValueColor) { $('st-td-vcolor').value = t.todValueColor; clearedColors['td-vcolor'] = false; }
+  if (t.todLabelColor) { $('st-td-lcolor').value = t.todLabelColor; clearedColors['td-lcolor'] = false; }
+  const [tbg, tba] = parseRgba(t.todPanelBg);
+  $('st-td-bg').value = tbg; $('st-td-bga').value = t.todPanelBg ? tba : 0;
+
+  updateStyleLabels();
+}
+
+// ── Companion URLs ───────────────────────────────────────────────────
+$('companion-urls').textContent = [
+  `${location.origin}/api/clock/countdown-toggle?seconds=360   (start 6:00 countdown / hide)`,
+  `${location.origin}/api/clock/countup-toggle`,
+  `${location.origin}/api/clock/pause`,
+  `${location.origin}/api/clock/resume`,
+  `${location.origin}/api/clock/show`,
+  `${location.origin}/api/clock/hide`,
+  `${location.origin}/api/time-of-day/toggle`,
+].join('\n');
+
+// ── WebSocket + boot ─────────────────────────────────────────────────
+function connectWs() {
+  const dot = $('ws-dot');
+  const ws = new WebSocket(`ws://${location.host}`);
+  ws.onopen = () => dot.className = 'ok';
+  ws.onmessage = evt => {
+    let msg;
+    try { msg = JSON.parse(evt.data); } catch { return; }
+    if (msg.type === 'update' && msg.template === 'clock')       applyClockPayload(msg.payload);
+    if (msg.type === 'update' && msg.template === 'time-of-day') applyTodPayload(msg.payload);
+  };
+  ws.onclose = () => { dot.className = 'err'; setTimeout(connectWs, 3000); };
+  ws.onerror = () => ws.close();
+}
+
+connectWs();
+syncChipHighlight();
+api('GET', '/api/graphics/clock/data').then(applyClockPayload).catch(() => {});
+api('GET', '/api/graphics/time-of-day/data').then(applyTodPayload).catch(() => {});
+api('GET', '/api/config').then(loadStyles).catch(() => {});
+renderClock();
+renderTod();
+</script>
+</body>
+</html>

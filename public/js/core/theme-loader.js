@@ -77,7 +77,9 @@
     }
 
     // ── Header decorative rings ────────────────────────────────────────────
-    const showRings = config.showHeaderRings !== false; // default true for back-compat
+    // Rings are permanently retired from the operator UI — off unless a
+    // config explicitly opts in by hand.
+    const showRings = config.showHeaderRings === true;
     root.style.setProperty('--header-rings-opacity', showRings ? '1' : '0');
 
     // ── 2. Position, scale & style overrides for this template ───────────
@@ -354,6 +356,10 @@
         msgLine1Size:   pos.msgLine1Size      ?? 40,
         msgLine2Size:   pos.msgLine2Size      ?? 20,
         msExtrasEnabled: pos.msExtrasEnabled !== false,
+        msShowCoaches:  pos.msShowCoaches !== false,
+        msShowQuote:    pos.msShowQuote !== false,
+        msShowMusic:    pos.msShowMusic !== false,
+        msShowCategory: pos.msShowCategory !== false,
         msQuoteMs:      (Number(pos.msQuoteSecs) || 4) * 1000,
         msCoachMs:      (Number(pos.msCoachSecs) || 4) * 1000,
       };

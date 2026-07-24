@@ -115,6 +115,7 @@
   </style>
 </head>
 <body>
+<script src="/js/core/app-nav.js"></script>
   <header>
     <div class="header-left">
       <h1>Messages Control</h1>
@@ -132,18 +133,29 @@
   <main class="grid">
     <section class="panel controls-panel">
       <h2>Workbook</h2>
-      <label for="workbookPath">Workbook Path</label>
-      <input id="workbookPath" />
-      <label for="sheetName">Sheet</label>
-      <select id="sheetName"></select>
-      <label for="topHeader">Top Line Header</label>
-      <select id="topHeader"></select>
-      <label for="bottomHeader">Bottom Line Header</label>
-      <select id="bottomHeader"></select>
       <div class="buttons">
-        <button onclick="saveConfig()">Save / Reload</button>
+        <button onclick="document.getElementById('workbookFile').click()">📂 Open Messages File…</button>
         <button class="secondary" onclick="callApi('/api/messages/refresh')">Refresh List</button>
       </div>
+      <input type="file" id="workbookFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="uploadWorkbook(this.files[0])" />
+      <div id="uploadStatus" class="status" style="margin-top:8px;">Loaded: <span id="currentFileName" style="color:#90caf9;">—</span></div>
+
+      <details style="margin-top:14px;">
+        <summary style="cursor:pointer;color:var(--muted);font-size:12px;">Advanced — path &amp; columns</summary>
+        <div style="margin-top:10px;">
+          <label for="workbookPath">Workbook Path</label>
+          <input id="workbookPath" />
+          <label for="sheetName">Sheet</label>
+          <select id="sheetName"></select>
+          <label for="topHeader">Top Line Header</label>
+          <select id="topHeader"></select>
+          <label for="bottomHeader">Bottom Line Header</label>
+          <select id="bottomHeader"></select>
+          <div class="buttons">
+            <button onclick="saveConfig()">Save / Reload</button>
+          </div>
+        </div>
+      </details>
 
       <h2 style="margin-top:22px;">Controls</h2>
       <div class="buttons">
@@ -187,8 +199,10 @@
     </section>
 
     <section class="panel response-panel" style="grid-column:1/-1;">
-      <h2>Response</h2>
-      <pre id="responseBox">Ready</pre>
+      <details>
+        <summary style="cursor:pointer;color:var(--muted);font-size:12px;">Debug — server response</summary>
+        <pre id="responseBox" style="margin-top:10px;">Ready</pre>
+      </details>
     </section>
   </main>
 
@@ -279,9 +293,37 @@
       optionList($('topHeader'), data.headers || [], data.settings?.topHeader || 'top', false);
       optionList($('bottomHeader'), data.headers || [], data.settings?.bottomHeader || 'bottom', false);
       $('summary').innerHTML = `<span class="ok">${data.rows?.length || 0} rows</span> · selected #${selectedIndex + 1} · <code>${escapeHtml(data.workbookPath || '')}</code>`;
+      const fname = (data.settings?.workbookPath || '').split(/[\\/]/).pop();
+      $('currentFileName').textContent = fname || '— no file loaded —';
       $('companionUrls').textContent = companionText();
       renderRows(data.rows || []);
       showResponse(data);
+    }
+
+    async function uploadWorkbook(file) {
+      if (!file) return;
+      const status = $('uploadStatus');
+      status.innerHTML = `Uploading <strong>${escapeHtml(file.name)}</strong>…`;
+      try {
+        const dataBase64 = await new Promise((resolve, reject) => {
+          const r = new FileReader();
+          r.onload = () => resolve(String(r.result).split(',')[1]);
+          r.onerror = () => reject(new Error('Could not read file'));
+          r.readAsDataURL(file);
+        });
+        const data = await jsonFetch('/api/messages/upload', {
+          method: 'POST',
+          body: JSON.stringify({ filename: file.name, dataBase64 }),
+        });
+        showResponse(data);
+        await refresh();
+        status.innerHTML = `Loaded: <span style="color:#90caf9;">${escapeHtml(data.filename)}</span> · <span class="ok">${data.rows?.length || 0} rows</span>`;
+      } catch (err) {
+        status.innerHTML = `<span class="warn">Upload failed: ${escapeHtml(err.message)}</span>`;
+        showResponse({ ok: false, error: err.message });
+      } finally {
+        $('workbookFile').value = ''; // allow re-selecting the same file
+      }
     }
 
     async function callApi(url) {

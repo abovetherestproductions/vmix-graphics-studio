@@ -329,6 +329,21 @@
     .tab-panel { display: none; }
     .tab-panel.tab-panel-active { display: block; }
 
+    /* TOOLS tab link cards */
+    .tool-card {
+      display: block;
+      background: var(--surface2, rgba(255,255,255,0.04));
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      text-decoration: none;
+      color: var(--text);
+      transition: border-color 120ms, background 120ms;
+    }
+    .tool-card:hover { border-color: var(--accent); background: rgba(200,16,46,0.08); }
+    .tool-card-title { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+    .tool-card-desc  { font-size: 12px; color: var(--text2); line-height: 1.45; }
+
     /* ── Advanced accordion ─────────────────────────────── */
     .adv-details { margin-top: 14px; }
     .adv-summary {
@@ -407,54 +422,117 @@
   </style>
 </head>
 <body>
+<script src="/js/core/app-nav.js"></script>
 
 <div class="topbar">
   <h1>🎬 vMix Graphics Operator</h1>
   <div class="topbar-right">
-    <a class="topbar-link" href="/menu/" target="_blank" rel="noopener">Menu</a>
-    <a class="topbar-link" href="/preview/" target="_blank" rel="noopener">Preview Wall</a>
-    <a class="topbar-link" href="/operator/sc-api.html" target="_blank" rel="noopener">SC API Panel</a>
+    <span id="machine-badge" style="display:none;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;padding:3px 10px;border-radius:12px;background:rgba(91,138,245,0.22);color:#9cc0ff;white-space:nowrap;"></span>
     <div id="event-name-display" class="topbar-event">Loading…</div>
     <div class="lang-toggle" style="margin:0;">
       <button id="lang-btn-en" class="lang-btn lang-active" onclick="setLanguage('en')">EN</button>
       <button id="lang-btn-fr" class="lang-btn"             onclick="setLanguage('fr')">FR</button>
     </div>
     <span id="live-poll-badge" class="live-poll-badge">POLLING OFF</span>
+    <span id="version-label" title="Installed version — click TOOLS → System to update" style="font-size:10px;color:var(--text2);white-space:nowrap;cursor:pointer;" onclick="switchTab('tools')"></span>
     <div id="ws-dot" class="ws-dot" title="WebSocket status"></div>
   </div>
 </div>
 
 <div class="tab-bar">
+  <button class="tab-btn"            id="tab-btn-setup"  onclick="switchTab('setup')">⚙ EVENT</button>
   <button class="tab-btn tab-active" id="tab-btn-live"   onclick="switchTab('live')">⬤ LIVE</button>
-  <button class="tab-btn"            id="tab-btn-setup"  onclick="switchTab('setup')">⚙ SETUP</button>
   <button class="tab-btn"            id="tab-btn-layout" onclick="switchTab('layout')">▣ LAYOUT</button>
+  <button class="tab-btn"            id="tab-btn-tools"  onclick="switchTab('tools')">🔧 TOOLS</button>
 </div>
 
 <div class="main">
 
+  <!-- First-run banner — shown only when no event is configured yet -->
+  <div id="first-run-banner" style="display:none;background:linear-gradient(105deg,rgba(91,138,245,0.16),rgba(91,138,245,0.06));border:1px solid rgba(91,138,245,0.35);border-radius:12px;padding:16px 18px;margin-bottom:14px;">
+    <div style="font-size:15px;font-weight:800;margin-bottom:4px;">👋 Welcome — let's set up your first event</div>
+    <div style="font-size:13px;color:var(--text2);line-height:1.5;">
+      No event is configured on this machine yet. Head to the <strong>⚙ EVENT</strong> tab, paste your Skate Canada <strong>Event ID</strong> in Step 1 and click <strong>Fetch Event</strong>, then open the <strong>Event &amp; Skater Selector</strong> to pick a category &amp; segment. Graphics light up once a segment is active.
+    </div>
+    <button class="btn btn-show btn-sm" style="margin-top:12px;" onclick="switchTab('setup')">Go to Event Setup →</button>
+  </div>
+
   <!-- ── SETUP tab ──────────────────────────────────────────────────────────── -->
   <div id="tab-setup" class="tab-panel">
 
-  <!-- ── Presets & Backups ────────────────────────────────────────────── -->
-  <div class="panel" id="presets-panel">
+  <!-- ── This Machine ─────────────────────────────────────────────────── -->
+  <div class="panel">
     <div class="panel-header">
-      <div class="panel-header-title">Presets &amp; Backups</div>
-      <span id="presets-status" style="font-size:11px;color:var(--text2);"></span>
+      <div class="panel-header-title">This Machine</div>
+      <button class="btn btn-save btn-sm" onclick="saveMachineName()">Save</button>
     </div>
     <div class="panel-body">
-      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;">
-        <label style="font-size:12px;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;color:var(--text2);">Preset</label>
-        <select id="preset-select" style="min-width:240px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:13px;">
-          <option value="">— Choose a preset —</option>
-        </select>
-        <button class="btn btn-show btn-sm"   onclick="loadSelectedPreset()" title="Apply the selected preset to event-config.json (current config is auto-backed-up first)">Load</button>
-        <button class="btn btn-fetch btn-sm"  onclick="savePresetAs()" title="Save the current event-config under a new name">Save as…</button>
-        <button class="btn btn-fetch btn-sm"  onclick="overwriteSelectedPreset()" title="Overwrite the selected preset with current event-config">Save over</button>
-        <button class="btn btn-hide btn-sm"   onclick="deleteSelectedPreset()" title="Delete the selected preset">Delete</button>
-        <span style="flex:1;"></span>
-        <button class="btn btn-fetch btn-sm" onclick="openBackupsModal()" title="View the last 20 auto-saved snapshots">↶ Restore Backup…</button>
+      <div class="form-field" style="max-width:340px;">
+        <label>Machine Name</label>
+        <input type="text" id="cfg-machine-name" placeholder="e.g. Rink 1" maxlength="40" />
+        <div class="hint">Shown in the header and nav bar so it's obvious which machine / rink you're on at a multi-rink event. Local to this install — never synced.</div>
       </div>
-      <div class="hint" style="margin-top:8px;">Each save of the Event Configuration is auto-backed-up (keeps last 20). Use presets to switch between events with one click — e.g. <em>BC Provincials</em>, <em>Skate Canada Sectionals</em>, <em>Test Event</em>.</div>
+    </div>
+  </div>
+
+  <!-- ── Event Selection — Skate Canada API ───────────────────────────── -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-header-title">Event Selection — Skate Canada API</div>
+      <button class="btn btn-save btn-sm" onclick="saveDataSources()">Save</button>
+    </div>
+    <div class="panel-body">
+<div id="ds-section-scapi">
+
+        <!-- Step 1: Event ID -->
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;">
+          <div style="font-size:12px;font-weight:700;color:var(--text2);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">Step 1 — Enter Event ID</div>
+          <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+            <div class="form-field" style="flex:1;min-width:280px;margin:0;">
+              <label>Event ID (GUID)</label>
+              <input type="text" id="scapi-event-id" placeholder="e.g. 3f8a2c10-1234-5678-abcd-ef0123456789"
+                     style="font-family:'SF Mono',Menlo,monospace;font-size:13px;" />
+              <div class="hint">Paste the event GUID from the Skate Canada tournament system or URL.</div>
+            </div>
+            <button class="btn btn-fetch" onclick="scApiFetchEvent()" style="flex-shrink:0;align-self:flex-start;margin-top:18px;">Fetch Event</button>
+          </div>
+          <div id="scapi-event-info" style="display:none;margin-top:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;">
+            <div style="font-weight:700;font-size:14px;" id="scapi-event-name">—</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:3px;" id="scapi-event-meta">—</div>
+          </div>
+        </div>
+
+        <!-- Category / segment selection + activation happens entirely in the
+             Event & Skater Selector (single source of truth — no double
+             selection, no separate "activate" step here). This block just
+             confirms what's currently active on this machine. -->
+        <div class="hint" style="margin-bottom:10px;">
+          Once the event is fetched, open the <strong>Event &amp; Skater Selector</strong> (top nav) and pick a category, segment, and skater there — polling for this machine starts automatically the moment you make a selection. Graphics and recording names follow it from that point on.
+        </div>
+        <div id="scapi-active-summary" style="display:none;margin-bottom:10px;background:rgba(76,175,80,0.08);border:1px solid rgba(76,175,80,0.25);border-radius:8px;padding:8px 12px;font-size:12px;color:#81c784;"></div>
+
+        <!-- Advanced: Base URL override -->
+        <details style="margin-top:4px;">
+          <summary style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;">
+            <span style="font-size:9px;">▶</span> Advanced
+          </summary>
+          <div style="margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;">
+            <div class="form-field">
+              <label>API Base URL</label>
+              <input type="text" id="scapi-base-url"
+                     value="https://sc-css-public-api-cmh9d3htgxfpdkb7.canadacentral-01.azurewebsites.net"
+                     style="font-family:'SF Mono',Menlo,monospace;font-size:12px;" />
+              <div class="hint">Only change this if Skate Canada moves the API to a different host.</div>
+            </div>
+            <div class="form-field" style="margin-top:10px;">
+              <label>Entries Poll Interval (ms)</label>
+              <input type="number" id="scapi-poll-interval" value="2000" min="500" step="500"
+                     style="width:120px;" />
+              <div class="hint">How often the active segment is polled. Applies on next activation.</div>
+            </div>
+          </div>
+        </details>
+      </div>
     </div>
   </div>
 
@@ -508,553 +586,57 @@
         </div>
       </div>
 
-      <!-- Header subtitle / logo -->
-      <details class="adv-details" style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
-      <summary class="adv-summary" style="font-size:12px;">Header Subtitle &amp; Logo</summary>
-      <div class="adv-body">
-        <div class="form-grid">
-          <div class="form-field" style="grid-column:1/-1;">
-            <label>Header Subtitle Override</label>
-            <input type="text" id="cfg-header-subtitle" placeholder="Auto: Event Name · Location · Date (leave blank for auto)" />
-            <div class="hint">Appears in small text below the title in Starting Order, Rankings, and Officials headers. Leave blank to auto-build from event details above.</div>
-          </div>
-          <div class="form-field" style="grid-column:1/-1;">
-            <label>Global Header Title Override <span style="color:var(--text2);font-weight:400;">(live-editable)</span></label>
-            <div style="display:flex;gap:6px;">
-              <input type="text" id="cfg-global-header-title" placeholder="e.g. Senior Women — Free Skate (leave blank to use the feed's category)"
-                     style="flex:1;"
-                     oninput="saveGlobalHeaderOverride()" onchange="saveGlobalHeaderOverride()" />
-              <button class="btn btn-sm" type="button" onclick="clearAndRefreshGlobalHeader()" title="Clear override and re-pull source data so headers refresh from the new event">Clear &amp; Refresh</button>
-            </div>
-            <input type="text" id="cfg-global-header-title-fr" placeholder="(Français — optional)"
-                   style="margin-top:6px;"
-                   oninput="saveGlobalHeaderOverride()" onchange="saveGlobalHeaderOverride()" />
-            <div class="hint">Forces the main title on <strong>Start Order, Rankings, Rank 6 / Standings, and Officials</strong> while set. Saves on every keystroke — fix mid-event without reloading. After switching events, use <strong>Clear &amp; Refresh</strong> so headers pick up the new event's category instead of the previous one's cached data.</div>
-          </div>
-          <div class="form-field" style="grid-column:1/-1;">
-            <label>Global Name Format <span style="color:var(--text2);font-weight:400;">(applies to skater-name fields across all graphics)</span></label>
-            <select id="cfg-name-format" onchange="saveNameFormat()"
-                    style="width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-family:var(--font);font-size:14px;">
-              <option value="default">Title Case (source as-is, e.g. "Steve Muff")</option>
-              <option value="upper">ALL CAPS (e.g. "STEVE MUFF")</option>
-              <option value="firstlast">First LAST (e.g. "Steve MUFF")</option>
-            </select>
-            <div class="hint">Default for every skater-name field. Per-graphic Skater Name dropdowns set to "Default" inherit this. Override per graphic in each card's Text Case section. Handles hyphenated last names ("Jean-Pierre LEROUX-DUBOIS"), suffixes ("Steve MUFF JR."), particles ("Ludwig VAN BEETHOVEN"), and pair / dance team separators ("Steve MUFF / Jane DOE"). Single-word names (e.g. "Madonna") are left as-is.</div>
-          </div>
-          <div class="form-field" style="grid-column:1/-1;">
-            <label>Lower-Third Detail Text Override <span style="color:var(--text2);font-weight:400;">(live-editable)</span></label>
-            <input type="text" id="cfg-global-detail-text" placeholder="e.g. Novice Women — Free Skate (leave blank to use the feed's Category Segment Group)"
-                   oninput="saveGlobalDetailOverride()" onchange="saveGlobalDetailOverride()" />
-            <input type="text" id="cfg-global-detail-text-fr" placeholder="(Français — optional)"
-                   style="margin-top:6px;"
-                   oninput="saveGlobalDetailOverride()" onchange="saveGlobalDetailOverride()" />
-            <div class="hint">Overrides the small detail line under the <strong>Lower-Third</strong> and <strong>Manual Skater</strong> bars (currently shows "Category Segment Group" from the feed — e.g. <em>"Novice Women Singles 1 Free Program Group 2"</em>). Leave blank to use the auto-built feed text. Per-card "Detail Card Override" in Position & Size still wins for that one graphic if set.</div>
-          </div>
-          <div class="form-field">
-            <label>Logo File</label>
-            <select id="cfg-logo-select" onchange="onLogoSelect(this.value)"
-              style="width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-family:var(--font);font-size:14px;">
-              <option value="">(no logo)</option>
-            </select>
-            <div class="hint">Place logo files in <code>public/assets/logos/</code></div>
-          </div>
-          <div class="form-field" style="display:flex;flex-direction:column;align-items:flex-start;gap:8px;">
-            <label>Preview</label>
-            <div id="logo-preview-wrap" style="background:linear-gradient(105deg,#950000,#e22a48);border-radius:8px;padding:12px 20px;display:flex;align-items:center;justify-content:center;min-width:140px;min-height:60px;">
-              <img id="logo-preview" src="" alt="" style="max-height:48px;max-width:120px;object-fit:contain;display:none;" />
-              <span id="logo-preview-none" style="font-size:12px;color:rgba(255,255,255,0.4);">No logo</span>
-            </div>
+      <!-- Logo -->
+      <div class="form-grid" style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
+        <div class="form-field">
+          <label>Logo File</label>
+          <select id="cfg-logo-select" onchange="onLogoSelect(this.value)"
+            style="width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-family:var(--font);font-size:14px;">
+            <option value="">(no logo)</option>
+          </select>
+          <div class="hint">Shown in graphic headers and bars. Place logo files in <code>public/assets/logos/</code></div>
+        </div>
+        <div class="form-field" style="display:flex;flex-direction:column;align-items:flex-start;gap:8px;">
+          <label>Preview</label>
+          <div id="logo-preview-wrap" style="background:linear-gradient(105deg,#950000,#e22a48);border-radius:8px;padding:12px 20px;display:flex;align-items:center;justify-content:center;min-width:140px;min-height:60px;">
+            <img id="logo-preview" src="" alt="" style="max-height:48px;max-width:120px;object-fit:contain;display:none;" />
+            <span id="logo-preview-none" style="font-size:12px;color:rgba(255,255,255,0.4);">No logo</span>
           </div>
         </div>
-      </div></details><!-- /adv header subtitle & logo -->
-
-      <!-- Text Colors -->
-      <details class="adv-details" style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
-      <summary class="adv-summary" style="font-size:12px;">Text &amp; Number Colours</summary>
-      <div class="adv-body">
-        <div class="form-grid">
-          <div class="form-field">
-            <label>Primary Text (names, main)</label>
-            <input type="text" id="cfg-color-text-primary" placeholder="#ffffff" />
-            <div class="hint">Skater names, main display text</div>
-          </div>
-          <div class="form-field">
-            <label>Secondary Text (clubs, info)</label>
-            <input type="text" id="cfg-color-text-secondary" placeholder="rgba(255,255,255,0.72)" />
-            <div class="hint">Club names, subtitles, secondary info</div>
-          </div>
-          <div class="form-field">
-            <label>Muted Text (labels, headers)</label>
-            <input type="text" id="cfg-color-text-muted" placeholder="rgba(255,255,255,0.45)" />
-            <div class="hint">Column headers, small labels</div>
-          </div>
-          <div class="form-field">
-            <label>Accent Highlight (roles, on-ice)</label>
-            <input type="text" id="cfg-color-accent-light" placeholder="#E8213F" />
-            <div class="hint">Official roles, on-ice name highlight</div>
-          </div>
-          <div class="form-field">
-            <label>Score / Rank Numbers</label>
-            <input type="text" id="cfg-color-numbers" placeholder="#ffffff" />
-            <div class="hint">Score values, rank numbers (uses primary if blank)</div>
-          </div>
-          <div class="form-field" style="display:flex;flex-direction:column;gap:8px;">
-            <label>Header Rings</label>
-            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:4px;">
-              <input type="checkbox" id="cfg-show-rings"
-                     style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;" />
-              <span style="font-size:13px;color:var(--text2);">Show decorative rings in headers</span>
-            </label>
-            <div class="hint">Circular line art on gradient headers</div>
-          </div>
-        </div>
-      </div></details><!-- /adv text colours -->
+      </div>
     </div>
   </div>
 
-  <!-- ── Data Sources ──────────────────────────────────────────────────── -->
-  <div class="panel">
+  <!-- ── Presets & Backups ────────────────────────────────────────────── -->
+  <div class="panel" id="presets-panel">
     <div class="panel-header">
-      <div class="panel-header-title">Data Sources</div>
-      <button class="btn btn-save btn-sm" onclick="saveDataSources()">Save</button>
+      <div class="panel-header-title">Presets &amp; Backups</div>
+      <span id="presets-status" style="font-size:11px;color:var(--text2);"></span>
     </div>
     <div class="panel-body">
-
-      <div class="form-grid wide">
-        <div class="form-field">
-          <label>Source Mode</label>
-          <select id="ds-mode" onchange="applyDataSourceModeUI(this.value)">
-            <option value="live-json">Skate Canada Live JSON (legacy PHP)</option>
-            <option value="csv-folder">CSV Folder (LAN / local path)</option>
-            <option value="sc-api">Skate Canada API — Direct (new)</option>
-          </select>
-          <div class="hint">Switch between data sources. <strong>SC API Direct</strong> uses the new Skate Canada REST API — browse to your event, pick a category and segment, then activate.</div>
-        </div>
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;">
+        <label style="font-size:12px;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;color:var(--text2);">Preset</label>
+        <select id="preset-select" style="min-width:240px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:13px;">
+          <option value="">— Choose a preset —</option>
+        </select>
+        <button class="btn btn-show btn-sm"   onclick="loadSelectedPreset()" title="Apply the selected preset to event-config.json (current config is auto-backed-up first)">Load</button>
+        <button class="btn btn-fetch btn-sm"  onclick="savePresetAs()" title="Save the current event-config under a new name">Save as…</button>
+        <button class="btn btn-fetch btn-sm"  onclick="overwriteSelectedPreset()" title="Overwrite the selected preset with current event-config">Save over</button>
+        <button class="btn btn-hide btn-sm"   onclick="deleteSelectedPreset()" title="Delete the selected preset">Delete</button>
+        <span style="flex:1;"></span>
+        <button class="btn btn-fetch btn-sm" onclick="openBackupsModal()" title="View the last 20 auto-saved snapshots">↶ Restore Backup…</button>
       </div>
-
-      <!-- ── SC API Section ─────────────────────────────────────────────── -->
-      <div id="ds-section-scapi" style="display:none;margin-top:16px;">
-        <div class="section-title" style="margin-bottom:10px;">Skate Canada API — Event Selection</div>
-
-        <!-- Step 1: Event ID -->
-        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;">
-          <div style="font-size:12px;font-weight:700;color:var(--text2);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">Step 1 — Enter Event ID</div>
-          <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
-            <div class="form-field" style="flex:1;min-width:280px;margin:0;">
-              <label>Event ID (GUID)</label>
-              <input type="text" id="scapi-event-id" placeholder="e.g. 3f8a2c10-1234-5678-abcd-ef0123456789"
-                     style="font-family:'SF Mono',Menlo,monospace;font-size:13px;" />
-              <div class="hint">Paste the event GUID from the Skate Canada tournament system or URL.</div>
-            </div>
-            <button class="btn btn-fetch" onclick="scApiFetchEvent()" style="flex-shrink:0;align-self:flex-start;margin-top:18px;">Fetch Event</button>
-          </div>
-          <div id="scapi-event-info" style="display:none;margin-top:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;">
-            <div style="font-weight:700;font-size:14px;" id="scapi-event-name">—</div>
-            <div style="font-size:12px;color:var(--text2);margin-top:3px;" id="scapi-event-meta">—</div>
-          </div>
-        </div>
-
-        <!-- Step 2: Category -->
-        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;">
-          <div style="font-size:12px;font-weight:700;color:var(--text2);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">Step 2 — Select Category</div>
-          <div class="form-field" style="margin:0;">
-            <label>Category</label>
-            <select id="scapi-category-select" onchange="scApiOnCategoryChange(this.value)"
-                    style="width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-family:var(--font);font-size:14px;">
-              <option value="">— Fetch event first —</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Step 3: Segment -->
-        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;">
-          <div style="font-size:12px;font-weight:700;color:var(--text2);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">Step 3 — Select Segment</div>
-          <div class="form-field" style="margin:0;">
-            <label>Segment</label>
-            <select id="scapi-segment-select" onchange="scApiOnSegmentChange(this.value)"
-                    style="width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-family:var(--font);font-size:14px;">
-              <option value="">— Select a category first —</option>
-            </select>
-          </div>
-          <div id="scapi-segment-status" style="display:none;margin-top:8px;font-size:12px;color:var(--text2);"></div>
-        </div>
-
-        <!-- Step 4: Activate -->
-        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;">
-          <div style="font-size:12px;font-weight:700;color:var(--text2);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;">Step 4 — Activate &amp; Start Polling</div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-            <div class="form-field" style="flex-shrink:0;margin:0;">
-              <label>Poll Interval</label>
-              <input type="number" id="scapi-poll-interval" value="2000" min="500" step="500"
-                     style="width:90px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:13px;" />
-              <div class="hint">ms (entries)</div>
-            </div>
-            <button class="btn btn-show" id="scapi-activate-btn" onclick="scApiActivate()" disabled style="align-self:flex-start;margin-top:18px;">▶ Activate Segment</button>
-            <button class="btn btn-hide btn-sm" onclick="scApiStop()" style="align-self:flex-start;margin-top:18px;">■ Stop</button>
-            <span id="scapi-poll-status" style="font-size:13px;color:var(--text2);align-self:flex-start;margin-top:22px;">Idle</span>
-          </div>
-          <div id="scapi-active-summary" style="display:none;margin-top:12px;background:rgba(76,175,80,0.08);border:1px solid rgba(76,175,80,0.25);border-radius:8px;padding:8px 12px;font-size:12px;color:#81c784;"></div>
-        </div>
-
-        <!-- Advanced: Base URL override -->
-        <details style="margin-top:4px;">
-          <summary style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;">
-            <span style="font-size:9px;">▶</span> Advanced
-          </summary>
-          <div style="margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;">
-            <div class="form-field">
-              <label>API Base URL</label>
-              <input type="text" id="scapi-base-url"
-                     value="https://sc-css-public-api-cmh9d3htgxfpdkb7.canadacentral-01.azurewebsites.net"
-                     style="font-family:'SF Mono',Menlo,monospace;font-size:12px;" />
-              <div class="hint">Only change this if Skate Canada moves the API to a different host.</div>
-            </div>
-          </div>
-        </details>
-      </div>
-
-      <div id="ds-section-csv" style="margin-top:16px;">
-        <div class="section-title" style="margin-bottom:10px;">CSV Folder Bridge</div>
-        <div class="form-grid wide">
-          <div class="form-field">
-            <label>Folder Path</label>
-            <input type="text" id="ds-csv-folder" placeholder="/Volumes/Shared/Event/CSV Data" />
-            <div class="hint">Use the mounted LAN or local folder path that holds the scoring CSV exports.</div>
-          </div>
-          <div class="form-field">
-            <label>Poll Interval</label>
-            <input type="number" id="ds-csv-poll" min="500" step="500" value="1000" />
-            <div class="hint">Milliseconds between folder refreshes.</div>
-          </div>
-        </div>
-
-        <details class="adv-details">
-        <summary class="adv-summary">Endpoint Filenames</summary>
-        <div class="adv-body">
-        <div class="ds-endpoint-grid">
-          <div class="ds-endpoint-row">
-            <label>Event Info CSV</label>
-            <input type="text" id="ds-csv-eventInfo" placeholder="SC2_csslivetextEventInfo.csv" />
-          </div>
-          <div class="ds-endpoint-row">
-            <label>Start Order CSV</label>
-            <input type="text" id="ds-csv-startOrder" placeholder="SC2_csslivetextStartOrder.csv" />
-          </div>
-          <div class="ds-endpoint-row">
-            <label>Current Skater CSV</label>
-            <input type="text" id="ds-csv-currentSkater" placeholder="SC2_csslivetextCurrentSkater.csv" />
-          </div>
-          <div class="ds-endpoint-row">
-            <label>Scores CSV</label>
-            <input type="text" id="ds-csv-scores" placeholder="SC2_csslivetextScores.csv" />
-          </div>
-          <div class="ds-endpoint-row">
-            <label>Ranking CSV</label>
-            <input type="text" id="ds-csv-ranking" placeholder="SC2_csslivetextRanking.csv" />
-          </div>
-          <div class="ds-endpoint-row">
-            <label>Officials CSV</label>
-            <input type="text" id="ds-csv-officials" placeholder="SC2_csslivetextOfficials.csv" />
-          </div>
-          <div class="ds-endpoint-row">
-            <label>Live Elements CSV</label>
-            <input type="text" id="ds-csv-liveElements" placeholder="sc2_csslivescoring.csv" />
-          </div>
-        </div>
-        </div></details><!-- /adv csv filenames -->
-      </div>
-
-      <div id="ds-section-live">
-      <div class="form-grid wide">
-        <div class="form-field">
-          <label>Base URL</label>
-          <input type="text" id="ds-baseUrl" placeholder="https://lamp.skatecanada.ca/alex/css23LiveStream-dev" />
-          <div class="hint">No trailing slash. Shared by all endpoints.</div>
-        </div>
-        <div class="form-field">
-          <label>Instance GUID</label>
-          <input type="text" id="ds-instance" placeholder="BAF60F00-D0F7-476B-9338-667877613F3B" />
-          <div class="hint">Appended as ?instance= on every request.</div>
-        </div>
-      </div>
-
-      <details class="adv-details" style="margin-top:16px;">
-        <summary class="adv-summary">Endpoint Filenames</summary>
-        <div class="adv-body">
-        <div class="ds-endpoint-grid">
-          <div class="ds-endpoint-row">
-            <label>Start Order</label>
-            <input type="text" id="ds-url-startOrder" placeholder="startOrder.php" />
-          </div>
-          <div class="ds-endpoint-row">
-            <label>Current Skater (Scoring)</label>
-            <input type="text" id="ds-url-currentSkater" placeholder="currentSkater.php" />
-          </div>
-          <div class="ds-endpoint-row">
-            <label>Live Elements</label>
-            <input type="text" id="ds-url-liveElements" placeholder="liveElementTracker.php" />
-          </div>
-          <div class="ds-endpoint-row">
-            <label>Rankings (Seg Scores)</label>
-            <input type="text" id="ds-url-ranking" placeholder="ranking-seg.php" />
-          </div>
-          <div class="ds-endpoint-row">
-            <label>Rank 6 Corner (Live Context)</label>
-            <input type="text" id="ds-url-rankingContext" placeholder="ranking.php" />
-          </div>
-          <div class="ds-endpoint-row">
-            <label>Officials</label>
-            <input type="text" id="ds-url-officials" placeholder="officials.php" />
-          </div>
-          <div class="ds-endpoint-row">
-            <label>Event Info</label>
-            <input type="text" id="ds-url-eventInfo" placeholder="eventInfo.php" />
-          </div>
-        </div>
-        </div></details><!-- /adv live filenames -->
-      </div>
-      </div> <!-- /#ds-section-live -->
-
-      <!-- Manual fetch buttons -->
-      <details class="adv-details" style="margin-top:18px;">
-      <summary class="adv-summary">Fetch Now (manual)</summary>
-      <div class="adv-body">
-        <div class="ds-fetch-row">
-          <div class="fetch-chip">
-            <span class="fetch-chip-name">Start Order</span>
-            <input type="number" id="fetch-group" min="1" max="20" placeholder="Grp"
-              title="Group number (optional)"
-              style="width:54px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:3px 6px;font-size:12px;" />
-            <button class="btn btn-fetch btn-sm" onclick="fetchEndpoint('startOrder')">Fetch</button>
-          </div>
-          <div class="fetch-chip">
-            <span class="fetch-chip-name">Scoring + Lower Third</span>
-            <button class="btn btn-fetch btn-sm" onclick="fetchEndpoint('currentSkater')">Fetch</button>
-          </div>
-          <div class="fetch-chip">
-            <span class="fetch-chip-name">Rankings (Seg Scores)</span>
-            <button class="btn btn-fetch btn-sm" onclick="fetchEndpoint('ranking')">Fetch</button>
-          </div>
-          <div class="fetch-chip">
-            <span class="fetch-chip-name">Rank 6 Context</span>
-            <button class="btn btn-fetch btn-sm" onclick="fetchEndpoint('rankingContext')">Fetch</button>
-          </div>
-          <div class="fetch-chip">
-            <span class="fetch-chip-name">Elements</span>
-            <button class="btn btn-fetch btn-sm" onclick="fetchEndpoint('liveElements')">Fetch</button>
-          </div>
-          <div class="fetch-chip">
-            <span class="fetch-chip-name">Officials</span>
-            <button class="btn btn-fetch btn-sm" onclick="fetchEndpoint('officials')">Fetch</button>
-          </div>
-          <div class="fetch-chip">
-            <span class="fetch-chip-name">Event Info</span>
-            <button class="btn btn-fetch btn-sm" onclick="fetchEndpoint('eventInfo')">Fetch</button>
-          </div>
-        </div>
-      </div></details><!-- /adv manual fetch -->
-
-      <!-- Event Info inspector -->
-      <details class="adv-details">
-      <summary class="adv-summary">Event Info Inspector</summary>
-      <div class="adv-body" style="border-top:1px solid var(--border);padding-top:16px;margin-top:6px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-          <div class="section-title" style="margin:0;">Event Info — Current Data</div>
-          <div style="display:flex;gap:6px;align-items:center;">
-            <span id="ei-status" style="font-size:11px;color:var(--text2);"></span>
-            <button class="btn btn-fetch btn-sm" onclick="refreshEventInfoDebug()">↻ Refresh</button>
-          </div>
-        </div>
-        <div class="hint" style="margin-bottom:10px;">Live view of what the configured Event Info endpoint is serving. Bypasses the 30s cache. Use this to confirm Category / Segment names mid-event before the override field above.</div>
-        <div id="ei-debug" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
-          <div>
-            <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);margin-bottom:6px;">Normalized Fields</div>
-            <table id="ei-normalized" style="width:100%;border-collapse:collapse;font-size:12px;"></table>
-          </div>
-          <div>
-            <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);margin-bottom:6px;">Patched into event-config</div>
-            <table id="ei-current-config" style="width:100%;border-collapse:collapse;font-size:12px;"></table>
-          </div>
-          <div style="grid-column:1/-1;">
-            <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);margin-bottom:6px;">Raw response</div>
-            <pre id="ei-raw" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:10px;font-family:ui-monospace,Menlo,monospace;font-size:11px;line-height:1.4;max-height:240px;overflow:auto;margin:0;"></pre>
-          </div>
-        </div>
-      </div></details><!-- /adv event info inspector -->
-
-      <!-- Live polling -->
-      <div class="ds-live-poll">
-        <div class="ds-live-poll-header">
-          <div class="ds-live-poll-title">Source Polling</div>
-          <label class="toggle-switch">
-            <input type="checkbox" id="ds-poll-enabled" onchange="toggleLivePoll(this.checked)" />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-        <details class="adv-details" style="margin-top:6px;">
-        <summary class="adv-summary">Per-endpoint intervals</summary>
-        <div class="adv-body">
-        <div class="hint" style="margin-bottom:10px;">Uncheck any source you want to pull manually. Honored only while the master Source Polling switch above is ON.</div>
-        <div class="poll-intervals">
-          <div class="poll-interval-field">
-            <label><input type="checkbox" id="pe-liveElements" checked
-                          onchange="saveDataSources(true)" />Live Elements</label>
-            <input type="number" id="pi-liveElements" min="500" step="500" value="1500" />
-            <span class="unit">ms</span>
-          </div>
-          <div class="poll-interval-field">
-            <label><input type="checkbox" id="pe-currentSkater" checked
-                          onchange="saveDataSources(true)" />Current Skater</label>
-            <input type="number" id="pi-currentSkater" min="500" step="500" value="2000" />
-            <span class="unit">ms</span>
-          </div>
-          <div class="poll-interval-field">
-            <label><input type="checkbox" id="pe-ranking" checked
-                          onchange="saveDataSources(true)" />Rankings (Seg)</label>
-            <input type="number" id="pi-ranking" min="1000" step="500" value="3000" />
-            <span class="unit">ms</span>
-          </div>
-          <div class="poll-interval-field">
-            <label><input type="checkbox" id="pe-rankingContext" checked
-                          onchange="saveDataSources(true)" />Rank 6 Context</label>
-            <input type="number" id="pi-rankingContext" min="1000" step="500" value="2000" />
-            <span class="unit">ms</span>
-          </div>
-          <div class="poll-interval-field">
-            <label><input type="checkbox" id="pe-startOrder" checked
-                          onchange="saveDataSources(true)" />Start Order</label>
-            <input type="number" id="pi-startOrder" min="5000" step="1000" value="10000" />
-            <span class="unit">ms</span>
-          </div>
-          <div class="poll-interval-field">
-            <label><input type="checkbox" id="pe-officials" checked
-                          onchange="saveDataSources(true)" />Officials</label>
-            <input type="number" id="pi-officials" min="5000" step="1000" value="30000" />
-            <span class="unit">ms</span>
-          </div>
-          <div class="poll-interval-field">
-            <label><input type="checkbox" id="pe-eventInfo" checked
-                          onchange="saveDataSources(true)" />Event Info</label>
-            <input type="number" id="pi-eventInfo" min="5000" step="1000" value="15000" />
-            <span class="unit">ms</span>
-          </div>
-        </div>
-        </div></details><!-- /adv per-endpoint intervals -->
-        <div class="live-controls">
-          <button class="btn btn-fetch btn-sm" onclick="startPoll()">▶ Start Polling</button>
-          <button class="btn btn-hide btn-sm" onclick="stopPoll()">■ Stop Polling</button>
-          <span id="poll-status" style="font-size:13px;color:var(--text2);">Idle</span>
-        </div>
-      </div>
-
+      <div class="hint" style="margin-top:8px;">Each save of the Event Configuration is auto-backed-up (keeps last 20). Use presets to switch between events with one click — e.g. <em>BC Provincials</em>, <em>Skate Canada Sectionals</em>, <em>Test Event</em>.</div>
     </div>
   </div>
 
-  </div><!-- /tab-setup -->
+
+</div><!-- /tab-setup -->
 
   <!-- ── LIVE tab ──────────────────────────────────────────────────────────── -->
   <div id="tab-live" class="tab-panel tab-panel-active">
 
 
-  <!-- ── Auto-Record panel ─────────────────────────────────────────── -->
-  <div class="panel" id="scapi-autorecord-panel" style="display:none;">
-    <div class="panel-header">
-      <div class="panel-header-title">Auto-Record — vMix</div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <span id="autorecord-status-badge" style="font-size:11px;font-weight:700;letter-spacing:1px;padding:3px 10px;border-radius:20px;background:rgba(255,255,255,0.06);color:var(--text2);">IDLE</span>
-      </div>
-    </div>
-    <div class="panel-body" style="padding:16px;">
-
-      <!-- Enable toggle + explanation -->
-      <div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:14px;">
-        <div style="flex:1;">
-          <div style="font-size:13px;color:var(--text);font-weight:600;margin-bottom:4px;">Automatic Recording</div>
-          <div style="font-size:12px;color:var(--text2);line-height:1.5;">
-            When enabled, vMix recording starts automatically the moment the Data Specialist pushes a skater on ice.
-            A brief countdown gives you time to cancel if something looks wrong.
-            The filename is set to the skater's name so every clip is correctly identified.
-          </div>
-        </div>
-        <label class="toggle-label" style="flex-shrink:0;margin-top:2px;">
-          <input type="checkbox" id="autorecord-enabled">
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
-
-      <!-- Settings row -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px;">
-        <div>
-          <label class="field-label">Countdown (seconds)</label>
-          <input type="number" id="autorecord-delay" class="input-field" value="4" min="0" max="15" step="1"
-            title="Delay before recording starts — gives the operator time to cancel">
-        </div>
-        <div>
-          <label class="field-label">vMix Host</label>
-          <input type="text" id="autorecord-vmix-host" class="input-field" value="localhost" placeholder="localhost">
-        </div>
-        <div>
-          <label class="field-label">vMix Port</label>
-          <input type="number" id="autorecord-vmix-port" class="input-field" value="8088" min="1" max="65535">
-        </div>
-      </div>
-      <div style="margin-bottom:16px;">
-        <button class="btn btn-fetch btn-sm" onclick="autoRecordSaveSettings()">Save Settings</button>
-      </div>
-
-      <!-- Live recording status -->
-      <div id="autorecord-live-status" style="display:none;border:1px solid var(--border);border-radius:10px;overflow:hidden;">
-
-        <!-- Pre-loaded / awaiting elements state -->
-        <div id="autorecord-preloaded-box" style="display:none;background:rgba(33,150,243,0.07);padding:14px 16px;">
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
-            <div style="flex:1;min-width:0;">
-              <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#64b5f6;margin-bottom:6px;">NEXT UP — FILENAME LOADED INTO VMIX</div>
-              <div id="autorecord-preloaded-name" style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:2px;"></div>
-              <div id="autorecord-preloaded-filename" style="font-size:11px;color:var(--text2);font-family:monospace;margin-bottom:6px;word-break:break-all;"></div>
-              <div id="autorecord-preloaded-verify" style="font-size:12px;color:var(--text2);"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Countdown state -->
-        <div id="autorecord-countdown-box" style="display:none;background:rgba(255,152,0,0.08);border-top:1px solid rgba(255,152,0,0.15);padding:14px 16px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-            <div>
-              <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#ffb74d;margin-bottom:4px;">RECORDING IN…</div>
-              <div id="autorecord-countdown-name" style="font-size:18px;font-weight:700;color:var(--text);"></div>
-              <div id="autorecord-countdown-filename" style="font-size:11px;color:var(--text2);margin-top:2px;font-family:monospace;"></div>
-            </div>
-            <div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;">
-              <div id="autorecord-countdown-timer" style="font-size:36px;font-weight:800;color:#ffb74d;line-height:1;min-width:48px;text-align:center;">4</div>
-              <div style="display:flex;gap:6px;">
-                <button class="btn btn-show btn-sm" onclick="autoRecordStartNow()">Record Now</button>
-                <button class="btn btn-hide btn-sm" onclick="autoRecordCancelCountdown()">Cancel</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Active recording state -->
-        <div id="autorecord-recording-box" style="display:none;background:rgba(244,67,54,0.08);border-top:1px solid rgba(244,67,54,0.15);padding:14px 16px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-            <div>
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-                <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#ef5350;animation:pulse 1.2s infinite;"></span>
-                <span style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#ef5350;">RECORDING</span>
-              </div>
-              <div id="autorecord-current-filename" style="font-size:14px;font-weight:600;color:var(--text);font-family:monospace;margin-bottom:4px;"></div>
-              <div id="autorecord-recording-verify" style="display:none;font-size:12px;"></div>
-            </div>
-            <button class="btn btn-hide btn-sm" onclick="autoRecordManualStop()">■ Stop Recording</button>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  </div>
-
-  <!-- ── Template Cards ────────────────────────────────────────────────── -->
   <div class="section-title">Graphic Templates</div>
   <div class="cards" id="live-cards"></div>
 
@@ -1068,27 +650,95 @@
     <div class="cards" id="layout-cards"></div>
   </div><!-- /tab-layout -->
 
+  <!-- ── TOOLS tab ─────────────────────────────────────────────────────────── -->
+  <div id="tab-tools" class="tab-panel">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-header-title">Control Pages</div>
+      </div>
+      <div class="panel-body">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;">
+          <a href="/operator/sc-api.html" class="tool-card">
+            <div class="tool-card-title">Event &amp; Skater Selector</div>
+            <div class="tool-card-desc">Pick the event, category &amp; segment, then step through skaters (next/prev) as they take the ice. Drives every graphic + recording names.</div>
+          </a>
+          <a href="/preview/" class="tool-card">
+            <div class="tool-card-title">Preview Wall</div>
+            <div class="tool-card-desc">Every graphic as a live tile — verify looks before air.</div>
+          </a>
+          <a href="/production-control/" class="tool-card">
+            <div class="tool-card-title">Production Control</div>
+            <div class="tool-card-desc">Recording file sorter, MP4 metadata, repair tools, per-graphic vMix input/overlay mapping.</div>
+          </a>
+          <a href="/messages/" class="tool-card">
+            <div class="tool-card-title">Messages Control</div>
+            <div class="tool-card-desc">Workbook-driven announcement bar — schedules, titles, temporary messages.</div>
+          </a>
+          <a href="/operator/workbooks.html" class="tool-card">
+            <div class="tool-card-title">Event Workbooks</div>
+            <div class="tool-card-desc">Open the coaches, quotes &amp; music files for the Manual Skater card — no path typing.</div>
+          </a>
+          <a href="/operator/interview.html" class="tool-card">
+            <div class="tool-card-title">Interview Control</div>
+            <div class="tool-card-desc">Interview lower-third — free-text guests, flag picker, saved presets.</div>
+          </a>
+          <a href="/operator/clocks.html" class="tool-card">
+            <div class="tool-card-title">Clocks</div>
+            <div class="tool-card-desc">Countdown / count-up and time-of-day clocks — timing, show/hide, styling, all in one place.</div>
+          </a>
+          <!-- Manual Skaters hidden for now — not needed while every event
+               runs on the Skate Canada API. Re-add if that changes. -->
+          <a href="/menu/" class="tool-card">
+            <div class="tool-card-title">Graphics Menu</div>
+            <div class="tool-card-desc">URL list for adding graphics as vMix browser inputs.</div>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-header-title">System &amp; Updates</div>
+      </div>
+      <div class="panel-body">
+        <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:220px;">
+            <div class="lbl" style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);">Installed Version</div>
+            <div id="version-full" style="font-family:ui-monospace,Menlo,monospace;font-size:13px;color:var(--text);margin-top:4px;">Checking…</div>
+            <div id="version-subject" style="font-size:12px;color:var(--text2);margin-top:2px;"></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-start;">
+            <button class="btn btn-fetch btn-sm" onclick="runUpdate()" id="update-btn">⬇ Check &amp; Update</button>
+            <div id="update-status" style="font-size:11px;color:var(--text2);max-width:280px;line-height:1.5;"></div>
+          </div>
+        </div>
+        <div class="hint" style="margin-top:12px;">Pulls the latest code from your GitHub repo (fast-forward only). After a successful update, <strong>restart the server</strong> to load the new code. Your event selection and style settings are untouched.</div>
+      </div>
+    </div>
+  </div><!-- /tab-tools -->
+
 </div>
 
 <div id="toast"></div>
 
 <script src="/js/core/caps-targets.js"></script>
 <script>
+// Ordered to follow the broadcast flow of a segment: intro graphics first,
+// then live-performance graphics, then results, then utility graphics.
 const TEMPLATES = [
   { id: 'starting-order',  label: 'Starting Order',   hasGroups: true  },
-  { id: 'scoring',         label: 'Scoring Display'                    },
-  { id: 'lower-third',     label: 'Lower Third'                        },
-  { id: 'manual-skater',   label: 'Manual Skater'                      },
+  { id: 'manual-skater',   label: 'Skater Name Bar'                    },
   { id: 'interview',       label: 'Interview'                          },
-  { id: 'standings',       label: 'Rank 6 (corner)'                   },
-  { id: 'officials',       label: 'Officials'                          },
   { id: 'elements',        label: 'Elements Tracker'                   },
-  { id: 'skater-profile',  label: 'Skater Profile'                    },
-  { id: 'messages',        label: 'Messages Bar'                       },
-  { id: 'clock',           label: 'Clock (Countdown / Count-up)'        },
-  { id: 'time-of-day',     label: 'Time of Day Clock'                   },
+  { id: 'scoring',         label: 'Scoring Display'                    },
+  { id: 'standings',       label: 'Rank 6 (corner)'                   },
   { id: 'rankings',        label: 'Final Rankings',   hasPages: true, hasRowsPerPage: true },
+  { id: 'officials',       label: 'Officials'                          },
+  { id: 'messages',        label: 'Messages Bar'                       },
 ];
+// Retired from the operator UI (server support stays dormant):
+//   skater-profile — being redesigned; clock + time-of-day — controlled from
+//   the dedicated Clocks page (/operator/clocks.html).
 
 // Natural panel widths for each template — used as default for width slider
 const NATURAL_WIDTHS = {
@@ -1154,7 +804,6 @@ function connectWs() {
         todOpDisplay();
       }
     }
-    autoRecordHandleWsMessage(msg);
     if (msg.type === 'config-update') { loadAllConfig(); refreshPresets(); }
   });
   ws.addEventListener('close', () => { wsDot.classList.remove('connected'); setTimeout(connectWs, 3000); });
@@ -1386,88 +1035,30 @@ async function setLanguage(lang) {
 }
 
 // ── Per-template Refresh from API ──────────────────────────────────────
-// Maps graphic template id → Skate Canada endpoint key (must match LIVE_ENDPOINTS in server.js)
-const TEMPLATE_TO_SC_ENDPOINT = {
-  'starting-order': 'startOrder',
-  'scoring':        'currentSkater',
-  'lower-third':    'currentSkater',
-  'rankings':       'ranking',
-  'standings':      'rankingContext',
-  'elements':       'liveElements',
-  'officials':      'officials',
-};
+// Templates whose card shows a "↻ Refresh API" button. The SC API poller
+// rewrites every template in one pass, so a single force-repoll serves all.
+const API_REFRESH_TEMPLATES = new Set([
+  'starting-order', 'scoring', 'rankings', 'standings', 'elements', 'officials',
+]);
 function refreshEndpointFor(templateId) {
-  return TEMPLATE_TO_SC_ENDPOINT[templateId] || null;
+  return API_REFRESH_TEMPLATES.has(templateId) ? templateId : null;
 }
 async function refreshFromAPI(templateId) {
-  const endpoint = refreshEndpointFor(templateId);
-  if (!endpoint) { toast('No API endpoint for this template', 'err'); return; }
   try {
-    const body = { endpoint };
-    if (endpoint === 'startOrder') {
-      const grp = document.getElementById('fetch-group')?.value;
-      if (grp) body.group = Number(grp);
-    }
-    await api('POST', '/api/sc/fetch', body);
+    await api('POST', '/api/sc-api/refresh');
     toast(`↻ ${templateId} refreshed from API`);
     await loadData(templateId);
     if (templateId === 'rankings') await loadData('standings');
   } catch (e) { toast(`Refresh error: ${e.message}`, 'err'); }
 }
 
-// ── Fetch SC endpoint ──────────────────────────────────────────────────
-async function fetchEndpoint(endpoint) {
-  const group = document.getElementById('fetch-group')?.value;
-  const body  = { endpoint };
-  if (endpoint === 'startOrder' && group) body.group = Number(group);
-  try {
-    const res = await api('POST', '/api/sc/fetch', body);
-    toast(`✓ ${endpoint} fetched`);
-
-    // Refresh data editors and chips
-    const map = {
-      startOrder: 'starting-order', currentSkater: 'scoring',
-      ranking: 'rankings', rankingContext: 'standings', liveElements: 'elements',
-      officials: 'officials', eventInfo: null,
-    };
-    const tpl = map[endpoint];
-    if (tpl) {
-      await loadData(tpl);
-      if (tpl === 'rankings') await loadData('standings'); // dual write
-      if (tpl === 'scoring')  await loadData('lower-third'); // dual write
-    }
-    if (endpoint === 'eventInfo') { loadAllConfig(); refreshEventInfoDebug(); }
-  } catch(e) { toast(`Fetch error: ${e.message}`, 'err'); }
-}
-
-// ── Live polling ───────────────────────────────────────────────────────
-async function startPoll() {
-  try {
-    await saveDataSources(true);
-    await api('POST', '/api/live-poll/start');
-    toast('▶ Source polling started');
-    refreshPollStatus();
-  } catch(e) { toast(`Error: ${e.message}`, 'err'); }
-}
-async function stopPoll() {
-  try {
-    await api('POST', '/api/live-poll/stop');
-    toast('■ Source polling stopped');
-    refreshPollStatus();
-  } catch(e) { toast(`Error: ${e.message}`, 'err'); }
-}
-async function toggleLivePoll(enabled) {
-  if (enabled) await startPoll(); else await stopPoll();
-}
+// ── Poll status badge (topbar) ─────────────────────────────────────────
 async function refreshPollStatus() {
   try {
     const data  = await api('GET', '/api/status');
     const active = data.livePollActive;
-    pollBadge.textContent = active ? 'SOURCE POLLING' : 'POLLING OFF';
+    pollBadge.textContent = active ? 'SC API LIVE' : 'POLLING OFF';
     pollBadge.classList.toggle('active', !!active);
-    const modeLabel = data.sourceMode === 'csv-folder' ? 'CSV' : 'Live JSON';
-    document.getElementById('poll-status').textContent = active ? `Active (${modeLabel})` : `Idle (${modeLabel})`;
-    document.getElementById('ds-poll-enabled').checked = !!active;
   } catch {}
 }
 
@@ -1480,30 +1071,19 @@ async function loadAllConfig() {
     document.getElementById('cfg-subtitle').value        = cfg.eventSubtitle  || '';
     document.getElementById('cfg-location').value        = cfg.eventLocation  || '';
     document.getElementById('cfg-date').value            = cfg.eventDate      || '';
-    document.getElementById('cfg-header-subtitle').value = cfg.headerSubtitle || '';
-    const ghEn = document.getElementById('cfg-global-header-title');
-    const ghFr = document.getElementById('cfg-global-header-title-fr');
-    if (ghEn) ghEn.value = cfg.globalHeaderOverride   || '';
-    if (ghFr) ghFr.value = cfg.globalHeaderOverrideFr || '';
-    const nfSel = document.getElementById('cfg-name-format');
-    if (nfSel) nfSel.value = cfg.nameFormat || 'default';
-    const gdEn = document.getElementById('cfg-global-detail-text');
-    const gdFr = document.getElementById('cfg-global-detail-text-fr');
-    if (gdEn) gdEn.value = cfg.globalDetailOverride   || '';
-    if (gdFr) gdFr.value = cfg.globalDetailOverrideFr || '';
     document.getElementById('cfg-accent').value          = cfg.theme?.accentColor || '#C8102E';
-    document.getElementById('event-name-display').textContent = cfg.eventName || 'Event';
+    document.getElementById('event-name-display').textContent = cfg.eventName || 'No event configured';
+    // Machine identity badge (header) + field
+    const mName = (cfg.machineName || '').trim();
+    const mBadge = document.getElementById('machine-badge');
+    if (mBadge) { mBadge.textContent = mName; mBadge.style.display = mName ? '' : 'none'; }
+    const mField = document.getElementById('cfg-machine-name');
+    if (mField && document.activeElement !== mField) mField.value = mName;
+    // First-run banner: no event ID means the machine hasn't been set up yet.
+    const configured = !!(cfg.dataSource?.scApi?.eventId);
+    const frb = document.getElementById('first-run-banner');
+    if (frb) frb.style.display = configured ? 'none' : '';
     if (!_langInitialized) { setLangUI(cfg.language || 'en'); _langInitialized = true; }
-    // Text colors
-    const tc = cfg.theme || {};
-    const setField = (id, val) => { const el = g(id); if (el && val) el.value = val; };
-    setField('cfg-color-text-primary',   tc.textPrimary   || '#ffffff');
-    setField('cfg-color-text-secondary', tc.textSecondary || 'rgba(255,255,255,0.72)');
-    setField('cfg-color-text-muted',     tc.textMuted     || 'rgba(255,255,255,0.45)');
-    setField('cfg-color-accent-light',   tc.accentColorLight || '#E8213F');
-    setField('cfg-color-numbers',        tc.numberColor   || '');
-    const showRingsEl = g('cfg-show-rings');
-    if (showRingsEl) showRingsEl.checked = cfg.showHeaderRings !== false;
     setElModeUI(cfg.elementsDisplayMode || 'code');
     setElLayoutUI(cfg.elementsLayoutMode || 'list');
     const elLabelEn = document.getElementById('el-total-label-en');
@@ -1518,11 +1098,7 @@ async function loadAllConfig() {
     await loadLogos(cfg.logoFile || '');
 
     const ds  = cfg.dataSource || {};
-    const csv = ds.csv || {};
-    const csvFiles = csv.files || {};
     const scApi = ds.scApi || {};
-    document.getElementById('ds-mode').value = ds.mode || 'live-json';
-    applyDataSourceModeUI(ds.mode || 'live-json');
     // SC API fields
     const scapiEventId = document.getElementById('scapi-event-id');
     const scapiBaseUrl = document.getElementById('scapi-base-url');
@@ -1531,71 +1107,18 @@ async function loadAllConfig() {
     if (scapiBaseUrl && scApi.baseUrl)  scapiBaseUrl.value = scApi.baseUrl;
     if (scapiPollMs  && scApi.pollIntervalMs) scapiPollMs.value = scApi.pollIntervalMs;
     if (scApi.segmentId) {
-      scApiState.eventId    = scApi.eventId    || null;
-      scApiState.categoryId = scApi.categoryId || null;
-      scApiState.segmentId  = scApi.segmentId  || null;
+      scApiState.eventId         = scApi.eventId    || null;
+      scApiState.categoryId      = scApi.categoryId || null;
+      scApiState.segmentId       = scApi.segmentId  || null;
+      scApiState.categoryNameCfg = cfg.categoryName || '';
+      scApiState.segmentNameCfg  = scApi.segmentName || cfg.segmentName || '';
       scApiUpdateActiveSummary();
     }
-    document.getElementById('ds-baseUrl').value  = ds.baseUrl  || '';
-    document.getElementById('ds-instance').value = ds.instance || '';
-    document.getElementById('ds-csv-folder').value = csv.folderPath || '';
-    document.getElementById('ds-csv-poll').value = csv.pollIntervalMs || 1000;
-    document.getElementById('ds-csv-eventInfo').value = csvFiles.eventInfo || 'SC2_csslivetextEventInfo.csv';
-    document.getElementById('ds-csv-startOrder').value = csvFiles.startOrder || 'SC2_csslivetextStartOrder.csv';
-    document.getElementById('ds-csv-currentSkater').value = csvFiles.currentSkater || 'SC2_csslivetextCurrentSkater.csv';
-    document.getElementById('ds-csv-scores').value = csvFiles.scores || 'SC2_csslivetextScores.csv';
-    document.getElementById('ds-csv-ranking').value = csvFiles.ranking || 'SC2_csslivetextRanking.csv';
-    document.getElementById('ds-csv-officials').value = csvFiles.officials || 'SC2_csslivetextOfficials.csv';
-    document.getElementById('ds-csv-liveElements').value = csvFiles.liveElements || 'sc2_csslivescoring.csv';
-    const urls = ds.urls || {};
-    document.getElementById('ds-url-startOrder').value    = urls.startOrder    || '';
-    document.getElementById('ds-url-currentSkater').value = urls.currentSkater || '';
-    document.getElementById('ds-url-liveElements').value  = urls.liveElements  || '';
-    document.getElementById('ds-url-ranking').value          = urls.ranking          || '';
-    document.getElementById('ds-url-rankingContext').value   = urls.rankingContext   || '';
-    document.getElementById('ds-url-officials').value        = urls.officials        || '';
-    document.getElementById('ds-url-eventInfo').value     = urls.eventInfo     || '';
-
-    const intervals = ds.livePoll?.intervals || {};
-    document.getElementById('pi-liveElements').value    = intervals.liveElements    || 1500;
-    document.getElementById('pi-currentSkater').value   = intervals.currentSkater   || 2000;
-    document.getElementById('pi-ranking').value         = intervals.ranking         || 3000;
-    document.getElementById('pi-rankingContext').value  = intervals.rankingContext  || 2000;
-    document.getElementById('pi-startOrder').value      = intervals.startOrder      || 10000;
-    document.getElementById('pi-officials').value       = intervals.officials       || 30000;
-    document.getElementById('pi-eventInfo').value       = intervals.eventInfo       || 15000;
-
-    // Per-endpoint enable checkboxes. Missing keys default to true (back-compat).
-    const endpointsEnabled = ds.livePoll?.endpoints || {};
-    const setEpChecked = (id, key) => {
-      const el = document.getElementById(id);
-      if (el) el.checked = endpointsEnabled[key] !== false;
-    };
-    setEpChecked('pe-liveElements',   'liveElements');
-    setEpChecked('pe-currentSkater',  'currentSkater');
-    setEpChecked('pe-ranking',        'ranking');
-    setEpChecked('pe-rankingContext', 'rankingContext');
-    setEpChecked('pe-startOrder',     'startOrder');
-    setEpChecked('pe-officials',      'officials');
-    setEpChecked('pe-eventInfo',      'eventInfo');
-
     // Restore position sliders for each template
     const positions = cfg.positions || {};
     TEMPLATES.forEach(t => {
       const pos = positions[t.id] || {};
       setPosUI(t.id, pos);
-    });
-
-    // Skater extras workbook paths (quote + music card) — don't clobber the
-    // fields while the operator is typing in one of them.
-    const sx = cfg.skaterExtras || {};
-    [
-      ['ms-extras-music-path',   sx.musicWorkbookPath   || ''],
-      ['ms-extras-quotes-path',  sx.quotesWorkbookPath  || ''],
-      ['ms-extras-coaches-path', sx.coachesWorkbookPath || ''],
-    ].forEach(([fid, value]) => {
-      const el = g(fid);
-      if (el && document.activeElement !== el) el.value = value;
     });
 
     // Elements font sizes + display mode toggle
@@ -1637,7 +1160,6 @@ async function loadAllConfig() {
       const lbl = document.getElementById('tod-label-input'); if (lbl) lbl.value = td.label || '';
       todOpDisplay();
     } catch { /* not yet created — ignore */ }
-    autoRecordLoadConfig(cfg);
   } catch(e) { console.error('loadAllConfig error:', e); }
 }
 
@@ -1652,21 +1174,16 @@ async function saveEventConfig() {
     eventSubtitle:  document.getElementById('cfg-subtitle').value,
     eventLocation:  document.getElementById('cfg-location').value,
     eventDate:      document.getElementById('cfg-date').value,
-    headerSubtitle: document.getElementById('cfg-header-subtitle').value,
     logoFile:       document.getElementById('cfg-logo-select').value,
+    // Existing theme values (text colours etc.) are preserved via the spread;
+    // only the accent-derived colours are recomputed from the picker.
     theme: Object.assign({}, cfg.theme || {}, {
       accentColor:         accent,
       accentColorLight:    lighten(accent, 20),
       accentColorDark:     darken(accent, 20),
       headerGradientStart: darken(accent, 20),
       headerGradientEnd:   lighten(accent, 10),
-      textPrimary:   (document.getElementById('cfg-color-text-primary')?.value.trim()   || cfg.theme?.textPrimary   || '#ffffff'),
-      textSecondary: (document.getElementById('cfg-color-text-secondary')?.value.trim() || cfg.theme?.textSecondary || 'rgba(255,255,255,0.72)'),
-      textMuted:     (document.getElementById('cfg-color-text-muted')?.value.trim()     || cfg.theme?.textMuted     || 'rgba(255,255,255,0.45)'),
-      accentColorLight: (document.getElementById('cfg-color-accent-light')?.value.trim() || cfg.theme?.accentColorLight || '#E8213F'),
-      numberColor:   (document.getElementById('cfg-color-numbers')?.value.trim()        || cfg.theme?.numberColor   || ''),
     }),
-    showHeaderRings: document.getElementById('cfg-show-rings')?.checked ?? true,
   };
   try {
     await api('POST', '/api/config', update);
@@ -1675,34 +1192,12 @@ async function saveEventConfig() {
   } catch(e) { toast(`Error: ${e.message}`, 'err'); }
 }
 
+// SC API is the only data source — legacy Live JSON / CSV modes were removed
+// from the UI (server code paths remain dormant for old configs).
 async function saveDataSources(silent = false) {
   const update = {
     dataSource: {
-      mode: document.getElementById('ds-mode').value,
-      baseUrl:  document.getElementById('ds-baseUrl').value.trim().replace(/\/$/, ''),
-      instance: document.getElementById('ds-instance').value.trim(),
-      urls: {
-        startOrder:    document.getElementById('ds-url-startOrder').value.trim(),
-        currentSkater: document.getElementById('ds-url-currentSkater').value.trim(),
-        liveElements:  document.getElementById('ds-url-liveElements').value.trim(),
-        ranking:        document.getElementById('ds-url-ranking').value.trim(),
-        rankingContext: document.getElementById('ds-url-rankingContext').value.trim(),
-        officials:      document.getElementById('ds-url-officials').value.trim(),
-        eventInfo:     document.getElementById('ds-url-eventInfo').value.trim(),
-      },
-      csv: {
-        folderPath: document.getElementById('ds-csv-folder').value.trim(),
-        pollIntervalMs: Number(document.getElementById('ds-csv-poll').value) || 1000,
-        files: {
-          eventInfo: document.getElementById('ds-csv-eventInfo').value.trim(),
-          startOrder: document.getElementById('ds-csv-startOrder').value.trim(),
-          currentSkater: document.getElementById('ds-csv-currentSkater').value.trim(),
-          scores: document.getElementById('ds-csv-scores').value.trim(),
-          ranking: document.getElementById('ds-csv-ranking').value.trim(),
-          officials: document.getElementById('ds-csv-officials').value.trim(),
-          liveElements: document.getElementById('ds-csv-liveElements').value.trim(),
-        },
-      },
+      mode: 'sc-api',
       scApi: {
         baseUrl:                 (document.getElementById('scapi-base-url')?.value || '').trim() || 'https://sc-css-public-api-cmh9d3htgxfpdkb7.canadacentral-01.azurewebsites.net',
         eventId:                 scApiState.eventId    || null,
@@ -1711,36 +1206,65 @@ async function saveDataSources(silent = false) {
         pollIntervalMs:          Number(document.getElementById('scapi-poll-interval')?.value) || 2000,
         officialsPollIntervalMs: 30000,
       },
-      livePoll: {
-        enabled: document.getElementById('ds-poll-enabled').checked,
-        intervals: {
-          liveElements:  Number(document.getElementById('pi-liveElements').value)  || 1500,
-          currentSkater: Number(document.getElementById('pi-currentSkater').value) || 2000,
-          ranking:        Number(document.getElementById('pi-ranking').value)        || 3000,
-          rankingContext: Number(document.getElementById('pi-rankingContext').value) || 2000,
-          startOrder:     Number(document.getElementById('pi-startOrder').value)     || 10000,
-          officials:     Number(document.getElementById('pi-officials').value)     || 30000,
-          eventInfo:     Number(document.getElementById('pi-eventInfo').value)     || 15000,
-        },
-        endpoints: {
-          liveElements:   document.getElementById('pe-liveElements')?.checked   !== false,
-          currentSkater:  document.getElementById('pe-currentSkater')?.checked  !== false,
-          ranking:        document.getElementById('pe-ranking')?.checked        !== false,
-          rankingContext: document.getElementById('pe-rankingContext')?.checked !== false,
-          startOrder:     document.getElementById('pe-startOrder')?.checked     !== false,
-          officials:      document.getElementById('pe-officials')?.checked      !== false,
-          eventInfo:      document.getElementById('pe-eventInfo')?.checked      !== false,
-        },
-      },
     },
   };
   try {
     await api('POST', '/api/config', update);
-    if (!silent) toast('✓ Data sources saved');
+    if (!silent) toast('✓ Data source saved');
   } catch(e) {
     if (!silent) toast(`Error: ${e.message}`, 'err');
     throw e;
   }
+}
+
+// vMix connection — written to the same autoRecord.* config keys the server
+// already reads for the recording-filename push and overlay toggles.
+// ── Version + update ────────────────────────────────────────────────────
+async function loadVersion() {
+  try {
+    const v = await api('GET', '/api/version');
+    const short = $('version-label');
+    const full = $('version-full');
+    const subj = $('version-subject');
+    if (!v.available) {
+      if (short) short.textContent = '';
+      if (full) full.textContent = 'Not a git checkout';
+      return;
+    }
+    if (short) short.textContent = `v ${v.commit} · ${v.date}`;
+    if (full) full.textContent = `${v.commit}  (${v.branch})  ·  ${v.date}`;
+    if (subj) subj.textContent = v.subject || '';
+  } catch { /* ignore */ }
+}
+
+async function runUpdate() {
+  const btn = $('update-btn');
+  const status = $('update-status');
+  if (btn) { btn.disabled = true; btn.textContent = 'Updating…'; }
+  if (status) { status.style.color = 'var(--text2)'; status.textContent = 'Pulling latest code…'; }
+  try {
+    const r = await api('POST', '/api/update');
+    if (r.alreadyCurrent) {
+      if (status) { status.style.color = 'var(--green,#81c784)'; status.textContent = '✓ Already up to date.'; }
+    } else {
+      if (status) { status.style.color = 'var(--green,#81c784)'; status.textContent = '✓ Updated. Restart the server to load the new code.'; }
+    }
+    loadVersion();
+  } catch (e) {
+    if (status) { status.style.color = 'var(--accent,#e8213f)'; status.textContent = `⚠ ${e.message}`; }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '⬇ Check & Update'; }
+  }
+}
+
+async function saveMachineName() {
+  try {
+    const name = (g('cfg-machine-name')?.value || '').trim();
+    await api('POST', '/api/config', { machineName: name });
+    const badge = document.getElementById('machine-badge');
+    if (badge) { badge.textContent = name; badge.style.display = name ? '' : 'none'; }
+    toast(name ? `✓ Machine set: ${name}` : '✓ Machine name cleared');
+  } catch(e) { toast(`Error: ${e.message}`, 'err'); }
 }
 
 // ── Position & size sliders ────────────────────────────────────────────
@@ -1847,8 +1371,11 @@ function setPosUI(id, pos) {
     if (fsEl) fsEl.checked = p.ltShowFlag !== false;
   }
   if (id === 'manual-skater') {
-    const exEl = g(`pos-ms-extras-${id}`);
-    if (exEl) exEl.checked = p.msExtrasEnabled !== false;
+    const setCk = (cid, val) => { const el = g(cid); if (el) el.checked = val !== false; };
+    setCk(`pos-ms-show-coaches-${id}`,  p.msShowCoaches);
+    setCk(`pos-ms-show-quote-${id}`,    p.msShowQuote);
+    setCk(`pos-ms-show-music-${id}`,    p.msShowMusic);
+    setCk(`pos-ms-show-category-${id}`, p.msShowCategory);
     sv(`pos-ms-quote-secs-${id}`, p.msQuoteSecs ?? 4);
     st(`pv-ms-quote-secs-${id}`, `${p.msQuoteSecs ?? 4}s`);
     sv(`pos-ms-coach-secs-${id}`, p.msCoachSecs ?? 4);
@@ -2083,7 +1610,11 @@ function readPos(id) {
     radius:       Number(g(`pos-cr-${id}`)?.value ?? 20),
     ltFlagHeight: Number(g(`pos-fh-${id}`)?.value ?? 68),
     ltShowFlag:   FLAG_TOGGLE_TEMPLATES.includes(id) ? (g(`pos-flag-show-${id}`)?.checked !== false) : undefined,
-    msExtrasEnabled: id === 'manual-skater' ? (g(`pos-ms-extras-${id}`)?.checked !== false) : undefined,
+    msExtrasEnabled: id === 'manual-skater' ? true : undefined,
+    msShowCoaches:   id === 'manual-skater' ? (g(`pos-ms-show-coaches-${id}`)?.checked !== false) : undefined,
+    msShowQuote:     id === 'manual-skater' ? (g(`pos-ms-show-quote-${id}`)?.checked !== false) : undefined,
+    msShowMusic:     id === 'manual-skater' ? (g(`pos-ms-show-music-${id}`)?.checked !== false) : undefined,
+    msShowCategory:  id === 'manual-skater' ? (g(`pos-ms-show-category-${id}`)?.checked !== false) : undefined,
     msQuoteSecs:     id === 'manual-skater' ? Number(g(`pos-ms-quote-secs-${id}`)?.value ?? 4) : undefined,
     msCoachSecs:     id === 'manual-skater' ? Number(g(`pos-ms-coach-secs-${id}`)?.value ?? 4) : undefined,
     ltLine2Source: id === 'interview' ? (g('pos-l2src-interview')?.value || 'club') : undefined,
@@ -2418,38 +1949,6 @@ function updateOfRoleButtons(id, align) {
   rb.style.color        = align === 'right' ? '#fff'          : 'var(--text)';
 }
 
-// ── Skater extras (quote + music workbooks) ────────────────────────────
-async function refreshSkaterExtrasStatus() {
-  const el = g('ms-extras-status');
-  if (!el) return;
-  try {
-    const s = await api('GET', '/api/skater-extras/status');
-    if (!s.musicPath && !s.quotesPath && !s.coachesPath) { el.textContent = 'No workbooks configured'; return; }
-    el.textContent = s.errors?.length
-      ? `⚠ ${s.errors.join(' · ')}`
-      : `✓ ${s.skaters} skaters, ${s.quotes} quotes, ${s.coaches ?? 0} coach lists loaded`;
-    el.style.color = s.errors?.length ? 'var(--red, #ef5350)' : 'var(--green, #81c784)';
-  } catch (e) {
-    el.textContent = `⚠ ${e.message}`;
-  }
-}
-
-async function saveSkaterExtras() {
-  try {
-    await api('POST', '/api/config', {
-      skaterExtras: {
-        musicWorkbookPath: g('ms-extras-music-path')?.value.trim() || '',
-        quotesWorkbookPath: g('ms-extras-quotes-path')?.value.trim() || '',
-        coachesWorkbookPath: g('ms-extras-coaches-path')?.value.trim() || '',
-      },
-    });
-    await refreshSkaterExtrasStatus();
-    toast('✓ Quote & music workbooks saved');
-  } catch (e) {
-    toast(`Error: ${e.message}`, 'err');
-  }
-}
-
 async function savePositionObj(id, pos) {
   try {
     const cfg = await api('GET', '/api/config');
@@ -2477,7 +1976,7 @@ async function resetPos(id) {
 	  const elDefaults   = id === 'elements'    ? { elSkaterSize:18, elTotalSize:26, elLabelSize:9, elCodeSize:15, elValueSize:14, elTitleX:0, elTitleY:0, elAutoFit:false, elBodyDelay:2000, elHighestLabelSize:0, elHighestScoreSize:0, elHighestLabelColor:'#ffc848', elHighestScoreColor:'#ffc848' } : {};
   const ofDefaults   = id === 'officials'   ? { ofRoleAlign:'right' } : {};
   const msgDefaults  = id === 'messages'    ? { msgLine1Size:40, msgLine2Size:20 } : {};
-  const msExtrasDefaults = id === 'manual-skater' ? { msExtrasEnabled:true, msQuoteSecs:4, msCoachSecs:4 } : {};
+  const msExtrasDefaults = id === 'manual-skater' ? { msExtrasEnabled:true, msShowCoaches:true, msShowQuote:true, msShowMusic:true, msShowCategory:true, msQuoteSecs:4, msCoachSecs:4 } : {};
   const defaults = { x:0, y:0, scale:1, width: NATURAL_WIDTHS[id]||880, height:0,
                      zoom:100, rowPad:0, rounded:true, radius:20, ltFlagHeight:68,
                      animPreset:'default', animSpeed:420, animEasing:'smooth',
@@ -2654,20 +2153,6 @@ setInterval(todOpDisplay, 500);
 // ── Data-source mode visibility ─────────────────────────────────────────
 // Hide the irrelevant block (CSV when Live JSON is selected, and vice-versa)
 // so the operator only sees fields that apply to the current source.
-function applyDataSourceModeUI(mode) {
-  const isCsv    = mode === 'csv-folder';
-  const isScApi  = mode === 'sc-api';
-  const csv      = document.getElementById('ds-section-csv');
-  const live     = document.getElementById('ds-section-live');
-  const scapi    = document.getElementById('ds-section-scapi');
-  if (csv)    csv.style.display    = isCsv   ? '' : 'none';
-  if (live)   live.style.display   = (!isCsv && !isScApi) ? '' : 'none';
-  if (scapi)  scapi.style.display  = isScApi ? '' : 'none';
-  // Update poll badge label for sc-api
-  const pollBadge = document.getElementById('live-poll-badge');
-  if (pollBadge && isScApi) pollBadge.textContent = 'SC API';
-}
-
 // ── Presets ─────────────────────────────────────────────────────────────
 async function refreshPresets() {
   try {
@@ -2793,115 +2278,6 @@ async function restoreBackup(name) {
 function escEi(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 }
-function renderEiTable(el, obj) {
-  if (!el) return;
-  const entries = Object.entries(obj || {});
-  if (!entries.length) {
-    el.innerHTML = `<tr><td style="padding:6px 0;color:var(--text2);font-style:italic;">(no data)</td></tr>`;
-    return;
-  }
-  el.innerHTML = entries.map(([k, v]) => `
-    <tr>
-      <td style="padding:4px 8px 4px 0;color:var(--text2);vertical-align:top;white-space:nowrap;">${escEi(k)}</td>
-      <td style="padding:4px 0;color:var(--text);word-break:break-word;">${v == null || v === '' ? '<span style="color:var(--text2);font-style:italic;">—</span>' : escEi(v)}</td>
-    </tr>`).join('');
-}
-async function refreshEventInfoDebug() {
-  const status = document.getElementById('ei-status');
-  if (status) status.textContent = 'Loading…';
-  try {
-    const data = await api('GET', '/api/eventInfo/debug');
-    renderEiTable(document.getElementById('ei-normalized'), data.normalized || {});
-    renderEiTable(document.getElementById('ei-current-config'), data.currentConfig || {});
-    const raw = document.getElementById('ei-raw');
-    if (raw) raw.textContent = JSON.stringify(data.raw, null, 2) || '(no raw response)';
-    const warn = (data.warnings || []).join(' · ');
-    if (status) {
-      const t = new Date(data.fetchedAt).toLocaleTimeString();
-      status.textContent = `${data.mode} · ${escEi(data.source || '')} · ${t}${warn ? ' · ⚠ ' + warn : ''}`;
-      status.style.color = warn ? 'var(--accent, #e8213f)' : 'var(--text2)';
-    }
-  } catch (e) {
-    if (status) { status.textContent = `Error: ${e.message}`; status.style.color = 'var(--accent, #e8213f)'; }
-  }
-}
-
-// ── Global header title override (live, debounced) ──────────────────────
-let _ghoTimer = null;
-function saveGlobalHeaderOverride() {
-  clearTimeout(_ghoTimer);
-  _ghoTimer = setTimeout(async () => {
-    const en = document.getElementById('cfg-global-header-title')?.value || '';
-    const fr = document.getElementById('cfg-global-header-title-fr')?.value || '';
-    try {
-      await api('POST', '/api/config', {
-        globalHeaderOverride: en.trim(),
-        globalHeaderOverrideFr: fr.trim(),
-      });
-    } catch (e) { toast(`Error: ${e.message}`, 'err'); }
-  }, 250);
-}
-
-// ── Global Name Format ──────────────────────────────────────────────────
-async function saveNameFormat() {
-  const sel = document.getElementById('cfg-name-format');
-  const val = sel ? sel.value : 'default';
-  try {
-    await api('POST', '/api/config', { nameFormat: val });
-    const labels = { default:'Title Case', upper:'ALL CAPS', firstlast:'First LAST' };
-    toast(`Name format: ${labels[val] || val}`);
-  } catch (e) { toast(`Error: ${e.message}`, 'err'); }
-}
-
-// ── Global lower-third detail override (live, debounced) ────────────────
-let _gdoTimer = null;
-function saveGlobalDetailOverride() {
-  clearTimeout(_gdoTimer);
-  _gdoTimer = setTimeout(async () => {
-    const en = document.getElementById('cfg-global-detail-text')?.value || '';
-    const fr = document.getElementById('cfg-global-detail-text-fr')?.value || '';
-    try {
-      await api('POST', '/api/config', {
-        globalDetailOverride: en.trim(),
-        globalDetailOverrideFr: fr.trim(),
-      });
-    } catch (e) { toast(`Error: ${e.message}`, 'err'); }
-  }, 250);
-}
-
-// Explicit "Clear & Refresh" — empties the override AND re-fetches the
-// source endpoints so the affected graphics ditch their stale lastPayload
-// from the previous event. Use after switching events.
-async function clearAndRefreshGlobalHeader() {
-  clearTimeout(_ghoTimer);
-  const en = document.getElementById('cfg-global-header-title');
-  const fr = document.getElementById('cfg-global-header-title-fr');
-  if (en) en.value = '';
-  if (fr) fr.value = '';
-  try {
-    await api('POST', '/api/config', { globalHeaderOverride: '', globalHeaderOverrideFr: '' });
-  } catch (e) {
-    toast(`Error: ${e.message}`, 'err');
-    return;
-  }
-  // Pull the latest source data for every template the global override
-  // touches, plus Event Info so categoryName/segmentName are fresh.
-  const endpoints = ['eventInfo', 'startOrder', 'ranking', 'rankingContext', 'officials'];
-  const results = await Promise.allSettled(
-    endpoints.map(ep => api('POST', '/api/sc/fetch', { endpoint: ep }))
-  );
-  const failed = results
-    .map((r, i) => ({ r, ep: endpoints[i] }))
-    .filter(x => x.r.status === 'rejected')
-    .map(x => x.ep);
-  if (failed.length) {
-    toast(`Cleared. Refresh failed for: ${failed.join(', ')}`, 'err');
-  } else {
-    toast('✓ Override cleared, source data refreshed');
-  }
-  refreshEventInfoDebug();
-}
-
 async function setElementsDisplayMode(mode) {
   try {
     await api('POST', '/api/config', { elementsDisplayMode: mode });
@@ -3010,63 +2386,8 @@ function buildCards() {
             <button id="el-layout-list"   class="lang-btn lang-active" onclick="setElementsLayoutMode('list');setElLayoutUI('list')">List</button>
             <button id="el-layout-single" class="lang-btn"             onclick="setElementsLayoutMode('single');setElLayoutUI('single')">Single Line</button>
           </div>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;margin-left:14px;">
-            <input type="checkbox" id="el-hide-total-label" onchange="setElementsHideTotalLabel(this.checked)"
-                   style="width:14px;height:14px;accent-color:var(--accent);cursor:pointer;" />
-            Hide TES label above score
-          </label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;margin-left:14px;">
-            <input type="checkbox" id="el-hide-light-rail" onchange="setElementsHideLightRail(this.checked)"
-                   style="width:14px;height:14px;accent-color:var(--accent);cursor:pointer;" />
-            Hide GOE light rail
-          </label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;margin-left:14px;">
-            <input type="checkbox" id="el-hide-highest" onchange="setElementsHideHighest(this.checked)"
-                   style="width:14px;height:14px;accent-color:var(--accent);cursor:pointer;" />
-            Hide Highest TES row
-          </label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;margin-left:14px;"
-                 title="Adds the leading skater's name under the Highest TES label (SC API mode)">
-            <input type="checkbox" id="el-highest-show-name" onchange="setElementsHighestShowName(this.checked)"
-                   style="width:14px;height:14px;accent-color:var(--accent);cursor:pointer;" />
-            Show leader's name
-          </label>
         </div>
-        <div style="margin-top:12px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);">
-          <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">Highest TES Row — Style</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-            <div class="form-field">
-              <label>Label Size (px)</label>
-              <input type="number" id="pos-el-hi-lbl-size-${t.id}" min="8" max="40" value="0" step="1"
-                     placeholder="auto"
-                     style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:13px;width:100%;"
-                     onchange="onPosChange('${t.id}')" />
-            </div>
-            <div class="form-field">
-              <label>Score Size (px)</label>
-              <input type="number" id="pos-el-hi-scr-size-${t.id}" min="10" max="60" value="0" step="1"
-                     placeholder="auto"
-                     style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:13px;width:100%;"
-                     onchange="onPosChange('${t.id}')" />
-            </div>
-            <div class="form-field">
-              <label>Label Color</label>
-              <input type="color" id="pos-el-hi-lbl-color-${t.id}" value="#ffc848"
-                     style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:2px;width:100%;height:34px;cursor:pointer;"
-                     onchange="onPosChange('${t.id}')" />
-            </div>
-            <div class="form-field">
-              <label>Score Color</label>
-              <input type="color" id="pos-el-hi-scr-color-${t.id}" value="#ffc848"
-                     style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:2px;width:100%;height:34px;cursor:pointer;"
-                     onchange="onPosChange('${t.id}')" />
-            </div>
-          </div>
-          <div style="font-size:11px;color:var(--text2);margin-top:6px;line-height:1.4;">
-            Leave sizes at 0 to use the defaults (label tracks element code size, score tracks element value size).
-          </div>
-        </div>
-        <div style="margin-top:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+<div style="margin-top:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <span style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);">Width Preset</span>
           <button class="lang-btn" style="padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px;"
                   onclick="setElementsWidthPreset(420)" title="Singles — 420px">Singles</button>
@@ -3074,100 +2395,11 @@ function buildCards() {
                   onclick="setElementsWidthPreset(560)" title="Pairs — 560px">Pairs</button>
           <button class="lang-btn" style="padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px;"
                   onclick="setElementsWidthPreset(700)" title="Dance — 700px">Dance</button>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;margin-left:8px;">
-            <input type="checkbox" id="pos-el-autofit-${t.id}" onchange="onPosChange('${t.id}')"
-                   style="width:14px;height:14px;accent-color:var(--accent);cursor:pointer;" />
-            Auto-fit to skater name
-          </label>
+          
         </div>
-        <div style="margin-top:12px;display:flex;align-items:center;gap:10px;">
-          <span style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);min-width:120px;">Body Reveal Delay</span>
-          <input type="range" id="pos-el-body-delay-${t.id}" min="0" max="6000" value="2000" step="100"
-                 style="flex:1;" oninput="onPosChange('${t.id}')" />
-          <span class="pos-val" id="pv-el-body-delay-${t.id}" style="min-width:64px;text-align:right;">2000ms</span>
-        </div>
-        <div style="font-size:11px;color:var(--text2);margin-top:4px;line-height:1.4;">
-          Pause between the header dropping into place and the body sliding down from behind it.
-        </div>
-        <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-          <div class="form-field">
-            <label>Score Label (English)</label>
-            <input type="text" id="el-total-label-en" value="TES" placeholder="TES"
-                   style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:13px;width:100%;"
-                   onchange="saveElementsLabel()" />
-          </div>
-          <div class="form-field">
-            <label>Score Label (Français)</label>
-            <input type="text" id="el-total-label-fr" value="NTÉ" placeholder="NTÉ"
-                   style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:13px;width:100%;"
-                   onchange="saveElementsLabel()" />
-          </div>
-          <div class="form-field">
-            <label>Highest Label (English)</label>
-            <input type="text" id="el-highest-label-en" value="Highest Technical Score" placeholder="Highest Technical Score"
-                   style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:13px;width:100%;"
-                   onchange="saveElementsLabel()" />
-          </div>
-          <div class="form-field">
-            <label>Highest Label (Français)</label>
-            <input type="text" id="el-highest-label-fr" value="Meilleur Score Technique" placeholder="Meilleur Score Technique"
-                   style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:13px;width:100%;"
-                   onchange="saveElementsLabel()" />
-          </div>
-        </div>
-	        <div style="margin-top:14px;">
-	          <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">Font Sizes</div>
-	          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-            <div class="form-field">
-              <label>Skater Name</label>
-              <input type="number" id="el-skater-size" min="10" max="40" value="18" step="1"
-                     style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:13px;width:100%;"
-                     onchange="saveElSizes()" />
-            </div>
-            <div class="form-field">
-              <label>Total Score</label>
-              <input type="number" id="el-total-size" min="14" max="60" value="26" step="1"
-                     style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:13px;width:100%;"
-                     onchange="saveElSizes()" />
-            </div>
-            <div class="form-field">
-              <label>Score Label</label>
-              <input type="number" id="el-label-size" min="6" max="20" value="9" step="1"
-                     style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:13px;width:100%;"
-                     onchange="saveElSizes()" />
-            </div>
-            <div class="form-field">
-              <label>Element Code</label>
-              <input type="number" id="el-code-size" min="10" max="28" value="15" step="1"
-                     style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:13px;width:100%;"
-                     onchange="saveElSizes()" />
-            </div>
-            <div class="form-field">
-              <label>BV / GOE Values</label>
-              <input type="number" id="el-value-size" min="10" max="24" value="14" step="1"
-                     style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:13px;width:100%;"
-                     onchange="saveElSizes()" />
-	            </div>
-	          </div>
-	        </div>
-	        <div style="margin-top:14px;">
-	          <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">Title Position</div>
-	          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-	            <div class="form-field">
-	              <label>Left / Right</label>
-	              <input type="number" id="pos-el-title-x-${t.id}" min="-160" max="160" value="0" step="1"
-	                     style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:13px;width:100%;"
-	                     oninput="onPosChange('${t.id}')" onchange="onPosChange('${t.id}')" />
-	            </div>
-	            <div class="form-field">
-	              <label>Up / Down</label>
-	              <input type="number" id="pos-el-title-y-${t.id}" min="-80" max="80" value="0" step="1"
-	                     style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:13px;width:100%;"
-	                     oninput="onPosChange('${t.id}')" onchange="onPosChange('${t.id}')" />
-	            </div>
-	          </div>
-	        </div>
-	        ` : ''}
+        
+        <div style="font-size:11px;color:var(--text2);margin-top:6px;">All other tracker styling (labels, fonts, Highest TES row, toggles) is in Layout → Elements Tracker.</div>
+        ` : ''}
 
         ${t.id === 'clock' ? `
         <div style="margin-top:10px;display:flex;flex-direction:column;gap:10px;">
@@ -3497,14 +2729,27 @@ function buildCards() {
             </div>
             ` : ''}
             ${t.id === 'manual-skater' ? `
-            <div style="margin:8px 0 2px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);grid-column:1/-1;">Coaches, Quote &amp; Music Card</div>
-            <div class="pos-row">
-              <label>Enabled</label>
-              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;grid-column:2/4;">
-                <input type="checkbox" id="pos-ms-extras-${t.id}" checked
-                       onchange="onPosChange('${t.id}')"
-                       style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;" />
-                <span style="font-size:12px;color:var(--text2);">Coaches, then quote, then program music, on the slide-down card</span>
+            <div style="margin:8px 0 2px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);grid-column:1/-1;">Slide-Down Card Content</div>
+            <div style="grid-column:1/-1;display:flex;flex-direction:column;gap:8px;margin-bottom:4px;">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" id="pos-ms-show-coaches-${t.id}" checked onchange="onPosChange('${t.id}')"
+                       style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;" />
+                <span style="font-size:12px;color:var(--text2);">Coaches (from workbook)</span>
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" id="pos-ms-show-quote-${t.id}" checked onchange="onPosChange('${t.id}')"
+                       style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;" />
+                <span style="font-size:12px;color:var(--text2);">Skater's quote (from workbook)</span>
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" id="pos-ms-show-music-${t.id}" checked onchange="onPosChange('${t.id}')"
+                       style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;" />
+                <span style="font-size:12px;color:var(--text2);">Program music (from workbook, per segment)</span>
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;" title="Shown when the phases above are off or have no data for the skater">
+                <input type="checkbox" id="pos-ms-show-category-${t.id}" checked onchange="onPosChange('${t.id}')"
+                       style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;" />
+                <span style="font-size:12px;color:var(--text2);">Category card (fallback when no data / all above off)</span>
               </label>
             </div>
             <div class="pos-row">
@@ -3519,28 +2764,7 @@ function buildCards() {
                      oninput="onPosChange('${t.id}')" title="How long the quote shows before switching to music">
               <span class="pos-val" id="pv-ms-quote-secs-${t.id}">4s</span>
             </div>
-            <div class="pos-row" style="grid-template-columns:auto 1fr;">
-              <label>Music File</label>
-              <input type="text" id="ms-extras-music-path" placeholder="e.g. NextGen 26 Music Titles.xlsx"
-                     style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;grid-column:2/4;width:100%;" />
-            </div>
-            <div class="pos-row" style="grid-template-columns:auto 1fr;">
-              <label>Quotes File</label>
-              <input type="text" id="ms-extras-quotes-path" placeholder="e.g. NextGen26 Quotes for Streaming.xlsx"
-                     style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;grid-column:2/4;width:100%;" />
-            </div>
-            <div class="pos-row" style="grid-template-columns:auto 1fr;">
-              <label>Coaches File</label>
-              <input type="text" id="ms-extras-coaches-path" placeholder="e.g. Skater + Coach List 26NextGen.xlsx"
-                     style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;grid-column:2/4;width:100%;" />
-            </div>
-            <div class="pos-row" style="grid-template-columns:auto 1fr;">
-              <label></label>
-              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;grid-column:2/4;">
-                <button class="btn btn-fetch btn-sm" onclick="saveSkaterExtras()">Save Workbooks</button>
-                <span id="ms-extras-status" style="font-size:11px;color:var(--text2);"></span>
-              </div>
-            </div>
+            
             ` : ''}
             ${FLAG_TOGGLE_TEMPLATES.includes(t.id) ? `
             <div style="margin:8px 0 2px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);grid-column:1/-1;">Flag (Right Side)</div>
@@ -3946,6 +3170,161 @@ function buildCards() {
               <span class="pos-val" id="pv-lt-line2-${t.id}">20px</span>
             </div>
             ` : ''}
+            ${t.id === 'elements' ? `
+            <div style="margin:8px 0 2px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);grid-column:1/-1;">Tracker Options</div>
+            <div style="grid-column:1/-1;display:flex;flex-direction:column;gap:8px;">
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;">
+                <input type="checkbox" id="el-hide-total-label" onchange="setElementsHideTotalLabel(this.checked)"
+                       style="width:14px;height:14px;accent-color:var(--accent);cursor:pointer;" />
+                Hide TES label above score
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;">
+                <input type="checkbox" id="el-hide-light-rail" onchange="setElementsHideLightRail(this.checked)"
+                       style="width:14px;height:14px;accent-color:var(--accent);cursor:pointer;" />
+                Hide GOE light rail
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;">
+                <input type="checkbox" id="el-hide-highest" onchange="setElementsHideHighest(this.checked)"
+                       style="width:14px;height:14px;accent-color:var(--accent);cursor:pointer;" />
+                Hide Highest TES row
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;"
+                     title="Adds the leading skater's name under the Highest TES label (SC API mode)">
+                <input type="checkbox" id="el-highest-show-name" onchange="setElementsHighestShowName(this.checked)"
+                       style="width:14px;height:14px;accent-color:var(--accent);cursor:pointer;" />
+                Show leader's name
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;">
+                <input type="checkbox" id="pos-el-autofit-${t.id}" onchange="onPosChange('${t.id}')"
+                       style="width:14px;height:14px;accent-color:var(--accent);cursor:pointer;" />
+                Auto-fit width to skater name
+              </label>
+            </div>
+            <div style="grid-column:1/-1;">
+<div style="margin-top:12px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);">
+          <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">Highest TES Row — Style</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div class="form-field">
+              <label>Label Size (px)</label>
+              <input type="number" id="pos-el-hi-lbl-size-${t.id}" min="8" max="40" value="0" step="1"
+                     placeholder="auto"
+                     style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:13px;width:100%;"
+                     onchange="onPosChange('${t.id}')" />
+            </div>
+            <div class="form-field">
+              <label>Score Size (px)</label>
+              <input type="number" id="pos-el-hi-scr-size-${t.id}" min="10" max="60" value="0" step="1"
+                     placeholder="auto"
+                     style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:13px;width:100%;"
+                     onchange="onPosChange('${t.id}')" />
+            </div>
+            <div class="form-field">
+              <label>Label Color</label>
+              <input type="color" id="pos-el-hi-lbl-color-${t.id}" value="#ffc848"
+                     style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:2px;width:100%;height:34px;cursor:pointer;"
+                     onchange="onPosChange('${t.id}')" />
+            </div>
+            <div class="form-field">
+              <label>Score Color</label>
+              <input type="color" id="pos-el-hi-scr-color-${t.id}" value="#ffc848"
+                     style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:2px;width:100%;height:34px;cursor:pointer;"
+                     onchange="onPosChange('${t.id}')" />
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--text2);margin-top:6px;line-height:1.4;">
+            Leave sizes at 0 to use the defaults (label tracks element code size, score tracks element value size).
+          </div>
+        </div>
+        <div style="margin-top:12px;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);min-width:120px;">Body Reveal Delay</span>
+          <input type="range" id="pos-el-body-delay-${t.id}" min="0" max="6000" value="2000" step="100"
+                 style="flex:1;" oninput="onPosChange('${t.id}')" />
+          <span class="pos-val" id="pv-el-body-delay-${t.id}" style="min-width:64px;text-align:right;">2000ms</span>
+        </div>
+        <div style="font-size:11px;color:var(--text2);margin-top:4px;line-height:1.4;">
+          Pause between the header dropping into place and the body sliding down from behind it.
+        </div>
+        <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="form-field">
+            <label>Score Label (English)</label>
+            <input type="text" id="el-total-label-en" value="TES" placeholder="TES"
+                   style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:13px;width:100%;"
+                   onchange="saveElementsLabel()" />
+          </div>
+          <div class="form-field">
+            <label>Score Label (Français)</label>
+            <input type="text" id="el-total-label-fr" value="NTÉ" placeholder="NTÉ"
+                   style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:13px;width:100%;"
+                   onchange="saveElementsLabel()" />
+          </div>
+          <div class="form-field">
+            <label>Highest Label (English)</label>
+            <input type="text" id="el-highest-label-en" value="Highest Technical Score" placeholder="Highest Technical Score"
+                   style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:13px;width:100%;"
+                   onchange="saveElementsLabel()" />
+          </div>
+          <div class="form-field">
+            <label>Highest Label (Français)</label>
+            <input type="text" id="el-highest-label-fr" value="Meilleur Score Technique" placeholder="Meilleur Score Technique"
+                   style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:13px;width:100%;"
+                   onchange="saveElementsLabel()" />
+          </div>
+        </div>
+	        <div style="margin-top:14px;">
+	          <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">Font Sizes</div>
+	          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <div class="form-field">
+              <label>Skater Name</label>
+              <input type="number" id="el-skater-size" min="10" max="40" value="18" step="1"
+                     style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:13px;width:100%;"
+                     onchange="saveElSizes()" />
+            </div>
+            <div class="form-field">
+              <label>Total Score</label>
+              <input type="number" id="el-total-size" min="14" max="60" value="26" step="1"
+                     style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:13px;width:100%;"
+                     onchange="saveElSizes()" />
+            </div>
+            <div class="form-field">
+              <label>Score Label</label>
+              <input type="number" id="el-label-size" min="6" max="20" value="9" step="1"
+                     style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:13px;width:100%;"
+                     onchange="saveElSizes()" />
+            </div>
+            <div class="form-field">
+              <label>Element Code</label>
+              <input type="number" id="el-code-size" min="10" max="28" value="15" step="1"
+                     style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:13px;width:100%;"
+                     onchange="saveElSizes()" />
+            </div>
+            <div class="form-field">
+              <label>BV / GOE Values</label>
+              <input type="number" id="el-value-size" min="10" max="24" value="14" step="1"
+                     style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:13px;width:100%;"
+                     onchange="saveElSizes()" />
+	            </div>
+	          </div>
+	        </div>
+	        <div style="margin-top:14px;">
+	          <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">Title Position</div>
+	          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+	            <div class="form-field">
+	              <label>Left / Right</label>
+	              <input type="number" id="pos-el-title-x-${t.id}" min="-160" max="160" value="0" step="1"
+	                     style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:13px;width:100%;"
+	                     oninput="onPosChange('${t.id}')" onchange="onPosChange('${t.id}')" />
+	            </div>
+	            <div class="form-field">
+	              <label>Up / Down</label>
+	              <input type="number" id="pos-el-title-y-${t.id}" min="-80" max="80" value="0" step="1"
+	                     style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:13px;width:100%;"
+	                     oninput="onPosChange('${t.id}')" onchange="onPosChange('${t.id}')" />
+	            </div>
+	          </div>
+	        </div>
+	        
+            </div>
+            ` : ''}
             ${t.id === 'messages' ? `
             <div style="margin:8px 0 2px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);grid-column:1/-1;">Font Sizes</div>
             <div class="pos-row">
@@ -4095,9 +3474,11 @@ function buildCards() {
           </div>
         </details>
 
-        <div class="json-label">Data Payload</div>
-        <textarea class="json-editor" id="json-${t.id}" spellcheck="false" rows="5"></textarea>
-        <div class="json-err" id="err-${t.id}"></div>
+        <details class="json-details">
+          <summary class="json-summary">Data Payload (raw JSON)</summary>
+          <textarea class="json-editor" id="json-${t.id}" spellcheck="false" rows="5" style="margin-top:8px;"></textarea>
+          <div class="json-err" id="err-${t.id}"></div>
+        </details>
       </div>`;
 
     container.appendChild(card);
@@ -4127,28 +3508,25 @@ const scApiState = {
 };
 
 function scApiUpdateActiveSummary() {
-  const btn     = document.getElementById('scapi-activate-btn');
   const summary = document.getElementById('scapi-active-summary');
-  const badge   = document.getElementById('scapi-poll-status');
-
-  if (btn)    btn.disabled = !scApiState.segmentId;
+  if (!summary) return;
 
   const cat = scApiState.categories.find(c => c.id === scApiState.categoryId);
   const seg = scApiState.segments.find(s => s.id === scApiState.segmentId);
 
-  if (summary && scApiState.segmentId) {
-    const catName = cat?.name || scApiState.categoryId || '—';
-    const segName = seg?.name || scApiState.segmentId || '—';
+  if (scApiState.segmentId) {
+    // Fall back to names stored in config (set when the segment was
+    // activated from the SC API panel) so reloads show names, not GUIDs.
+    const catName = cat?.name || scApiState.categoryNameCfg || scApiState.categoryId || '—';
+    const segName = seg?.name || scApiState.segmentNameCfg || scApiState.segmentId || '—';
     const statusDot = seg?.inProgress
       ? '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#81c784;margin-right:5px;vertical-align:middle;"></span>'
       : '';
-    summary.innerHTML = `${statusDot}<strong>${catName}</strong> — ${segName}`;
+    summary.innerHTML = `${statusDot}Active: <strong>${catName}</strong> — ${segName}`;
     summary.style.display = '';
-  } else if (summary) {
+  } else {
     summary.style.display = 'none';
   }
-
-  if (badge) badge.textContent = scApiState.segmentId ? 'Ready — click Activate' : 'Idle';
 }
 
 async function scApiFetchEvent() {
@@ -4260,216 +3638,9 @@ function scApiOnSegmentChange(segmentId) {
   scApiUpdateActiveSummary();
 }
 
-async function scApiActivate() {
-  if (!scApiState.segmentId) { toast('Select a segment first', 'err'); return; }
-  const badge  = document.getElementById('scapi-poll-status');
-  const pollMs = Number(document.getElementById('scapi-poll-interval')?.value) || 2000;
-  const baseUrl = (document.getElementById('scapi-base-url')?.value || '').trim();
-  if (badge) badge.textContent = 'Activating…';
-  try {
-    const activeSeg = scApiState.segments.find(s => s.id === scApiState.segmentId);
-    await api('POST', '/api/sc-api/select', {
-      eventId:     scApiState.eventId,
-      categoryId:  scApiState.categoryId,
-      segmentId:   scApiState.segmentId,
-      segmentName: activeSeg?.name || '',
-      baseUrl:     baseUrl || undefined,
-      pollIntervalMs: pollMs,
-    });
-    const pollBadgeEl = document.getElementById('live-poll-badge');
-    if (pollBadgeEl) { pollBadgeEl.textContent = 'SC API LIVE'; pollBadgeEl.classList.add('active'); }
-    if (badge) badge.textContent = '● Live';
-    toast('✓ SC API activated — polling started');
-  } catch(e) {
-    if (badge) badge.textContent = 'Error';
-    toast(`Activate error: ${e.message}`, 'err');
-  }
-}
-
-async function scApiStop() {
-  try {
-    await api('POST', '/api/sc-api/stop');
-    const badge = document.getElementById('scapi-poll-status');
-    if (badge) badge.textContent = 'Stopped';
-    const pollBadgeEl = document.getElementById('live-poll-badge');
-    if (pollBadgeEl) { pollBadgeEl.textContent = 'POLLING OFF'; pollBadgeEl.classList.remove('active'); }
-    toast('SC API polling stopped');
-  } catch(e) { toast(`Error: ${e.message}`, 'err'); }
-}
-
-
-// ── Auto-Record UI ─────────────────────────────────────────────────────
-
-let _arCountdownInterval = null;
-let _arCountdownRemaining = 0;
-let _arCountdownTotal = 0;
-
-function autoRecordShowCountdown(name, filename, delayMs) {
-  _arCountdownTotal     = delayMs;
-  _arCountdownRemaining = delayMs;
-
-  document.getElementById('autorecord-countdown-name').textContent     = name || '';
-  document.getElementById('autorecord-countdown-filename').textContent = filename || '';
-  document.getElementById('autorecord-live-status').style.display      = '';
-  document.getElementById('autorecord-countdown-box').style.display    = '';
-  document.getElementById('autorecord-recording-box').style.display    = 'none';
-  autoRecordSetBadge('countdown');
-
-  clearInterval(_arCountdownInterval);
-  const tick = () => {
-    _arCountdownRemaining -= 500;
-    const secs = Math.max(0, Math.ceil(_arCountdownRemaining / 1000));
-    const el   = document.getElementById('autorecord-countdown-timer');
-    if (el) el.textContent = secs;
-    if (_arCountdownRemaining <= 0) clearInterval(_arCountdownInterval);
-  };
-  tick();
-  _arCountdownInterval = setInterval(tick, 500);
-}
-
-function autoRecordShowRecording(filename) {
-  clearInterval(_arCountdownInterval);
-  document.getElementById('autorecord-countdown-box').style.display    = 'none';
-  document.getElementById('autorecord-recording-box').style.display    = '';
-  document.getElementById('autorecord-live-status').style.display      = '';
-  document.getElementById('autorecord-current-filename').textContent   = filename || '';
-  autoRecordSetBadge('recording');
-}
-
-function autoRecordShowIdle() {
-  clearInterval(_arCountdownInterval);
-  document.getElementById('autorecord-countdown-box').style.display  = 'none';
-  document.getElementById('autorecord-recording-box').style.display  = 'none';
-  document.getElementById('autorecord-preloaded-box').style.display  = 'none';
-  document.getElementById('autorecord-live-status').style.display    = 'none';
-  autoRecordSetBadge('idle');
-}
-
-function autoRecordShowPreloaded(name, filename, verified = null) {
-  clearInterval(_arCountdownInterval);
-  document.getElementById('autorecord-countdown-box').style.display  = 'none';
-  document.getElementById('autorecord-recording-box').style.display  = 'none';
-
-  const box      = document.getElementById('autorecord-preloaded-box');
-  const nameEl   = document.getElementById('autorecord-preloaded-name');
-  const fileEl   = document.getElementById('autorecord-preloaded-filename');
-  const verEl    = document.getElementById('autorecord-preloaded-verify');
-  if (!box) return;
-
-  if (nameEl)  nameEl.textContent = name || '';
-  if (fileEl)  fileEl.textContent = filename || '';
-
-  if (verEl) {
-    if (verified === true)  { verEl.textContent = '✓ Verified — matches element tracker'; verEl.style.color = '#81c784'; }
-    else if (verified === false) { verEl.textContent = '⚠ Mismatch — element tracker shows a different skater'; verEl.style.color = '#ef5350'; }
-    else                    { verEl.textContent = 'Waiting for element tracker confirmation…'; verEl.style.color = 'var(--text2)'; }
-  }
-
-  document.getElementById('autorecord-live-status').style.display = '';
-  box.style.display = '';
-  autoRecordSetBadge(verified === false ? 'error' : 'preloaded');
-}
-
-function autoRecordSetBadge(state) {
-  const badge = document.getElementById('autorecord-status-badge');
-  if (!badge) return;
-  const styles = {
-    idle:       ['IDLE',        'rgba(255,255,255,0.06)', 'var(--text2)'],
-    preloaded:  ['NEXT READY',  'rgba(33,150,243,0.20)',  '#64b5f6'],
-    countdown:  ['COUNTDOWN',   'rgba(255,152,0,0.18)',   '#ffb74d'],
-    recording:  ['● REC',       'rgba(244,67,54,0.20)',   '#ef5350'],
-    stopped:    ['STOPPED',     'rgba(255,255,255,0.06)', 'var(--text2)'],
-    error:      ['⚠ CHECK NAME','rgba(244,67,54,0.15)',   '#ef5350'],
-  };
-  const [text, bg, color] = styles[state] || styles.idle;
-  badge.textContent = text;
-  badge.style.background = bg;
-  badge.style.color = color;
-}
-
-function autoRecordHandleWsMessage(msg) {
-  if (!msg.type?.startsWith('recording-')) return;
-
-  if (msg.type === 'recording-filename-preloaded') {
-    // Previous skater left ice — next-up filename loaded into vMix, ready for StreamDeck
-    autoRecordShowPreloaded(msg.preloadedName, msg.preloadedFilename, null);
-
-  } else if (msg.type === 'recording-awaiting-elements') {
-    // New skater detected on ice — waiting for element tracker to confirm
-    autoRecordShowPreloaded(msg.pendingName, msg.pendingFilename, null);
-
-  } else if (msg.type === 'recording-filename-ready') {
-    // Elements loaded, filename confirmed — auto-record disabled but filename set
-    autoRecordShowPreloaded(msg.preloadedName, msg.preloadedFilename, msg.verifiedMatch);
-
-  } else if (msg.type === 'recording-countdown') {
-    autoRecordShowCountdown(msg.pendingName, msg.pendingFilename, msg.delayMs);
-
-  } else if (msg.type === 'recording-verified') {
-    // Elements confirmed while already recording
-    const nameEl = document.getElementById('autorecord-current-filename');
-    const verEl  = document.getElementById('autorecord-recording-verify');
-    if (nameEl) nameEl.textContent = msg.currentFilename || '';
-    if (verEl)  { verEl.textContent = '✓ Verified by element tracker'; verEl.style.color = '#81c784'; verEl.style.display = ''; }
-
-  } else if (msg.type === 'recording-started') {
-    autoRecordShowRecording(msg.currentFilename);
-
-  } else if (msg.type === 'recording-stopped') {
-    autoRecordShowIdle();
-    toast(`✓ Recording saved: ${msg.stoppedFilename || ''}`, 'ok');
-
-  } else if (msg.type === 'recording-countdown-cancelled') {
-    autoRecordShowIdle();
-
-  } else if (msg.type === 'recording-error') {
-    autoRecordShowIdle();
-    autoRecordSetBadge('error');
-    toast(`vMix error: ${msg.error}`, 'err');
-  }
-}
-
-async function autoRecordCancelCountdown() {
-  try { await api('POST', '/api/sc-api/recording/cancel-countdown'); }
-  catch(e) { toast(`Error: ${e.message}`, 'err'); }
-}
-
-async function autoRecordStartNow() {
-  try { await api('POST', '/api/sc-api/recording/start-now'); }
-  catch(e) { toast(`Error: ${e.message}`, 'err'); }
-}
-
-async function autoRecordManualStop() {
-  try { await api('POST', '/api/sc-api/recording/stop'); }
-  catch(e) { toast(`Error: ${e.message}`, 'err'); }
-}
-
-async function autoRecordSaveSettings() {
-  const enabled  = document.getElementById('autorecord-enabled')?.checked;
-  const delayMs  = Number(document.getElementById('autorecord-delay')?.value || 4) * 1000;
-  const vmixHost = (document.getElementById('autorecord-vmix-host')?.value || 'localhost').trim();
-  const vmixPort = Number(document.getElementById('autorecord-vmix-port')?.value || 8088);
-  try {
-    await api('POST', '/api/config', { autoRecord: { enabled, delayMs, vmixHost, vmixPort } });
-    toast('✓ Auto-record settings saved');
-  } catch(e) { toast(`Error: ${e.message}`, 'err'); }
-}
-
-function autoRecordLoadConfig(cfg) {
-  const ar = cfg.autoRecord || {};
-  const enabledEl = document.getElementById('autorecord-enabled');
-  const delayEl   = document.getElementById('autorecord-delay');
-  const hostEl    = document.getElementById('autorecord-vmix-host');
-  const portEl    = document.getElementById('autorecord-vmix-port');
-  if (enabledEl) enabledEl.checked    = !!ar.enabled;
-  if (delayEl)   delayEl.value        = Math.round((Number(ar.delayMs) || 4000) / 1000);
-  if (hostEl)    hostEl.value         = ar.vmixHost || 'localhost';
-  if (portEl)    portEl.value         = ar.vmixPort || 8088;
-}
-
 // ── Tab switching ──────────────────────────────────────────────────────
 function switchTab(name) {
-  ['live', 'setup', 'layout'].forEach(t => {
+  ['live', 'setup', 'layout', 'tools'].forEach(t => {
     document.getElementById(`tab-${t}`).classList.toggle('tab-panel-active', t === name);
     document.getElementById(`tab-btn-${t}`).classList.toggle('tab-active', t === name);
   });
@@ -4590,13 +3761,12 @@ function buildLayoutCards() {
 // ── Init ───────────────────────────────────────────────────────────────
 buildCards();
 buildLayoutCards();
-refreshSkaterExtrasStatus();
 makeSlidersTypeable();
 loadAllConfig();
 connectWs();
 refreshPollStatus();
-refreshEventInfoDebug();
 refreshPresets();
+loadVersion();
 switchTab(localStorage.getItem('operator-tab') || 'live');
 
 setInterval(async () => {

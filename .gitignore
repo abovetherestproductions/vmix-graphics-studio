@@ -2,10 +2,15 @@
 node_modules/
 
 # Live runtime data — changes per competition, not part of the codebase.
-# EXCEPTION: event-config.json (layout/theme/positions) is tracked so the
-# Mac's look-and-feel syncs to other machines via pull.
+# Config is split in two:
+#   style-config.json  — theme, positions, logo, labels → TRACKED (syncs the
+#                        studio's look to every install).
+#   event-state.json   — active segment selection + API-derived names →
+#                        IGNORED (machine-local; a pull never clobbers a
+#                        machine's live event, and the tracked file stays clean).
+#   event-config.json  — derived merged cache the graphics read → IGNORED.
 public/data/*.json
-!public/data/event-config.json
+!public/data/style-config.json
 config/current-state.json
 config/history/
 
@@ -16,6 +21,8 @@ logs/
 # Event-specific input files
 CSV Data/
 manual skater list/
+# Operator-uploaded workbooks (messages, etc.) — machine-local, re-upload per install
+uploads/
 
 # macOS
 .DS_Store

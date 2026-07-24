@@ -130,10 +130,12 @@
 
     const lang = document.documentElement.lang || 'en';
     const ovr = window.configHeaderOverrides?.['manual-skater'] || {};
+    // Independent operator toggles per card phase (all default ON). The
+    // legacy master msExtrasEnabled is still honored for old configs.
     const extrasEnabled = ovr.msExtrasEnabled !== false;
-    const coaches = extrasEnabled ? String(data.coaches || '').trim() : '';
-    const quote = extrasEnabled ? String(data.quote || '').trim() : '';
-    const music = extrasEnabled ? String(data.musicTitle || '').trim() : '';
+    const coaches = (extrasEnabled && ovr.msShowCoaches !== false) ? String(data.coaches || '').trim() : '';
+    const quote   = (extrasEnabled && ovr.msShowQuote   !== false) ? String(data.quote || '').trim() : '';
+    const music   = (extrasEnabled && ovr.msShowMusic   !== false) ? String(data.musicTitle || '').trim() : '';
 
     if (coaches || quote || music) {
       const coachMs = Math.max(1000, Number(ovr.msCoachMs) || 4000);
@@ -168,7 +170,13 @@
       return;
     }
 
-    // Fallback — original category detail behavior. Precedence chain:
+    // Fallback — category detail card, shown when no extras phases are
+    // enabled/available. Its own operator toggle can hide it entirely.
+    if (ovr.msShowCategory === false) {
+      setCardContent('', '', false);
+      return;
+    }
+    // Precedence chain:
     //   1. Per-template ltInfoText (most specific)
     //   2. Global Detail Override (operator-level)
     //   3. Fall back to whatever the workbook's Category column says.

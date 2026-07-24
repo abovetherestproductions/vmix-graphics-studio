@@ -228,6 +228,9 @@
   font-weight: 700;
   color: var(--color-text-primary);
   text-align: right;
+  /* Equal-width digits — proportional "1"s made scores like 151.16 render
+     visibly narrower than 150.20, reading as a smaller font on some rows. */
+  font-variant-numeric: tabular-nums;
 }
 .layout-large    .rk-total { font-size: var(--rk-total-size-lg, 24px); }
 .layout-standard .rk-total { font-size: var(--rk-total-size-md, 22px); }
