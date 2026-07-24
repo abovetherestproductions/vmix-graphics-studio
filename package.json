@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "description": "Starter HTML/CSS/JS graphics package for vMix Web Browser input with JSON polling and animation states.",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",

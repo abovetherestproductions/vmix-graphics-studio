@@ -1849,7 +1849,21 @@ app.post('/api/update', (_req, res) => {
   git(['pull', '--ff-only'], (err, out, stderr) => {
     if (err) return res.status(500).json({ ok: false, error: stderr || out || err.message });
     const alreadyCurrent = /up to date/i.test(out);
-    res.json({ ok: true, alreadyCurrent, output: out || stderr });
+
+    // Under the Windows service the wrapper restarts us on exit, so we can
+    // finish the update ourselves rather than asking the operator to go and
+    // restart something. Unsupervised (a dev machine, or run from the Force
+    // Start window) there is nothing to bring us back, so we must not exit —
+    // the operator restarts manually instead.
+    const supervised = process.env.VMIX_SUPERVISED === '1';
+    const willRestart = supervised && !alreadyCurrent;
+    res.json({ ok: true, alreadyCurrent, willRestart, output: out || stderr });
+
+    if (willRestart) {
+      console.log('[update] pulled new code — exiting so the service restarts on it');
+      // Let the response flush before dropping the process.
+      setTimeout(() => process.exit(1), 750);
+    }
   });
 });
 

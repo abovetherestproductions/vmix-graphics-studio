@@ -1246,6 +1246,13 @@ async function runUpdate() {
     const r = await api('POST', '/api/update');
     if (r.alreadyCurrent) {
       if (status) { status.style.color = 'var(--green,#81c784)'; status.textContent = '✓ Already up to date.'; }
+    } else if (r.willRestart) {
+      // Installed as a Windows service: the server exits and comes back on the
+      // new code by itself. Poll until it answers, then reload so the operator
+      // is looking at the updated pages — no manual restart, no dead page.
+      if (status) { status.style.color = 'var(--text2)'; status.textContent = 'Updated. Restarting the graphics server…'; }
+      waitForRestart(status);
+      return; // keep the button disabled until the reload
     } else {
       if (status) { status.style.color = 'var(--green,#81c784)'; status.textContent = '✓ Updated. Restart the server to load the new code.'; }
     }
@@ -1255,6 +1262,31 @@ async function runUpdate() {
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '⬇ Check & Update'; }
   }
+}
+
+// Wait for the supervised server to come back after an update, then reload.
+async function waitForRestart(status) {
+  const deadline = Date.now() + 90000; // services restart in ~5s; allow for slow disks
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  await sleep(3000);
+  while (Date.now() < deadline) {
+    try {
+      const r = await fetch('/api/version', { cache: 'no-store' });
+      if (r.ok) {
+        if (status) { status.style.color = 'var(--green,#81c784)'; status.textContent = '✓ Updated. Reloading…'; }
+        await sleep(600);
+        location.reload();
+        return;
+      }
+    } catch { /* still down — keep waiting */ }
+    await sleep(2000);
+  }
+  if (status) {
+    status.style.color = 'var(--accent,#e8213f)';
+    status.textContent = '⚠ Server did not come back. Use the "Force Start Graphics" shortcut on the desktop.';
+  }
+  const btn = $('update-btn');
+  if (btn) { btn.disabled = false; btn.textContent = '⬇ Check & Update'; }
 }
 
 async function saveMachineName() {
