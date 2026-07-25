@@ -143,6 +143,8 @@
   font-size: var(--sc-rank-num-size, 42px);
   line-height: 1;
   color: var(--color-text-primary);
+  /* Equal-width digits — keeps rank 1 the same width as rank 8. */
+  font-variant-numeric: tabular-nums;
 }
 
 /* Logo slot in name bar — left side */
@@ -353,6 +355,10 @@
   color: rgba(255,255,255,0.90);
   /* count-up animation handled by JS */
   transition: color 200ms ease;
+  /* Equal-width digits. Matters most here: these values count up, and with
+     proportional figures every digit change resized the number mid-animation,
+     so TES, PCS, deductions and the total all jittered as they landed. */
+  font-variant-numeric: tabular-nums;
 }
 
 /* ── Animation states ─────────────────────────────── */
