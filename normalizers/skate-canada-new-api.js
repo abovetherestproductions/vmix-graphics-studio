@@ -289,7 +289,7 @@ function categoryQualifiers(categoryDto) {
  * the commentary. Skating shorthand says the same thing in one line.
  *
  *   Change Foot Combination Spin Level 4 → Change Foot Combo Spin 4
- *   Choreographic Sequence Level 1       → Choreographic Seq 1
+ *   Choreographic Sequence Level 1       → Choreo Seq 1
  *   Circular Step Sequence A Level 2     → Circular Step Seq A 2
  *
  * "Level" is dropped only where the preceding word is not itself a number:
@@ -302,6 +302,7 @@ function shortenElementName(name) {
       /\d$/.test(whole.slice(0, offset).trim()) ? match : ` ${level}`)
     .replace(/\bCombination\b/gi, 'Combo')
     .replace(/\bSequence\b/gi, 'Seq')
+    .replace(/\bChoreographic\b/gi, 'Choreo')
     .replace(/\s{2,}/g, ' ')
     .trim();
 }
