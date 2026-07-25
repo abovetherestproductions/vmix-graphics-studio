@@ -1243,9 +1243,9 @@ async function saveDataSources(silent = false) {
 async function loadVersion() {
   try {
     const v = await api('GET', '/api/version');
-    const short = $('version-label');
-    const full = $('version-full');
-    const subj = $('version-subject');
+    const short = g('version-label');
+    const full = g('version-full');
+    const subj = g('version-subject');
     if (!v.available) {
       if (short) short.textContent = '';
       if (full) full.textContent = 'Not a git checkout';
@@ -1258,14 +1258,23 @@ async function loadVersion() {
 }
 
 async function runUpdate() {
-  const btn = $('update-btn');
-  const status = $('update-status');
+  const btn = g('update-btn');
+  const status = g('update-status');
   if (btn) { btn.disabled = true; btn.textContent = 'Updating…'; }
   if (status) { status.style.color = 'var(--text2)'; status.textContent = 'Pulling latest code…'; }
   try {
     const r = await api('POST', '/api/update');
     if (r.alreadyCurrent) {
-      if (status) { status.style.color = 'var(--green,#81c784)'; status.textContent = '✓ Already up to date.'; }
+      // Say which version and when, so "nothing happened" reads as "checked,
+      // nothing to do" rather than as a dead button.
+      const v = await api('GET', '/api/version').catch(() => null);
+      const at = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      if (status) {
+        status.style.color = 'var(--green,#81c784)';
+        status.textContent = v?.commit
+          ? `✓ Checked ${at} — already running the latest (${v.commit}).`
+          : `✓ Checked ${at} — already up to date.`;
+      }
     } else if (r.willRestart) {
       // Installed as a Windows service: the server exits and comes back on the
       // new code by itself. Poll until it answers, then reload so the operator
@@ -1305,7 +1314,7 @@ async function waitForRestart(status) {
     status.style.color = 'var(--accent,#e8213f)';
     status.textContent = '⚠ Server did not come back. Use the "Force Start Graphics" shortcut on the desktop.';
   }
-  const btn = $('update-btn');
+  const btn = g('update-btn');
   if (btn) { btn.disabled = false; btn.textContent = '⬇ Check & Update'; }
 }
 
