@@ -281,6 +281,31 @@ function categoryQualifiers(categoryDto) {
   return { gender, genderFr, group };
 }
 
+/**
+ * Trim official element names for air.
+ *
+ * The API spells everything out — "Change Foot Combination Spin Level 4" —
+ * which wraps to three lines in the tracker's column and reads nothing like
+ * the commentary. Skating shorthand says the same thing in one line.
+ *
+ *   Change Foot Combination Spin Level 4 → Change Foot Combo Spin 4
+ *   Choreographic Sequence Level 1       → Choreographic Seq 1
+ *   Circular Step Sequence A Level 2     → Circular Step Seq A 2
+ *
+ * "Level" is dropped only where the preceding word is not itself a number:
+ * ice dance has "Lift Group 3 Level 3", and "Lift Group 3 3" would be
+ * unreadable, so those keep the word.
+ */
+function shortenElementName(name) {
+  return safeStr(name)
+    .replace(/\s+Level\s+(\d+|B)\b/gi, (match, level, offset, whole) =>
+      /\d$/.test(whole.slice(0, offset).trim()) ? match : ` ${level}`)
+    .replace(/\bCombination\b/gi, 'Combo')
+    .replace(/\bSequence\b/gi, 'Seq')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 function catEn(categoryDto, opts) {
   const groupStyle = opts?.groupStyle;
   const name       = safeStr(categoryDto?.skatingcategorydefinitions?.name || categoryDto?.categoryName || '');
@@ -773,7 +798,7 @@ function normalizeElements(elements, entry, categoryDto, segmentDto, existingCon
         ? el.subElements
             .slice()
             .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-            .map(s => cleanElementName(safeStr(s.elementDefinition?.name)))
+            .map(s => shortenElementName(cleanElementName(safeStr(s.elementDefinition?.name))))
             .filter(Boolean)
             .join(' + ')
         : '';
