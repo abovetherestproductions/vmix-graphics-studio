@@ -581,6 +581,16 @@
           <input type="color" id="cfg-accent" value="#C8102E" />
         </div>
         <div class="form-field">
+          <label>Bar Gradient Hold <span id="cfg-grad-mid-val" style="color:var(--text2);font-weight:400;">55%</span></label>
+          <input type="range" id="cfg-grad-mid" min="20" max="95" step="5" value="55"
+                 oninput="document.getElementById('cfg-grad-mid-val').textContent = this.value + '%'"
+                 style="width:100%;accent-color:var(--accent);cursor:pointer;" />
+          <div class="hint" style="margin-top:4px;">
+            How far the accent colour holds across the <strong>Skater Name Bar</strong> and
+            <strong>Messages Bar</strong> before fading out. Higher keeps more solid colour.
+          </div>
+        </div>
+        <div class="form-field">
           <label>Broadcast Language</label>
           <div class="hint" style="margin-top:4px;">Use the <strong>EN / FR</strong> toggle in the top bar to switch language. Applies to all graphic titles, segment names, and officials roles.</div>
         </div>
@@ -1072,6 +1082,12 @@ async function loadAllConfig() {
     document.getElementById('cfg-location').value        = cfg.eventLocation  || '';
     document.getElementById('cfg-date').value            = cfg.eventDate      || '';
     document.getElementById('cfg-accent').value          = cfg.theme?.accentColor || '#C8102E';
+    const gradMid = cfg.theme?.headerGradientMid ?? 55;
+    const gradMidEl = document.getElementById('cfg-grad-mid');
+    if (gradMidEl) {
+      gradMidEl.value = gradMid;
+      document.getElementById('cfg-grad-mid-val').textContent = `${gradMid}%`;
+    }
     document.getElementById('event-name-display').textContent = cfg.eventName || 'No event configured';
     // Machine identity badge (header) + field
     const mName = (cfg.machineName || '').trim();
@@ -1183,6 +1199,10 @@ async function saveEventConfig() {
       accentColorDark:     darken(accent, 20),
       headerGradientStart: darken(accent, 20),
       headerGradientEnd:   lighten(accent, 10),
+      // Tail stays in the accent's own family. A fixed colour here is what
+      // used to turn a blue bar purple at its right-hand end.
+      headerGradientTail:  hexToRgba(darken(accent, 32), 0.85),
+      headerGradientMid:   Number(document.getElementById('cfg-grad-mid').value) || 55,
     }),
   };
   try {
@@ -3519,6 +3539,12 @@ function buildCards() {
 }
 
 // ── Colour helpers ─────────────────────────────────────────────────────
+function hexToRgba(hex, alpha) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || '').trim());
+  if (!m) return hex;
+  const n = parseInt(m[1], 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
+}
 function lighten(hex, pct) { return shiftColor(hex, pct); }
 function darken (hex, pct) { return shiftColor(hex, -pct); }
 function shiftColor(hex, pct) {

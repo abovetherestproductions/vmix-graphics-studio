@@ -21,7 +21,8 @@
     "panelBg": "rgba(14, 14, 18, 0.92)",
     "panelRadius": "20px",
     "panelShadow": "0 20px 70px rgba(0, 0, 0, 0.40)",
-    "numberColor": ""
+    "numberColor": "",
+    "headerGradientMid": 55
   },
   "positions": {
     "starting-order": {

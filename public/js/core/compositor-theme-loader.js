@@ -9,6 +9,15 @@
  * all graphics identically and there are no conflicts.
  */
 (function () {
+  /** Tail colour for the bar gradients — see theme-loader.js for the rationale. */
+  function deriveGradientTail(endHex) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(String(endHex || '').trim());
+    if (!m) return null;
+    const n = parseInt(m[1], 16);
+    const shade = c => Math.max(0, Math.round(c * 0.78));
+    return `rgba(${shade((n >> 16) & 255)},${shade((n >> 8) & 255)},${shade(n & 255)},0.85)`;
+  }
+
   const COMPOSITOR_ROOTS = {
     'lower-third':    'lt-root',
     'elements':       'el-root',
@@ -65,6 +74,8 @@
       '--color-accent-dark':    t.accentColorDark,
       '--color-header-start':   t.headerGradientStart,
       '--color-header-end':     t.headerGradientEnd,
+      '--color-header-tail':    t.headerGradientTail || deriveGradientTail(t.headerGradientEnd),
+      '--header-gradient-mid':  t.headerGradientMid != null ? `${t.headerGradientMid}%` : null,
       '--color-panel-bg':       t.panelBg,
       '--color-row-bg':         t.rowBg,
       '--color-row-alt':        t.rowAlt,

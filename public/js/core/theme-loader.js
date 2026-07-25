@@ -6,6 +6,23 @@
  * Exposed as window.applyTheme so ws-listener can hot-reload on config-update.
  */
 (function () {
+  /**
+   * Tail colour for the bar gradients, derived from the gradient's end colour:
+   * a shade darker, and slightly translucent so a little video reads through
+   * the far end of the bar. Keeping it in the same hue is the whole point —
+   * a fixed colour here fights any accent that isn't the same family.
+   */
+  function deriveGradientTail(endHex) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(String(endHex || '').trim());
+    if (!m) return null; // unparseable — CSS falls back to its own default
+    const n = parseInt(m[1], 16);
+    const shade = c => Math.max(0, Math.round(c * 0.78));
+    const r = shade((n >> 16) & 255);
+    const g = shade((n >> 8) & 255);
+    const b = shade(n & 255);
+    return `rgba(${r},${g},${b},0.85)`;
+  }
+
   /** Infer which template this page is from its URL path */
   function detectTemplate() {
     const parts = window.location.pathname.split('/').filter(Boolean);
@@ -61,6 +78,14 @@
       '--color-accent-dark':    t.accentColorDark,
       '--color-header-start':   t.headerGradientStart,
       '--color-header-end':     t.headerGradientEnd,
+      // Tail stop of the bar gradients (skater name bar + messages bar). It
+      // used to be a hard-coded crimson, which turned purple against any
+      // non-red accent. Derived from the end colour unless set explicitly, so
+      // existing configs are corrected without anyone re-saving.
+      '--color-header-tail':    t.headerGradientTail || deriveGradientTail(t.headerGradientEnd),
+      // How far across the bar the solid colour holds before falling off to
+      // the tail. Higher keeps more of the accent; lower gives a longer fade.
+      '--header-gradient-mid':  t.headerGradientMid != null ? `${t.headerGradientMid}%` : null,
       '--color-panel-bg':       t.panelBg,
       '--color-row-bg':         t.rowBg,
       '--color-row-alt':        t.rowAlt,

@@ -26,7 +26,7 @@
   inset: 0 0 0 var(--panel-radius);
   z-index: 0;
   border-radius: var(--panel-radius);
-  background: var(--lt-bar-bg, linear-gradient(105deg, var(--color-header-start) 0%, var(--color-header-end) 55%, rgba(180,14,36,0.85) 100%));
+  background: var(--lt-bar-bg, linear-gradient(105deg, var(--color-header-start) 0%, var(--color-header-end) var(--header-gradient-mid, 55%), var(--color-header-tail, rgba(180,14,36,0.85)) 100%));
   pointer-events: none;
 }
 
