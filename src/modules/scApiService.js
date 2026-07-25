@@ -475,13 +475,38 @@ function createScApiService({
         endDate:   eventDto?.endDate   || null,
         inProgress: !!eventDto?.isEventInProgress,
       },
-      categories: categories.map(c => ({
-        id:       newApi.safeStr(c.categoryId),
-        name:     newApi.safeStr(c.skatingcategorydefinitions?.name || c.categoryName || c.disciplineName),
-        nameFr:   newApi.safeStr(c.skatingcategorydefinitions?.nameFr || c.categoryFrenchDescription || c.programFrenchName || c.skatingcategorydefinitions?.name || c.categoryName),
-        discipline: newApi.safeStr(c.disciplineName),
-        sortOrder:  c.sortOrder ?? 999,
-      })).sort((a, b) => a.sortOrder - b.sortOrder),
+      categories: categories.map(c => {
+        const name   = newApi.safeStr(c.skatingcategorydefinitions?.name || c.categoryName || c.disciplineName);
+        const nameFr = newApi.safeStr(c.skatingcategorydefinitions?.nameFr || c.categoryFrenchDescription || c.programFrenchName || c.skatingcategorydefinitions?.name || c.categoryName);
+        // A STARSkate event runs the same level many times over, split by
+        // gender and lettered group — "STAR 7 Free Skating" alone appears a
+        // dozen times in the picker with nothing to tell them apart. Both
+        // qualifiers are on the DTO, so surface them for the operator's list.
+        // Only for choosing: the on-air category name comes from catEn().
+        const genders   = (c.categoryLabels || [])
+          .map(l => newApi.safeStr(l?.categoryLabelDefinition?.categoryLabelDefinitionName)).filter(Boolean);
+        const gendersFr = (c.categoryLabels || [])
+          .map(l => newApi.safeStr(l?.categoryLabelDefinition?.categoryLabelDefinitionFrenchName)).filter(Boolean);
+        const gender    = genders.join('/');
+        const genderFr  = gendersFr.join('/') || gender;
+        // categoryName carries the division/group ("Grp B", "U13 - Grp A").
+        // Where there is no separate level it IS the name — don't repeat it.
+        const group     = newApi.safeStr(c.categoryName);
+        const groupPart = group && group !== name ? group : '';
+        const join = (...parts) => parts.filter(Boolean).join(' · ');
+        return {
+          id:       newApi.safeStr(c.categoryId),
+          name,
+          nameFr,
+          gender,
+          group:    groupPart,
+          label:    join(name, gender, groupPart),
+          labelFr:  join(nameFr, genderFr, groupPart),
+          discipline: newApi.safeStr(c.disciplineName),
+          program:    newApi.safeStr(c.programName),
+          sortOrder:  c.sortOrder ?? 999,
+        };
+      }).sort((a, b) => a.sortOrder - b.sortOrder),
     };
   }
 

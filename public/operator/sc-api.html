@@ -663,7 +663,9 @@ function renderCategoryOptions() {
   cats.forEach(c => {
     const o = document.createElement('option');
     o.value = c.id;
-    o.textContent = c.name + (c.discipline ? ` — ${c.discipline}` : '');
+    // label carries level · gender · group — a STARSkate event repeats the
+    // same level many times and the name alone cannot be told apart.
+    o.textContent = (c.label || c.name) + (c.discipline ? ` — ${c.discipline}` : '');
     catSel.appendChild(o);
   });
   catSel.value = state.categoryId || '';
