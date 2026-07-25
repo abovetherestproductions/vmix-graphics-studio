@@ -95,8 +95,12 @@ window.GraphicsUtils = {
     if (!category) return '';
     const original = String(category).trim();
     let c = original;
-    // Drop trailing sub-category number ("Novice Women Singles 1").
-    c = c.replace(/\s+\d+$/, '');
+    // Drop a trailing sub-category index ("Novice Women Singles 1") — but only
+    // where a discipline marker identifies the number as an index. Category
+    // names now legitimately END in a number: "Juvenile Women Under 12",
+    // "STAR 7 Women Group 3". Stripping those unconditionally turned the
+    // header into "Juvenile Women Under", which is not a category at all.
+    if (/\b(?:singles?|simples?)\b/i.test(c)) c = c.replace(/\s+\d+$/, '');
     // English: drop the standalone word "Singles" / "Single" — boundary-aware
     // so it doesn't mangle hypothetical words like "Singletrack".
     c = c.replace(/\s*\bsingles?\b\s*/i, ' ');
