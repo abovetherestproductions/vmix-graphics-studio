@@ -401,5 +401,6 @@
   "elementsHideHighest": false,
   "elementsHideLightRail": false,
   "nameFormat": "firstlast",
-  "elementsHighestShowName": true
+  "elementsHighestShowName": true,
+  "categoryGroupStyle": "letter"
 }

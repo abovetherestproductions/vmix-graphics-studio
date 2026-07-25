@@ -591,6 +591,17 @@
           </div>
         </div>
         <div class="form-field">
+          <label>Group Naming</label>
+          <select id="cfg-group-style" onchange="saveGroupStyle(this.value)">
+            <option value="letter">Group A, B, C</option>
+            <option value="number">Group 1, 2, 3</option>
+          </select>
+          <div class="hint" style="margin-top:4px;">
+            How lettered groups from Skate Canada appear on air. Sections differ —
+            pick whichever yours announces.
+          </div>
+        </div>
+        <div class="form-field">
           <label>Broadcast Language</label>
           <div class="hint" style="margin-top:4px;">Use the <strong>EN / FR</strong> toggle in the top bar to switch language. Applies to all graphic titles, segment names, and officials roles.</div>
         </div>
@@ -1082,6 +1093,8 @@ async function loadAllConfig() {
     document.getElementById('cfg-location').value        = cfg.eventLocation  || '';
     document.getElementById('cfg-date').value            = cfg.eventDate      || '';
     document.getElementById('cfg-accent').value          = cfg.theme?.accentColor || '#C8102E';
+    const gsEl = document.getElementById('cfg-group-style');
+    if (gsEl) gsEl.value = cfg.categoryGroupStyle === 'number' ? 'number' : 'letter';
     const gradMid = cfg.theme?.headerGradientMid ?? 55;
     const gradMidEl = document.getElementById('cfg-grad-mid');
     if (gradMidEl) {
@@ -1316,6 +1329,15 @@ async function waitForRestart(status) {
   }
   const btn = g('update-btn');
   if (btn) { btn.disabled = false; btn.textContent = '⬇ Check & Update'; }
+}
+
+// Group naming is a live on-air wording choice, so it saves immediately
+// rather than waiting for the Save button — the poller picks it up next tick.
+async function saveGroupStyle(style) {
+  try {
+    await api('POST', '/api/config', { categoryGroupStyle: style === 'number' ? 'number' : 'letter' });
+    toast(style === 'number' ? '✓ Groups shown as 1, 2, 3' : '✓ Groups shown as A, B, C');
+  } catch (e) { toast(`Error: ${e.message}`, 'err'); }
 }
 
 async function saveMachineName() {

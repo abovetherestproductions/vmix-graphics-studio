@@ -465,6 +465,8 @@ function createScApiService({
       fetchEvent(eventId),
       fetchCategories(eventId),
     ]);
+    // Picker labels must read the same as what goes on air.
+    newApi.setGroupStyle(getConfig()?.categoryGroupStyle);
     return {
       event: {
         id:       newApi.safeStr(eventDto?.eventId),
@@ -492,7 +494,9 @@ function createScApiService({
         // categoryName carries the division/group ("Grp B", "U13 - Grp A").
         // Where there is no separate level it IS the name — don't repeat it.
         const group     = newApi.safeStr(c.categoryName);
-        const groupPart = group && group !== name ? group : '';
+        // Expand exactly as the on-air name does, so what the operator picks
+        // reads the same as what viewers see.
+        const groupPart = group && group !== name ? newApi.expandDivisionEn(group) : '';
         const join = (...parts) => parts.filter(Boolean).join(' · ');
         return {
           id:       newApi.safeStr(c.categoryId),
@@ -604,6 +608,7 @@ function createScApiService({
     const club     = newApi.entryClub(entry);
     const section  = newApi.safeStr(entry?.competitorSection);
     const flagUrl  = newApi.sectionFlagUrl(section, entry?.competitorCombinedClubNames);
+    newApi.setGroupStyle(getConfig()?.categoryGroupStyle);
     const catName  = newApi.catEn(categoryDto);
     const catNameFr = newApi.catFr(categoryDto) || catName;
     const segName  = newApi.safeStr(segmentDto?.segmentName);

@@ -232,10 +232,71 @@ function rowStatus(entry) {
 // For Singles, gender-level names (Senior Men, Junior Women) are self-describing.
 // For Pairs / Ice Dance / Synchro the discipline must be appended because level
 // names like "Juvenile" or "Senior" are shared across disciplines.
-function catEn(categoryDto) {
+// The API writes divisions and groups in shorthand — "13O", "U13", "Grp A".
+// Fine on a result sheet, wrong on air: nobody says "thirteen oh". Expand to
+// what a commentator would actually read out.
+//
+// Sections differ on group naming — some say Group A, others Group 1 — so
+// groupStyle picks between them. 'letter' keeps whatever the API sent, which
+// means a section whose data already uses numbers is unaffected either way.
+// Set once per poll from config by scApiService, so the dozen payload builders
+// below don't each need the config threaded through them.
+let defaultGroupStyle = 'letter';
+function setGroupStyle(style) {
+  defaultGroupStyle = style === 'number' ? 'number' : 'letter';
+}
+
+function numberGroups(s, word) {
+  return s.replace(new RegExp('\\b' + word + '\\s+([A-Z])\\b', 'g'),
+    (_m, l) => `${word} ${l.charCodeAt(0) - 64}`);
+}
+
+function expandDivisionEn(s, groupStyle) {
+  const out = safeStr(s)
+    .replace(/\bU\s?(\d+)\b/gi, 'Under $1')
+    .replace(/\b(\d+)\s?O\b/g,  '$1 & Over')
+    .replace(/\bGrp\b/gi,       'Group');
+  return (groupStyle ?? defaultGroupStyle) === 'number' ? numberGroups(out, 'Group') : out;
+}
+
+function expandDivisionFr(s, groupStyle) {
+  const out = safeStr(s)
+    .replace(/\bU\s?(\d+)\b/gi, 'Moins de $1')
+    .replace(/\b(\d+)\s?O\b/g,  '$1 ans et plus')
+    .replace(/\bGrp\b/gi,       'Groupe');
+  return (groupStyle ?? defaultGroupStyle) === 'number' ? numberGroups(out, 'Groupe') : out;
+}
+
+// Gender ("Girls"/"Women") and division/group ("13O", "Grp A") both sit on the
+// CategoryDto and are what separate the many repeats of a STARSkate level.
+// Returned separately so catEn/catFr can drop any part already in the name.
+function categoryQualifiers(categoryDto) {
+  const labels = categoryDto?.categoryLabels || [];
+  const gender   = labels.map(l => safeStr(l?.categoryLabelDefinition?.categoryLabelDefinitionName)).filter(Boolean).join('/');
+  const genderFr = labels.map(l => safeStr(l?.categoryLabelDefinition?.categoryLabelDefinitionFrenchName)).filter(Boolean).join('/') || gender;
+  const base  = safeStr(categoryDto?.skatingcategorydefinitions?.name || '');
+  const raw   = safeStr(categoryDto?.categoryName || '');
+  // Where there is no separate level, categoryName IS the name — not a group.
+  const group = raw && raw !== base ? raw : '';
+  return { gender, genderFr, group };
+}
+
+function catEn(categoryDto, opts) {
+  const groupStyle = opts?.groupStyle;
   const name       = safeStr(categoryDto?.skatingcategorydefinitions?.name || categoryDto?.categoryName || '');
   const discipline = safeStr(categoryDto?.disciplineName || '');
   if (!name) return discipline;
+
+  // Qualified categories name themselves fully — "STAR 4 Girls 13 & Over".
+  // The discipline is dropped there: it duplicates the segment line ("Free
+  // Skating" above "Free Program") and pushes the header past the bar width.
+  const { gender, group } = categoryQualifiers(categoryDto);
+  const quals = [gender, expandDivisionEn(group, groupStyle)]
+    .filter(Boolean)
+    .filter(q => !name.toLowerCase().includes(q.toLowerCase()));
+  if (quals.length) return [name, ...quals].join(' ');
+
+  // Unqualified: keep the long-standing discipline behaviour.
   // Singles is implicit when name already contains a gender/role word
   if (discipline === 'Singles' && /(men|women|boy|girl)/i.test(name)) return name;
   // Discipline already present in name, or no discipline to add
@@ -245,7 +306,8 @@ function catEn(categoryDto) {
 
 // Best available French category from a CategoryDto.
 // Same discipline-appending logic as catEn, using French fields.
-function catFr(categoryDto) {
+function catFr(categoryDto, opts) {
+  const groupStyle = opts?.groupStyle;
   const name   = safeStr(
     categoryDto?.skatingcategorydefinitions?.nameFr ||
     categoryDto?.categoryFrenchDescription          ||
@@ -254,8 +316,16 @@ function catFr(categoryDto) {
   );
   const disciplineEn = safeStr(categoryDto?.disciplineName || '');
   const disciplineFr = safeStr(categoryDto?.disciplineFrenchName || '');
-  const base = name || catEn(categoryDto);
+  const base = name || catEn(categoryDto, opts);
   if (!base) return disciplineFr || disciplineEn;
+
+  // Mirror catEn: a qualified category names itself, discipline dropped.
+  const { genderFr, group } = categoryQualifiers(categoryDto);
+  const qualsFr = [genderFr, expandDivisionFr(group, groupStyle)]
+    .filter(Boolean)
+    .filter(q => !base.toLowerCase().includes(q.toLowerCase()));
+  if (qualsFr.length) return [base, ...qualsFr].join(' ');
+
   if (disciplineEn === 'Singles' && /(hommes|femmes|garçon|fille|men|women)/i.test(base)) return base;
   if (!disciplineFr || base.toLowerCase().includes(disciplineEn.toLowerCase()) || base.toLowerCase().includes(disciplineFr.toLowerCase())) return base;
   return `${base} — ${disciplineFr}`;
@@ -754,6 +824,9 @@ function normalizeElements(elements, entry, categoryDto, segmentDto, existingCon
 }
 
 module.exports = {
+  setGroupStyle,
+  expandDivisionEn,
+  expandDivisionFr,
   normalizeEventInfo,
   normalizeStartingOrder,
   normalizeScoring,
