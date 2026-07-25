@@ -303,6 +303,9 @@ function shortenElementName(name) {
     .replace(/\bCombination\b/gi, 'Combo')
     .replace(/\bSequence\b/gi, 'Seq')
     .replace(/\bChoreographic\b/gi, 'Choreo')
+    // Only the pair "Toe Loop" — the loop is its own jump, so "Triple Loop"
+    // and "Throw Triple Loop" must survive untouched.
+    .replace(/\bToe Loop\b/gi, 'Toe')
     .replace(/\s{2,}/g, ' ')
     .trim();
 }
