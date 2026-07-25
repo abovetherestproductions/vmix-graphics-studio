@@ -103,6 +103,10 @@
   font-size: var(--el-total-size, 26px);
   line-height: 1;
   color: var(--color-text-primary);
+  /* Equal-width digits — proportional "1"s made scores like 11.15 render
+     visibly narrower than 10.50, so element rows jittered as values landed
+     and the running total looked like it changed size. */
+  font-variant-numeric: tabular-nums;
 }
 
 /* Operator-toggleable: when .hide-total-label is on root, the TES label
@@ -208,6 +212,10 @@
   font-family: var(--font-numbers);
   font-size: var(--el-value-size, 14px);
   text-align: right;
+  /* Equal-width digits — proportional "1"s made scores like 11.15 render
+     visibly narrower than 10.50, so element rows jittered as values landed
+     and the running total looked like it changed size. */
+  font-variant-numeric: tabular-nums;
 }
 
 .el-bv {
@@ -220,6 +228,10 @@
   font-size: var(--el-value-size, 14px);
   font-weight: 700;
   text-align: right;
+  /* Equal-width digits — proportional "1"s made scores like 11.15 render
+     visibly narrower than 10.50, so element rows jittered as values landed
+     and the running total looked like it changed size. */
+  font-variant-numeric: tabular-nums;
 }
 .el-goe.pos { color: #5cb85c; }
 .el-goe.neg { color: #ff6b6b; }
