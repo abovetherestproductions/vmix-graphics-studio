@@ -88,6 +88,7 @@
   function render(payload) {
     const data = payload.data || {};
     titleEl.textContent    = window.GraphicsUtils.resolveTitle('standings', data, 'Rankings');
+    window.GraphicsUtils.fitTitle(titleEl);
     subtitleEl.textContent = window.GraphicsUtils.resolveSubtitle('standings', data, '');
     window.GraphicsUtils.fitTitleOneLine(titleEl);
 
@@ -206,6 +207,7 @@
   window.addEventListener('graphics-config-updated', () => {
     const data = lastPayload?.data || {};
     titleEl.textContent    = window.GraphicsUtils.resolveTitle('standings', data, 'Rankings');
+    window.GraphicsUtils.fitTitle(titleEl);
     subtitleEl.textContent = window.GraphicsUtils.resolveSubtitle('standings', data, '');
     window.GraphicsUtils.fitTitleOneLine(titleEl);
   });

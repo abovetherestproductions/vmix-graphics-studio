@@ -394,6 +394,36 @@ window.GraphicsUtils = {
    * @param {number} baseSizePx      - the operator-configured font size
    * @param {number} minRatio        - floor as a fraction of baseSizePx (default 0.6)
    */
+  /**
+   * Safety net for header titles: shrink only when the text would be clipped.
+   *
+   * Category names carry gender and division now ("Pre-Juvenile Women Under 11
+   * - Group A"), which fits every current template — but the Rank 6 corner sits
+   * at 97% of its width on the longest one, and headers are `overflow: hidden;
+   * text-overflow: ellipsis`, so a Section with slightly longer naming would
+   * truncate mid-word on air rather than fail visibly.
+   *
+   * Resets to the operator-configured size first, so it is re-entrant and a
+   * later shorter title returns to full size. A title that fits is left
+   * completely alone — no inline font-size is set.
+   *
+   * @param {HTMLElement} el       - element whose textContent is already set
+   * @param {number} minRatio      - floor as a fraction of the configured size
+   */
+  fitTitle(el, minRatio = 0.75) {
+    if (!el) return;
+    el.style.fontSize = '';                       // back to the configured size
+    const base = parseFloat(getComputedStyle(el).fontSize) || 0;
+    if (!base || !el.clientWidth) return;         // not laid out yet — leave it
+    if (el.scrollWidth <= el.clientWidth + 1) return; // fits: change nothing
+    const min = base * minRatio;
+    let size = base;
+    for (let i = 0; i < 24 && el.scrollWidth > el.clientWidth + 1 && size > min; i++) {
+      size = Math.max(min, size - 1);
+      el.style.fontSize = `${size}px`;
+    }
+  },
+
   autoFitText(el, baseSizePx, minRatio = 0.6) {
     if (!el || !baseSizePx) return;
     el.style.fontSize = `${baseSizePx}px`;

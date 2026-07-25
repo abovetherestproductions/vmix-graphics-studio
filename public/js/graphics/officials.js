@@ -46,6 +46,7 @@
   function render(payload) {
     const data = payload.data || {};
     titleEl.textContent    = window.GraphicsUtils.resolveTitle('officials', data, 'Officials');
+    window.GraphicsUtils.fitTitle(titleEl);
     subtitleEl.textContent = window.GraphicsUtils.resolveSubtitle('officials', data, '');
     window.GraphicsUtils.fitTitleOneLine(titleEl);
 
@@ -160,6 +161,7 @@
     } else {
       // No payload yet — still reflect dropdown changes on the header text.
       titleEl.textContent    = window.GraphicsUtils.resolveTitle('officials', {}, 'Officials');
+      window.GraphicsUtils.fitTitle(titleEl);
       subtitleEl.textContent = window.GraphicsUtils.resolveSubtitle('officials', {}, '');
       window.GraphicsUtils.fitTitleOneLine(titleEl);
     }

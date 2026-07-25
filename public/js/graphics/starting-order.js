@@ -90,6 +90,7 @@
 
     const data = payload?.data || {};
     titleEl.textContent    = window.GraphicsUtils.resolveTitle('starting-order', data, 'Starting Order');
+    window.GraphicsUtils.fitTitle(titleEl);
     window.GraphicsUtils.fitTitleOneLine(titleEl);
     // Group subtitle is intentionally suppressed — strip any residual "Group N" / "Groupe N"
     const rawSub = window.GraphicsUtils.resolveSubtitle('starting-order', data, '');
@@ -264,6 +265,7 @@
     // titleSource='custom'/'event' immediately reflect dropdown changes.
     const data = lastPayload?.data || {};
     titleEl.textContent    = window.GraphicsUtils.resolveTitle('starting-order', data, 'Starting Order');
+    window.GraphicsUtils.fitTitle(titleEl);
     window.GraphicsUtils.fitTitleOneLine(titleEl);
     const rawSub2 = window.GraphicsUtils.resolveSubtitle('starting-order', data, '');
     subtitleEl.textContent = /^(Group|Groupe)\s+\d+$/i.test((rawSub2 || '').trim()) ? '' : rawSub2;
