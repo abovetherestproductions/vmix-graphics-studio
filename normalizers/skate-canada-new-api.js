@@ -308,6 +308,7 @@ function shortenElementName(name) {
     .replace(/\bSequence\b/gi, 'Seq')
     .replace(/\bChoreographic\b/gi, 'Choreo')
     .replace(/\bCharacter\b/gi, 'Char')
+    .replace(/\bMovements?\b/gi, 'Move')
     // Pattern dances name the dance and then say "Waltz" — Westminster,
     // Golden, Starlight, Ravensburger are each distinctive on their own, and
     // the word is what pushed these past the column.
