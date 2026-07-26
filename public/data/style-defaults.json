@@ -1,7 +1,7 @@
 {
   "language": "en",
   "logoFile": "SC-Emblem_RGB-White NO LETTERS.png",
-  "elementsDisplayMode": "name",
+  "elementsDisplayMode": "code",
   "elementsTotalLabel": "TES",
   "elementsTotalLabelFr": "NT\u00c9",
   "season": "2025-26",
@@ -399,7 +399,7 @@
   "elementsHighestLabelFr": "Meilleur Score Technique",
   "elementsHideTotalLabel": true,
   "elementsHideHighest": false,
-  "elementsHideLightRail": false,
+  "elementsHideLightRail": true,
   "nameFormat": "firstlast",
   "elementsHighestShowName": true,
   "categoryGroupStyle": "letter"
