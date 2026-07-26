@@ -303,11 +303,56 @@ function shortenElementName(name) {
     .replace(/\bCombination\b/gi, 'Combo')
     .replace(/\bSequence\b/gi, 'Seq')
     .replace(/\bChoreographic\b/gi, 'Choreo')
+    // Ice dance runs long — most of its names wrapped to two lines in the
+    // tracker's 194px name column. These are the standard call abbreviations.
+    .replace(/\bSynchronized\b/gi, 'Sync')
+    .replace(/\bSequential\b/gi,   'Seq')
+    .replace(/\bDiagonal\b/gi,     'Diag')
+    .replace(/\bCircular\b/gi,     'Circ')
+    .replace(/\bMidline\b/gi,      'Mid')
+    .replace(/\bOne Foot\b/gi,     '1-Ft')
     // Only the pair "Toe Loop" — the loop is its own jump, so "Triple Loop"
     // and "Throw Triple Loop" must survive untouched.
     .replace(/\bToe Loop\b/gi, 'Toe')
     .replace(/\s{2,}/g, ' ')
     .trim();
+}
+
+/**
+ * Collapse an ice dance element that was called separately for each partner.
+ *
+ * Those arrive as one element with two sub-elements naming the same thing
+ * twice, differing only in the partner letter and level — so joining them
+ * plainly gives "1-Ft Turns Seq A 2 + 1-Ft Turns Seq B 2", which always
+ * wraps. Naming it once and listing the calls says the same in half the room:
+ *
+ *   1-Ft Turns Seq A 2 + 1-Ft Turns Seq B 2 → 1-Ft Turns Seq A2 B2
+ *   Curve Lift 4 + Curve Lift 3             → Curve Lift 4 + 3
+ *
+ * Only collapses when every differing tail is a level marker — a partner
+ * letter and/or a level. A jump combination's tails are element names
+ * ("Lutz", "Toe"), so "Triple Lutz + Triple Toe" is left exactly as it is.
+ */
+const LEVEL_TAIL = /^(?:[A-Z]\s+)?(?:\d+|B)$/;
+
+function collapsePartnerCalls(parts) {
+  if (parts.length < 2) return parts.join(' + ');
+  const words = parts.map(p => p.split(' '));
+  let common = 0;
+  while (words.every(w => w[common] !== undefined && w[common] === words[0][common])) common++;
+  if (common === 0) return parts.join(' + ');
+
+  const tails = words.map(w => w.slice(common).join(' '));
+  if (!tails.every(t => LEVEL_TAIL.test(t))) return parts.join(' + ');
+
+  const prefix = words[0].slice(0, common).join(' ');
+  const shown  = tails.filter(Boolean);
+  if (!shown.length) return prefix;
+  // "A 2" → "A2" so the partner letter reads together with its level.
+  const tight = shown.map(t => t.replace(/^([A-Z])\s+/, '$1'));
+  // Bare levels need a separator or "Curve Lift 4 3" looks like one number.
+  const bare = tight.every(t => /^\d+$/.test(t));
+  return `${prefix} ${tight.join(bare ? ' + ' : ' ')}`;
 }
 
 function catEn(categoryDto, opts) {
@@ -799,12 +844,13 @@ function normalizeElements(elements, entry, categoryDto, segmentDto, existingCon
       const CALL_CHAIN = new RegExp('\\s+' + CALL + '(?:\\s+and\\s+' + CALL + ')*\\s*$', 'i');
       const cleanElementName = n => n.replace(CALL_CHAIN, '').trim();
       const fullName = Array.isArray(el.subElements)
-        ? el.subElements
-            .slice()
-            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-            .map(s => shortenElementName(cleanElementName(safeStr(s.elementDefinition?.name))))
-            .filter(Boolean)
-            .join(' + ')
+        ? collapsePartnerCalls(
+            el.subElements
+              .slice()
+              .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+              .map(s => shortenElementName(cleanElementName(safeStr(s.elementDefinition?.name))))
+              .filter(Boolean)
+          )
         : '';
       return {
         order:     el.order     ?? null,
