@@ -881,6 +881,9 @@ function normalizeElements(elements, entry, categoryDto, segmentDto, existingCon
       categoryNameFr: catNameFr,
       segmentName:    segName,
       segmentNameFr:  segNameFr,
+      // Ice dance element names run far longer than singles or pairs, so the
+      // graphic sizes its name column by discipline.
+      discipline:     safeStr(categoryDto?.disciplineName),
       groupNumber:    entry?.warmUpGroup ?? null,
       runningTotal:   totalTes,
       totalTes,

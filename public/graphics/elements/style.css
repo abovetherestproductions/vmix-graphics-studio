@@ -198,6 +198,18 @@
   min-width: 0;
 }
 
+/* Ice dance only, and only in full-name mode — element CODES are short in
+   every discipline and keep their size. Dance names are the longest in the
+   sport: a paired call reads "1-Ft Turns Seq A2 B2" where a singles element
+   is "Triple Lutz", and several sat 5-10px over the column.
+   Compounds with the 0.92 above rather than replacing it, so the step down is
+   relative to whatever full-name mode is already using. Applied by
+   discipline, so singles and pairs are untouched and nobody has to remember
+   to change it between events. Tune with --el-dance-name-scale. */
+.elements.disc-dance .el-code.show-name {
+  font-size: calc(var(--el-code-size, 15px) * 0.92 * var(--el-dance-name-scale, 0.9));
+}
+
 /* When showing full element names, allow wrapping and use body font */
 .el-code.show-name {
   font-family: var(--font-body);

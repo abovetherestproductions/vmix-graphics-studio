@@ -302,6 +302,10 @@
     root.classList.toggle('layout-list',   layoutMode !== 'single');
     // Operator toggle for the TES label above the score.
     root.classList.toggle('hide-total-label', window.elementsHideTotalLabel === true);
+    // Ice dance names ("1-Ft Turns Seq A2 B2") run longer than any singles or
+    // pairs element, so the name column steps down a little for dance only and
+    // returns to full size on every other discipline — no operator action.
+    root.classList.toggle('disc-dance', /dance/i.test(data.discipline || ''));
 
     renderLightRail(elements, currentIdx, animateIndex === currentIdx);
 
