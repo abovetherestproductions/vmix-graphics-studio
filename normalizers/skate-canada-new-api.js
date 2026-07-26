@@ -309,6 +309,10 @@ function shortenElementName(name) {
     .replace(/\bChoreographic\b/gi, 'Choreo')
     .replace(/\bCharacter\b/gi, 'Char')
     .replace(/\bMovements?\b/gi, 'Move')
+    // Only ever appears in "Choreographic Spinning Movement", which the line
+    // above leaves as "Choreo Spinning Move 1" — 13px too wide. Shortening it
+    // still reads apart from the pairs element "Choreo Spin 1".
+    .replace(/\bSpinning\b/gi, 'Spin')
     // Pattern dances name the dance and then say "Waltz" — Westminster,
     // Golden, Starlight, Ravensburger are each distinctive on their own, and
     // the word is what pushed these past the column.
