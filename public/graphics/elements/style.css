@@ -205,9 +205,11 @@
    Compounds with the 0.92 above rather than replacing it, so the step down is
    relative to whatever full-name mode is already using. Applied by
    discipline, so singles and pairs are untouched and nobody has to remember
-   to change it between events. Tune with --el-dance-name-scale. */
+   to change it between events. 0.88 rather than 0.9 because the longest name
+   that can be made to fit sat 1px over at 0.9 — inside rendering noise.
+   Tune with --el-dance-name-scale. */
 .elements.disc-dance .el-code.show-name {
-  font-size: calc(var(--el-code-size, 15px) * 0.92 * var(--el-dance-name-scale, 0.9));
+  font-size: calc(var(--el-code-size, 15px) * 0.92 * var(--el-dance-name-scale, 0.88));
 }
 
 /* When showing full element names, allow wrapping and use body font */

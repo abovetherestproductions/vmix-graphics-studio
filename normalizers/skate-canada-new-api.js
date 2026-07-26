@@ -298,11 +298,20 @@ function categoryQualifiers(categoryDto) {
  */
 function shortenElementName(name) {
   return safeStr(name)
+    // "Spin Level 4" → "Spin 4". Where a number already precedes it the level
+    // would read as a second bare number ("Lift Group 3 3"), so it keeps an
+    // "L" — "Lift Group 3 L3", "Westminster Seq 1 L2" — which is both clearer
+    // and shorter than spelling the word out.
     .replace(/\s+Level\s+(\d+|B)\b/gi, (match, level, offset, whole) =>
-      /\d$/.test(whole.slice(0, offset).trim()) ? match : ` ${level}`)
+      /\d$/.test(whole.slice(0, offset).trim()) ? ` L${level}` : ` ${level}`)
     .replace(/\bCombination\b/gi, 'Combo')
     .replace(/\bSequence\b/gi, 'Seq')
     .replace(/\bChoreographic\b/gi, 'Choreo')
+    .replace(/\bCharacter\b/gi, 'Char')
+    // Pattern dances name the dance and then say "Waltz" — Westminster,
+    // Golden, Starlight, Ravensburger are each distinctive on their own, and
+    // the word is what pushed these past the column.
+    .replace(/\s*\bWaltz\b/gi, '')
     // Ice dance runs long — most of its names wrapped to two lines in the
     // tracker's 194px name column. These are the standard call abbreviations.
     .replace(/\bSynchronized\b/gi, 'Sync')
