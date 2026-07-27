@@ -2327,14 +2327,14 @@ app.post('/api/graphics/:template/data', (req, res) => {
   res.json({ ok: true });
 });
 
-app.post('/api/graphics/:template/show', (req, res) => {
+registerDual('/api/graphics/:template/show', (req, res) => {
   const { template } = req.params;
   if (!TEMPLATES.includes(template)) return res.status(404).json({ error: 'unknown template' });
   const result = mergeControl(template, { visible: true, state: 'animateIn' }, req.body?.data || null);
   res.json({ ok: true, revision: result.meta.revision });
 });
 
-app.post('/api/graphics/:template/hide', (req, res) => {
+registerDual('/api/graphics/:template/hide', (req, res) => {
   const { template } = req.params;
   if (!TEMPLATES.includes(template)) return res.status(404).json({ error: 'unknown template' });
   const result = mergeControl(template, { visible: false, state: 'animateOut' }, null);
@@ -2351,6 +2351,31 @@ app.post('/api/graphics/:template/update', (req, res) => {
 function registerDualAsync(route, handler) {
   const wrapped = (req, res) => {
     Promise.resolve(handler(req, res)).catch(err => res.status(500).json({ ok: false, success: false, error: err.message, message: err.message }));
+  };
+  app.get(route, wrapped);
+  app.post(route, wrapped);
+}
+
+/**
+ * Same idea for the plain (non-async) control routes.
+ *
+ * A Stream Deck's built-in Website action can only issue GET, so anything
+ * POST-only is unreachable from a bare key press. These handlers read their
+ * arguments from req.body, so on a GET the query string stands in for it —
+ * ?minutes=2 behaves exactly like a JSON body of {"minutes": 2}.
+ *
+ * Only live operating actions are registered this way. Config writes, uploads
+ * and /api/update stay POST-only on purpose: a GET can be fired by a link
+ * preview, a prefetch or an over-eager crawler, and none of those should be
+ * able to rewrite settings or pull code.
+ */
+function registerDual(route, handler) {
+  const wrapped = (req, res) => {
+    if (req.method === 'GET') {
+      req.body = { ...(req.query || {}) };
+      res.set('Cache-Control', 'no-store');
+    }
+    return handler(req, res);
   };
   app.get(route, wrapped);
   app.post(route, wrapped);
@@ -2508,7 +2533,7 @@ function writeClock(state, controlOverride) {
 }
 
 // Start a countdown of N seconds (or N ms via durationMs).
-app.post('/api/clock/countdown', (req, res) => {
+registerDual('/api/clock/countdown', (req, res) => {
   const q = Object.assign({}, req.query, req.body || {});
   const durationMs = Math.max(0, Number(q.durationMs) || (Number(q.seconds) || 0) * 1000);
   if (!durationMs) return res.status(400).json({ error: 'seconds or durationMs is required' });
@@ -2522,7 +2547,7 @@ app.post('/api/clock/countdown', (req, res) => {
 });
 
 // Start a count-up from zero (or from `fromSeconds`).
-app.post('/api/clock/countup', (req, res) => {
+registerDual('/api/clock/countup', (req, res) => {
   const q = Object.assign({}, req.query, req.body || {});
   const from = Math.max(0, Number(q.fromSeconds) || 0);
   const show = q.show === undefined ? true : !['0','false','no','off'].includes(String(q.show).toLowerCase());
@@ -2535,7 +2560,7 @@ app.post('/api/clock/countup', (req, res) => {
 });
 
 // Pause — freezes the displayed value where it is.
-app.post('/api/clock/pause', (_req, res) => {
+registerDual('/api/clock/pause', (_req, res) => {
   const existing = readData('clock')?.data || {};
   if (!existing.running || !existing.startedAt) {
     return res.json({ ok: true, payload: readData('clock') });
@@ -2546,7 +2571,7 @@ app.post('/api/clock/pause', (_req, res) => {
 });
 
 // Resume from paused state.
-app.post('/api/clock/resume', (_req, res) => {
+registerDual('/api/clock/resume', (_req, res) => {
   const existing = readData('clock')?.data || {};
   if (existing.running) return res.json({ ok: true, payload: readData('clock') });
   const offset = Math.max(0, Number(existing.pausedAtMs) || 0);
@@ -2555,7 +2580,7 @@ app.post('/api/clock/resume', (_req, res) => {
 });
 
 // Stop — running goes false, value freezes wherever it was.
-app.post('/api/clock/stop', (_req, res) => {
+registerDual('/api/clock/stop', (_req, res) => {
   const existing = readData('clock')?.data || {};
   const elapsed = existing.startedAt ? (Date.now() - existing.startedAt) : 0;
   const payload = writeClock({ running: false, pausedAtMs: elapsed });
@@ -2563,17 +2588,17 @@ app.post('/api/clock/stop', (_req, res) => {
 });
 
 // Reset — back to zero (countup) or full duration remaining (countdown).
-app.post('/api/clock/reset', (_req, res) => {
+registerDual('/api/clock/reset', (_req, res) => {
   const payload = writeClock({ running: false, startedAt: null, pausedAtMs: 0, finishedAt: null });
   res.json({ ok: true, payload });
 });
 
 // Show / hide are the standard graphic toggles — exposed here too for
 // Companion convenience so a single button URL drives the clock.
-app.post('/api/clock/show', (_req, res) => {
+registerDual('/api/clock/show', (_req, res) => {
   res.json({ ok: true, payload: writeClock({}, { visible: true,  state: 'animateIn'  }) });
 });
-app.post('/api/clock/hide', (_req, res) => {
+registerDual('/api/clock/hide', (_req, res) => {
   res.json({ ok: true, payload: writeClock({}, { visible: false, state: 'animateOut' }) });
 });
 
@@ -2586,7 +2611,7 @@ function clockIsActive() {
   return !!cur?.control?.visible;
 }
 
-app.post('/api/clock/countdown-toggle', (req, res) => {
+registerDual('/api/clock/countdown-toggle', (req, res) => {
   if (clockIsActive()) {
     const payload = writeClock(
       { running: false, startedAt: null, pausedAtMs: 0, finishedAt: null },
@@ -2605,7 +2630,7 @@ app.post('/api/clock/countdown-toggle', (req, res) => {
   res.json({ ok: true, action: 'shown', payload });
 });
 
-app.post('/api/clock/countup-toggle', (req, res) => {
+registerDual('/api/clock/countup-toggle', (req, res) => {
   if (clockIsActive()) {
     const payload = writeClock(
       { running: false, startedAt: null, pausedAtMs: 0, finishedAt: null },
@@ -2657,13 +2682,13 @@ app.post('/api/time-of-day/config', (req, res) => {
   res.json({ ok: true, payload: writeTimeOfDay(state) });
 });
 
-app.post('/api/time-of-day/show', (_req, res) => {
+registerDual('/api/time-of-day/show', (_req, res) => {
   res.json({ ok: true, payload: writeTimeOfDay({}, { visible: true,  state: 'animateIn'  }) });
 });
-app.post('/api/time-of-day/hide', (_req, res) => {
+registerDual('/api/time-of-day/hide', (_req, res) => {
   res.json({ ok: true, payload: writeTimeOfDay({}, { visible: false, state: 'animateOut' }) });
 });
-app.post('/api/time-of-day/toggle', (_req, res) => {
+registerDual('/api/time-of-day/toggle', (_req, res) => {
   const visible = !!(readData('time-of-day')?.control?.visible);
   const payload = writeTimeOfDay({}, visible
     ? { visible: false, state: 'animateOut' }
@@ -2673,7 +2698,7 @@ app.post('/api/time-of-day/toggle', (_req, res) => {
 
 // Convenience: start + show + hide-after for the common "give them N seconds"
 // pattern. Body/query: { seconds, autoHideAfterFinishMs }.
-app.post('/api/clock/countdown-show', (req, res) => {
+registerDual('/api/clock/countdown-show', (req, res) => {
   const q = Object.assign({}, req.query, req.body || {});
   const durationMs = Math.max(0, Number(q.durationMs) || (Number(q.seconds) || 0) * 1000);
   if (!durationMs) return res.status(400).json({ error: 'seconds or durationMs is required' });
@@ -3023,7 +3048,7 @@ app.get('/api/preview/starting-order/group/:n', async (req, res) => {
 });
 
 // POST /api/graphics/rankings/page — slice cached full data to a new page
-app.post('/api/graphics/rankings/page', (req, res) => {
+registerDual('/api/graphics/rankings/page', (req, res) => {
   const { page } = req.body || {};
   const result = setRankingsPage(page);
   res.json({ ok: true, page: result.page, pageCount: result.pageCount, rowsPerPage: result.rowsPerPage, rowCount: result.rowCount });
@@ -3173,7 +3198,7 @@ app.post('/api/sc/fetch', async (req, res) => {
 });
 
 // POST /api/graphics/rankings/rows-per-page — change rows per page & re-slice
-app.post('/api/graphics/rankings/rows-per-page', (req, res) => {
+registerDual('/api/graphics/rankings/rows-per-page', (req, res) => {
   const rpp = Math.max(1, Math.min(20, Number(req.body?.rowsPerPage) || 6));
 
   ensureRankingsCacheLoaded();
@@ -3209,7 +3234,7 @@ app.post('/api/graphics/rankings/rows-per-page', (req, res) => {
 });
 
 // POST /api/graphics/starting-order/group/:n — Companion shortcut, no JSON body needed
-app.post('/api/graphics/starting-order/group/:n', async (req, res) => {
+registerDual('/api/graphics/starting-order/group/:n', async (req, res) => {
   try {
     const result = await setStartingOrderGroup(req.params.n);
     res.json({ ok: true, group: result.group, revision: result.revision, rowCount: result.rowCount });
@@ -3219,13 +3244,13 @@ app.post('/api/graphics/starting-order/group/:n', async (req, res) => {
 });
 
 // POST /api/graphics/rankings/page/:n — Companion shortcut, no JSON body needed
-app.post('/api/graphics/rankings/page/:n', (req, res) => {
+registerDual('/api/graphics/rankings/page/:n', (req, res) => {
   const result = setRankingsPage(req.params.n);
   res.json({ ok: true, page: result.page, pageCount: result.pageCount, rowsPerPage: result.rowsPerPage, rowCount: result.rowCount });
 });
 
 // POST /api/live-poll/start|stop
-app.post('/api/live-poll/start', (_req, res) => {
+registerDual('/api/live-poll/start', (_req, res) => {
   try {
     const cfg = readConfig();
     cfg.dataSource = Object.assign({}, cfg.dataSource || {}, {
@@ -3239,7 +3264,7 @@ app.post('/api/live-poll/start', (_req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-app.post('/api/live-poll/stop', (_req, res) => {
+registerDual('/api/live-poll/stop', (_req, res) => {
   try {
     const cfg = readConfig();
     cfg.dataSource = Object.assign({}, cfg.dataSource || {}, {

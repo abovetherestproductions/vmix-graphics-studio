@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Button Commands — Control</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:#1a1a1e; --surface:#24242a; --surface2:#2c2c34; --border:rgba(255,255,255,0.08);
+    --text:#f0f0f2; --text2:#8888a0; --accent:#5b8af5; --green:#81c784; --amber:#ffc848;
+  }
+  html, body { min-height:100%; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; font-size:13px; line-height:1.4; }
+  #app { max-width:1080px; margin:0 auto; padding:14px 14px 60px; }
+  header { display:flex; align-items:center; gap:10px; padding-bottom:12px; margin-bottom:14px;
+    border-bottom:2px solid rgba(91,138,245,0.35); }
+  header h1 { font-size:15px; font-weight:800; letter-spacing:2px; text-transform:uppercase; color:var(--accent); flex:1; }
+  #ws-dot { width:8px; height:8px; border-radius:50%; background:#555; }
+  #ws-dot.ok { background:var(--green); } #ws-dot.err { background:#ef5350; }
+
+  .panel { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:14px; }
+  .panel-title { font-size:11px; font-weight:800; letter-spacing:1.5px; text-transform:uppercase;
+    color:var(--text2); margin-bottom:12px; }
+  .hint { font-size:12px; color:var(--text2); line-height:1.6; }
+  .hint code { background:var(--surface2); padding:1px 5px; border-radius:4px; font-size:11.5px; }
+
+  .basebar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:6px; }
+  .basebar label { font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--text2); }
+  .basebar input { flex:1; min-width:260px; background:var(--surface2); border:1px solid var(--border);
+    border-radius:8px; color:var(--text); padding:8px 10px; font-size:13px; font-family:ui-monospace,Menlo,monospace; }
+  .basebar input:focus { outline:none; border-color:var(--accent); }
+
+  table { width:100%; border-collapse:collapse; }
+  th { text-align:left; font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--text2);
+    padding:6px 8px; border-bottom:1px solid var(--border); font-weight:700; }
+  td { padding:5px 8px; border-bottom:1px solid rgba(255,255,255,0.04); vertical-align:top; }
+  tr:last-child td { border-bottom:none; }
+  tr:hover td { background:rgba(255,255,255,0.03); }
+  td.what { width:34%; }
+  td.url { font-family:ui-monospace,Menlo,monospace; font-size:11.5px; color:var(--green); word-break:break-all; }
+  td.copy { width:64px; text-align:right; }
+  .cp { background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text2);
+    font-size:10px; font-weight:700; letter-spacing:.5px; padding:3px 8px; cursor:pointer; }
+  .cp:hover { border-color:var(--accent); color:var(--text); }
+  .cp.done { color:var(--green); border-color:var(--green); }
+  .note { color:var(--amber); font-size:11px; }
+
+  #toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(10px);
+    background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:8px 16px;
+    font-size:12px; opacity:0; transition:opacity 200ms, transform 200ms; pointer-events:none; z-index:999; }
+  #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<script src="/js/core/app-nav.js"></script>
+<div id="app">
+
+  <header>
+    <div id="ws-dot" title="Server connection"></div>
+    <h1>Button Commands</h1>
+  </header>
+
+  <div class="panel">
+    <div class="panel-title">Using these with a Stream Deck</div>
+    <div class="hint">
+      Every address below is a plain web link, so a Stream Deck can fire it with the
+      built-in <strong>System &rarr; Website</strong> action — tick
+      <strong>Access in background</strong> so no browser window opens. No extra software needed.
+      <br><br>
+      They also work from Companion (<em>Generic HTTP &rarr; GET</em>), from a browser address bar
+      for testing, or from any automation that can fetch a URL.
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">This machine's address</div>
+    <div class="basebar">
+      <label for="base">Base</label>
+      <input type="text" id="base" oninput="renderAll()" />
+    </div>
+    <div class="hint">
+      Filled in automatically. If the Stream Deck is on a <em>different</em> computer, replace
+      <code>localhost</code> with this machine's IP address — and open port 3012 on its firewall
+      (see <code>deploy/README.md</code>).
+    </div>
+  </div>
+
+  <div id="tables"></div>
+
+</div>
+<div id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+let _t = null;
+function toast(msg) {
+  const el = $('toast'); el.textContent = msg; el.classList.add('show');
+  clearTimeout(_t); _t = setTimeout(() => el.classList.remove('show'), 1800);
+}
+
+// Templates the graphics routes accept, in the order the operator sees them.
+const TEMPLATES = [
+  ['starting-order', 'Starting Order'],
+  ['scoring',        'Scoring Display'],
+  ['elements',       'Elements Tracker'],
+  ['standings',      'Rank 6 (corner)'],
+  ['rankings',       'Final Rankings'],
+  ['officials',      'Officials'],
+  ['manual-skater',  'Skater Name Bar'],
+  ['messages',       'Messages Bar'],
+  ['interview',      'Interview'],
+];
+
+const GROUPS = [
+  {
+    title: 'Graphics — one key per graphic',
+    note: 'Toggle is usually what you want on a Stream Deck: same key turns it on and off.',
+    rows: () => TEMPLATES.flatMap(([id, label]) => ([
+      [`${label} — toggle`, `/api/graphics/${id}/toggle`],
+      [`${label} — show`,   `/api/graphics/${id}/show`],
+      [`${label} — hide`,   `/api/graphics/${id}/hide`],
+    ])),
+  },
+  {
+    title: 'Skater',
+    rows: () => [
+      ['Next skater',     '/api/sc-api/next-skater'],
+      ['Previous skater', '/api/sc-api/prev-skater'],
+    ],
+  },
+  {
+    title: 'Pages & groups',
+    note: 'Replace the number at the end with the page or warm-up group you want.',
+    rows: () => [
+      ['Final Rankings — page 1',      '/api/graphics/rankings/page/1/toggle'],
+      ['Final Rankings — page 2',      '/api/graphics/rankings/page/2/toggle'],
+      ['Starting Order — group 1',     '/api/graphics/starting-order/group/1/toggle'],
+      ['Starting Order — group 2',     '/api/graphics/starting-order/group/2/toggle'],
+    ],
+  },
+  {
+    title: 'Clocks',
+    note: 'seconds is the TOTAL — 150 is 2:30. Use durationMs for finer control.',
+    rows: () => [
+      ['Countdown 1:00',     '/api/clock/countdown?seconds=60'],
+      ['Countdown 2:00',     '/api/clock/countdown?seconds=120'],
+      ['Countdown 6:00',     '/api/clock/countdown?seconds=360'],
+      ['Countdown + label',  '/api/clock/countdown?seconds=360&label=WARM%20UP'],
+      ['Count-up from zero', '/api/clock/countup'],
+      ['Pause',              '/api/clock/pause'],
+      ['Resume',             '/api/clock/resume'],
+      ['Stop',               '/api/clock/stop'],
+      ['Reset',              '/api/clock/reset'],
+      ['Show clock',         '/api/clock/show'],
+      ['Hide clock',         '/api/clock/hide'],
+      ['Time of day — toggle', '/api/time-of-day/toggle'],
+    ],
+  },
+  {
+    title: 'Recording',
+    rows: () => [
+      ['vMix record — toggle', '/api/vmix/recording/toggle'],
+      ['vMix record — start',  '/api/vmix/recording/start'],
+      ['vMix record — stop',   '/api/vmix/recording/stop'],
+      ['Dailymotion — toggle', '/api/dailymotion/recording/toggle'],
+      ['Everything — toggle',  '/api/control/all-record-toggle'],
+    ],
+  },
+  {
+    title: 'Handy combinations',
+    rows: () => [
+      ['Clear all graphics',            '/api/control/clear-graphics'],
+      ['Show start order',              '/api/control/show-start-order'],
+      ['Show results',                  '/api/control/show-results'],
+      ['Refresh data, then show',       '/api/graphics/elements/fetch-and-show'],
+    ],
+  },
+  {
+    title: 'Status — for Companion feedback',
+    note: 'These only READ. Safe to poll. Return 1 or 0, or a PNG for a button face.',
+    rows: () => [
+      ['Is a graphic on air?',   '/api/feedback/graphic/elements'],
+      ['Is it recording?',       '/api/feedback/recording'],
+      ['Button image (on/off)',  '/api/feedback/image/graphic/elements.png'],
+      ['Live preview on the key','/api/feedback/preview/graphic/elements.png'],
+    ],
+  },
+];
+
+function renderAll() {
+  const base = $('base').value.replace(/\/+$/, '');
+  const host = $('tables');
+  host.innerHTML = '';
+  for (const g of GROUPS) {
+    const p = document.createElement('div');
+    p.className = 'panel';
+    const rows = g.rows().map(([what, path]) => `
+      <tr>
+        <td class="what">${what}</td>
+        <td class="url">${base}${path}</td>
+        <td class="copy"><button class="cp" data-u="${base}${path}">Copy</button></td>
+      </tr>`).join('');
+    p.innerHTML = `
+      <div class="panel-title">${g.title}</div>
+      ${g.note ? `<div class="hint" style="margin-bottom:10px;">${g.note}</div>` : ''}
+      <table><thead><tr><th>Action</th><th>Address</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+    host.appendChild(p);
+  }
+  host.querySelectorAll('.cp').forEach(b => {
+    b.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(b.dataset.u);
+        b.textContent = 'Copied'; b.classList.add('done');
+        setTimeout(() => { b.textContent = 'Copy'; b.classList.remove('done'); }, 1200);
+      } catch { toast('Could not copy — select the address and copy it manually'); }
+    };
+  });
+}
+
+function connectWs() {
+  const dot = $('ws-dot');
+  const ws = new WebSocket(`ws://${location.host}`);
+  ws.onopen  = () => dot.className = 'ok';
+  ws.onclose = () => { dot.className = 'err'; setTimeout(connectWs, 3000); };
+  ws.onerror = () => ws.close();
+}
+
+$('base').value = `${location.protocol}//${location.host}`;
+renderAll();
+connectWs();
+</script>
+</body>
+</html>

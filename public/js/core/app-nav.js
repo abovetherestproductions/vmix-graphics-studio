@@ -15,6 +15,7 @@
     ['Interview',          '/operator/interview.html'],
     ['Clocks',             '/operator/clocks.html'],
     ['Event Workbooks',    '/operator/workbooks.html'],
+    ['Button Commands',    '/operator/commands.html'],
     // Manual Skaters hidden for now — not needed while every event runs on
     // the Skate Canada API. Re-add here if that changes.
   ];
