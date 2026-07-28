@@ -63,3 +63,5 @@ tools/write-sample-starting-order.js
 # and local workbook paths). Operators create their own from the operator UI.
 config/presets/
 
+# Rendered graphic stills — event-specific output, and they carry skater names
+exports/
