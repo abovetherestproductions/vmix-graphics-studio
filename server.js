@@ -1893,6 +1893,17 @@ app.get('/api/export/browser', (_req, res) => {
   }
 });
 
+app.get('/api/export/folder', (_req, res) => {
+  const folder = settingsService.readSettings()?.exports?.folder || '';
+  res.json({ ok: true, folder, resolved: folder || stills.OUT_ROOT });
+});
+
+app.post('/api/export/folder', (req, res) => {
+  const folder = String(req.body?.folder ?? '').trim();
+  settingsService.writeSettings({ exports: { folder } });
+  res.json({ ok: true, folder, resolved: folder || stills.OUT_ROOT });
+});
+
 app.get('/api/export/status', (_req, res) => {
   res.json({ ok: true, job: stillsJob });
 });
@@ -1918,6 +1929,7 @@ app.post('/api/export/stills', async (req, res) => {
       apiBaseUrl,
       port: PORT,
       poller: scApiService,
+      outRoot: settingsService.readSettings()?.exports?.folder || '',
       onProgress: p => {
         if (!stillsJob) return;
         Object.assign(stillsJob, p);

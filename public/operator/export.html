@@ -83,6 +83,27 @@
   </div>
 
   <div class="panel">
+    <div class="panel-title">Where the files go</div>
+    <div class="field">
+      <label for="out-folder">Output folder</label>
+      <div class="row">
+        <input type="text" id="out-folder" placeholder="leave blank for the default below" />
+        <button id="save-folder" onclick="saveFolder()" style="flex:0 0 auto;">Save</button>
+      </div>
+      <div class="hint" style="margin-top:6px;">
+        Currently writing to <span class="path" id="resolved-folder">…</span>
+      </div>
+      <div class="hint" style="margin-top:6px;">
+        Leave it blank and stills go to <code>exports</code> inside the install folder — always
+        writable, and the same on every machine. To send them somewhere else, type the
+        <strong>full path</strong>: on Windows the app runs as a background service under its own
+        account, so a shortcut like <code>~/Downloads</code> would land somewhere nobody can find.
+        <code>C:\Users\yourname\Downloads</code> works.
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
     <div class="panel-title">Choose the segment</div>
 
     <div class="field">
@@ -155,6 +176,25 @@ async function api(method, path, body) {
 }
 
 const state = { eventId:null, categories:[], segments:[], categoryId:null, segmentId:null };
+
+async function loadFolder() {
+  try {
+    const r = await api('GET', '/api/export/folder');
+    $('out-folder').value = r.folder || '';
+    $('resolved-folder').textContent = r.resolved;
+  } catch { $('resolved-folder').textContent = '(unknown)'; }
+}
+
+async function saveFolder() {
+  const btn = $('save-folder');
+  btn.disabled = true;
+  try {
+    const r = await api('POST', '/api/export/folder', { folder: $('out-folder').value.trim() });
+    $('resolved-folder').textContent = r.resolved;
+    toast('\u2713 Output folder saved');
+  } catch (e) { toast(`Error: ${e.message}`); }
+  finally { btn.disabled = false; }
+}
 
 async function checkBrowser() {
   const el = $('browser-status');
@@ -295,6 +335,7 @@ function connectWs() {
 })();
 
 checkBrowser();
+loadFolder();
 connectWs();
 poll();
 </script>

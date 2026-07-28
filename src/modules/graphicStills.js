@@ -147,11 +147,12 @@ function folderName(catName, segName) {
  * @param {number}   opts.port        this server's port
  * @param {function} opts.onProgress  ({ done, total, message }) => void
  * @param {object}   [opts.poller]    sc-api service — paused while rendering
+ * @param {string}   [opts.outRoot]   where to write; blank = <install>/exports
  */
 async function exportStills(opts) {
   const {
     segmentId, graphics, scoreKind = 'segment',
-    apiBaseUrl, port = 3012, onProgress = () => {}, poller = null,
+    apiBaseUrl, port = 3012, onProgress = () => {}, poller = null, outRoot = '',
   } = opts;
 
   if (!segmentId) throw new Error('segmentId is required');
@@ -171,8 +172,16 @@ async function exportStills(opts) {
   if (!entries.length) throw new Error('That segment has no entries');
 
   const catName = newApi.catEn(cat) || 'Category';
-  const outDir = path.join(OUT_ROOT, folderName(catName, seg.segmentName));
-  fs.mkdirSync(outDir, { recursive: true });
+  const root = String(outRoot || '').trim() || OUT_ROOT;
+  const outDir = path.join(root, folderName(catName, seg.segmentName));
+  try {
+    fs.mkdirSync(outDir, { recursive: true });
+    // Prove it is writable now rather than after rendering twenty stills.
+    const probe = path.join(outDir, '.write-test');
+    fs.writeFileSync(probe, ''); fs.unlinkSync(probe);
+  } catch (e) {
+    throw new Error(`Cannot write to ${root} — ${e.message}. Check the folder in Export Stills.`);
+  }
 
   // Category totals — the entry DTO only carries this segment's score.
   const priorBySkater = new Map();

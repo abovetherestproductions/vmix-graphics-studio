@@ -46,6 +46,14 @@ const DEFAULT_SETTINGS = {
     dailymotionVodDescriptionFormat: '',
     dailymotionAccountLabel: '',
   },
+  exports: {
+    // Where Export Stills writes. Blank means <install folder>/exports, which
+    // is always writable and easy to describe. Point it at a Downloads folder
+    // or a shared drive if that suits — but note the Windows service runs as
+    // LOCAL SERVICE, so a path under the operator's own profile has to be
+    // written out in full rather than relying on a home directory.
+    folder: '',
+  },
   safety: {
     preferStopSnapshotForFileNaming: false,
     captureStartSnapshotForAudit: true,
