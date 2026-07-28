@@ -16,6 +16,7 @@
     "chokidar": "^3.6.0",
     "csv-parse": "^5.5.6",
     "express": "^4.19.2",
+    "puppeteer-core": "^25.4.0",
     "ws": "^8.18.0",
     "xlsx": "^0.18.5"
   },

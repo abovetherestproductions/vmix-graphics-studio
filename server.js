@@ -1877,6 +1877,63 @@ app.post('/api/update', (_req, res) => {
   });
 });
 
+// ── Export graphics as transparent PNG stills ────────────────────────────
+// For rebuilding a stream after the fact. One job at a time: the renderer
+// borrows the live data files while it works, so two at once would fight
+// over them and produce stills of each other's skaters.
+const stills = require('./src/modules/graphicStills');
+let stillsJob = null;   // { running, done, total, message, error, result, startedAt }
+
+app.get('/api/export/browser', (_req, res) => {
+  try {
+    const b = stills.findBrowser();
+    res.json({ ok: true, available: true, name: b.name });
+  } catch (e) {
+    res.json({ ok: true, available: false, error: e.message });
+  }
+});
+
+app.get('/api/export/status', (_req, res) => {
+  res.json({ ok: true, job: stillsJob });
+});
+
+app.post('/api/export/stills', async (req, res) => {
+  if (stillsJob?.running) {
+    return res.status(409).json({ ok: false, error: 'An export is already running.' });
+  }
+  const { segmentId, graphics, scoreKind } = req.body || {};
+  if (!segmentId) return res.status(400).json({ ok: false, error: 'segmentId is required' });
+
+  stillsJob = { running: true, done: 0, total: 0, message: 'Starting…', error: null, result: null, startedAt: Date.now() };
+  res.json({ ok: true, started: true });   // return immediately; progress is polled
+
+  const cfg = readConfig().dataSource?.scApi || {};
+  const apiBaseUrl = (cfg.baseUrl || 'https://sc-css-public-api-cmh9d3htgxfpdkb7.canadacentral-01.azurewebsites.net').replace(/\/$/, '');
+
+  try {
+    const result = await stills.exportStills({
+      segmentId,
+      graphics: Array.isArray(graphics) ? graphics : ['manual-skater', 'scoring'],
+      scoreKind: scoreKind === 'category' ? 'category' : 'segment',
+      apiBaseUrl,
+      port: PORT,
+      poller: scApiService,
+      onProgress: p => {
+        if (!stillsJob) return;
+        Object.assign(stillsJob, p);
+        broadcast({ type: 'export-progress', job: stillsJob });
+      },
+    });
+    stillsJob = { ...stillsJob, running: false, result, message: 'Done' };
+  } catch (e) {
+    console.warn('[export] failed:', e.message);
+    stillsJob = { ...stillsJob, running: false, error: e.message, message: 'Failed' };
+  }
+  broadcast({ type: 'export-progress', job: stillsJob });
+  // The renderer restored the live data files; tell the graphics to reload.
+  broadcast({ type: 'config-update' });
+});
+
 // Plain-text feedback endpoints for Companion. Each returns "1" if active or
 // "0" otherwise — trivial to compare in a Companion feedback expression.
 app.get('/api/feedback/graphic/:template', (req, res) => {

@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Export Stills — Control</title>
+<style>
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  :root {
+    --bg:#1a1a1e; --surface:#24242a; --surface2:#2c2c34; --border:rgba(255,255,255,0.08);
+    --text:#f0f0f2; --text2:#8888a0; --accent:#5b8af5; --green:#81c784; --red:#ef5350; --amber:#ffc848;
+  }
+  html, body { min-height:100%; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; font-size:13px; line-height:1.4; }
+  #app { max-width:900px; margin:0 auto; padding:14px 14px 60px; }
+  header { display:flex; align-items:center; gap:10px; padding-bottom:12px; margin-bottom:14px;
+    border-bottom:2px solid rgba(91,138,245,0.35); }
+  header h1 { font-size:15px; font-weight:800; letter-spacing:2px; text-transform:uppercase; color:var(--accent); flex:1; }
+  #ws-dot { width:8px; height:8px; border-radius:50%; background:#555; }
+  #ws-dot.ok { background:var(--green); } #ws-dot.err { background:var(--red); }
+
+  .panel { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:14px; }
+  .panel-title { font-size:11px; font-weight:800; letter-spacing:1.5px; text-transform:uppercase;
+    color:var(--text2); margin-bottom:12px; display:flex; align-items:center; gap:10px; }
+  .panel-title .spacer { flex:1; }
+  .status { text-transform:none; letter-spacing:0; font-weight:600; }
+  .status.ok { color:var(--green); } .status.err { color:var(--red); }
+  .hint { font-size:12px; color:var(--text2); line-height:1.55; }
+
+  .field { margin-bottom:12px; }
+  .field label { display:block; font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--text2); margin-bottom:5px; }
+  input[type=text], select { width:100%; background:var(--surface2); border:1px solid var(--border);
+    border-radius:8px; color:var(--text); padding:9px 10px; font-size:13px; }
+  input[type=text]:focus, select:focus { outline:none; border-color:var(--accent); }
+  select:disabled { opacity:.5; }
+  .row { display:flex; gap:10px; } .row > * { flex:1; }
+
+  .checks { display:flex; flex-direction:column; gap:8px; }
+  .checks label { display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer; }
+  .checks input { width:15px; height:15px; accent-color:var(--accent); cursor:pointer; }
+  .checks .sub { color:var(--text2); font-size:11.5px; }
+
+  button { background:var(--surface2); border:1px solid var(--border); border-radius:8px; color:var(--text);
+    font-size:13px; font-weight:700; padding:10px 18px; cursor:pointer; transition:background 120ms,border-color 120ms; }
+  button:hover:not(:disabled) { border-color:var(--accent); }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  .btn-go { background:rgba(76,175,80,0.15); border-color:rgba(76,175,80,0.35); color:var(--green); }
+  .btn-go:hover:not(:disabled) { background:rgba(76,175,80,0.28); }
+
+  .bar { height:8px; border-radius:5px; background:var(--surface2); overflow:hidden; margin:10px 0 6px; }
+  .bar > div { height:100%; width:0%; background:var(--accent); transition:width 220ms ease; }
+  .files { margin-top:10px; max-height:260px; overflow:auto; font-family:ui-monospace,Menlo,monospace;
+    font-size:11.5px; color:var(--text2); }
+  .files div { padding:2px 0; }
+  .path { font-family:ui-monospace,Menlo,monospace; font-size:11.5px; color:var(--green); word-break:break-all; }
+
+  #toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(10px);
+    background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:8px 16px;
+    font-size:12px; opacity:0; transition:opacity 200ms,transform 200ms; pointer-events:none; z-index:999; }
+  #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<script src="/js/core/app-nav.js"></script>
+<div id="app">
+
+  <header>
+    <div id="ws-dot" title="Server connection"></div>
+    <h1>Export Stills</h1>
+  </header>
+
+  <div class="panel">
+    <div class="panel-title">What this does <span class="spacer"></span><span class="status" id="browser-status">checking…</span></div>
+    <div class="hint">
+      Saves a transparent PNG of each graphic, for every skater in a segment — so you can rebuild a
+      stream that didn't record. Drop the name bar in when a skater is announced and the score panel
+      when the scores are read. The PNGs have a real alpha channel and key straight over video.
+      <br><br>
+      The graphics do their own drawing, so a still is exactly what the live graphic looked like.
+      Rendering borrows the live data for a moment and puts it back when finished — safe to run
+      between events, but not during one.
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Choose the segment</div>
+
+    <div class="field">
+      <label for="event-id">Event ID</label>
+      <div class="row">
+        <input type="text" id="event-id" placeholder="paste an event ID, or use the one already loaded" />
+        <button id="fetch-btn" onclick="loadEvent()" style="flex:0 0 auto;">Load</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="cat-select">Category</label>
+      <select id="cat-select" disabled onchange="onCategory(this.value)"><option>— load an event first —</option></select>
+    </div>
+
+    <div class="field">
+      <label for="seg-select">Segment</label>
+      <select id="seg-select" disabled onchange="onSegment(this.value)"><option>— pick a category —</option></select>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">What to render</div>
+    <div class="checks">
+      <label><input type="checkbox" id="g-manual-skater" checked />
+        Skater Name Bar <span class="sub">— name, club, flag</span></label>
+      <label><input type="checkbox" id="g-scoring" checked />
+        Scoring <span class="sub">— TES, PCS, deductions, total, place</span></label>
+      <label><input type="checkbox" id="g-elements" />
+        Elements Tracker <span class="sub">— every element with its GOE</span></label>
+    </div>
+
+    <div class="field" style="margin-top:14px;">
+      <label for="score-kind">Score shown on the scoring panel</label>
+      <select id="score-kind">
+        <option value="segment">This segment only</option>
+        <option value="category">Category total (adds the other segments)</option>
+      </select>
+      <div class="hint" style="margin-top:5px;">
+        Use the category total for a free skate or free dance, where the number read out is
+        cumulative. The place changes to the category rank to match.
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Render <span class="spacer"></span><span class="status" id="job-status"></span></div>
+    <button class="btn-go" id="go-btn" onclick="startExport()" disabled>Generate stills</button>
+    <div class="bar"><div id="bar-fill"></div></div>
+    <div class="hint" id="progress-text">Pick a segment to begin.</div>
+    <div id="result"></div>
+  </div>
+
+</div>
+<div id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+let _t = null;
+function toast(m) { const e=$('toast'); e.textContent=m; e.classList.add('show');
+  clearTimeout(_t); _t=setTimeout(()=>e.classList.remove('show'),2400); }
+
+async function api(method, path, body) {
+  const o = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) o.body = JSON.stringify(body);
+  const r = await fetch(path, o);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+}
+
+const state = { eventId:null, categories:[], segments:[], categoryId:null, segmentId:null };
+
+async function checkBrowser() {
+  const el = $('browser-status');
+  try {
+    const r = await api('GET', '/api/export/browser');
+    if (r.available) { el.textContent = `✓ rendering with ${r.name}`; el.className = 'status ok'; }
+    else {
+      el.textContent = '⚠ no browser found'; el.className = 'status err';
+      $('progress-text').innerHTML =
+        `<span style="color:var(--red)">${r.error}</span><br>Install Google Chrome on this machine, then reload this page.`;
+    }
+  } catch { el.textContent = ''; }
+}
+
+async function loadEvent() {
+  const id = $('event-id').value.trim();
+  if (!id) return toast('Paste an event ID first');
+  $('fetch-btn').disabled = true; $('fetch-btn').textContent = 'Loading…';
+  try {
+    const d = await api('GET', `/api/sc-api/browse/event/${encodeURIComponent(id)}`);
+    state.eventId = id; state.categories = d.categories || [];
+    const sel = $('cat-select');
+    sel.innerHTML = '<option value="">— select category —</option>';
+    for (const c of state.categories) {
+      const o = document.createElement('option');
+      o.value = c.id;
+      o.textContent = (c.label || c.name) + (c.discipline ? ` — ${c.discipline}` : '');
+      sel.appendChild(o);
+    }
+    sel.disabled = false;
+    toast(`✓ ${d.event?.name || 'Event'} — ${state.categories.length} categories`);
+  } catch (e) { toast(`Error: ${e.message}`); }
+  finally { $('fetch-btn').disabled = false; $('fetch-btn').textContent = 'Load'; }
+}
+
+async function onCategory(categoryId) {
+  state.categoryId = categoryId || null; state.segmentId = null;
+  const sel = $('seg-select');
+  sel.innerHTML = '<option value="">— select segment —</option>';
+  sel.disabled = true; $('go-btn').disabled = true;
+  if (!categoryId) return;
+  try {
+    const d = await api('GET', `/api/sc-api/browse/category/${encodeURIComponent(categoryId)}`);
+    state.segments = d.segments || [];
+    for (const s of state.segments) {
+      const o = document.createElement('option');
+      o.value = s.id;
+      const done = /complete/i.test(s.status) ? '✓ ' : '';
+      o.textContent = done + s.name + (s.rink ? ` — ${s.rink}` : '');
+      sel.appendChild(o);
+    }
+    sel.disabled = false;
+  } catch (e) { toast(`Error: ${e.message}`); }
+}
+
+function onSegment(segmentId) {
+  state.segmentId = segmentId || null;
+  $('go-btn').disabled = !segmentId;
+  $('progress-text').textContent = segmentId ? 'Ready.' : 'Pick a segment to begin.';
+}
+
+function chosenGraphics() {
+  return ['manual-skater','scoring','elements'].filter(g => $(`g-${g}`).checked);
+}
+
+async function startExport() {
+  const graphics = chosenGraphics();
+  if (!graphics.length) return toast('Tick at least one graphic');
+  $('go-btn').disabled = true;
+  $('result').innerHTML = '';
+  $('job-status').textContent = ''; $('job-status').className = 'status';
+  try {
+    await api('POST', '/api/export/stills', {
+      segmentId: state.segmentId, graphics, scoreKind: $('score-kind').value,
+    });
+    poll();
+  } catch (e) { toast(`Error: ${e.message}`); $('go-btn').disabled = false; }
+}
+
+function paint(job) {
+  if (!job) return;
+  const pct = job.total ? Math.round(job.done / job.total * 100) : 0;
+  $('bar-fill').style.width = `${pct}%`;
+  $('progress-text').textContent = job.total
+    ? `${job.done} of ${job.total} — ${job.message || ''}`
+    : (job.message || '');
+  if (job.running) { $('job-status').textContent = 'running…'; return; }
+
+  $('go-btn').disabled = !state.segmentId;
+  if (job.error) {
+    $('job-status').textContent = '⚠ failed'; $('job-status').className = 'status err';
+    $('result').innerHTML = `<div class="hint" style="color:var(--red);margin-top:8px;">${job.error}</div>`;
+    return;
+  }
+  if (job.result) {
+    $('job-status').textContent = `✓ ${job.result.count} PNGs`; $('job-status').className = 'status ok';
+    $('bar-fill').style.width = '100%';
+    $('result').innerHTML =
+      `<div class="hint" style="margin-top:10px;">Saved to</div>
+       <div class="path">${job.result.outDir}</div>
+       <div class="files">${job.result.files.map(f => `<div>${f}</div>`).join('')}</div>`;
+  }
+}
+
+let polling = false;
+async function poll() {
+  if (polling) return;
+  polling = true;
+  try {
+    for (;;) {
+      const { job } = await api('GET', '/api/export/status');
+      paint(job);
+      if (!job || !job.running) break;
+      await new Promise(r => setTimeout(r, 700));
+    }
+  } catch { /* ignore */ }
+  finally { polling = false; }
+}
+
+function connectWs() {
+  const dot = $('ws-dot');
+  const ws = new WebSocket(`ws://${location.host}`);
+  ws.onopen = () => dot.className = 'ok';
+  ws.onmessage = ev => {
+    try { const m = JSON.parse(ev.data); if (m.type === 'export-progress') paint(m.job); } catch {}
+  };
+  ws.onclose = () => { dot.className = 'err'; setTimeout(connectWs, 3000); };
+  ws.onerror = () => ws.close();
+}
+
+// Prefill with whatever event this machine is already on.
+(async () => {
+  try {
+    const cfg = await api('GET', '/api/config');
+    const id = cfg.dataSource?.scApi?.eventId;
+    if (id) { $('event-id').value = id; await loadEvent(); }
+  } catch {}
+})();
+
+checkBrowser();
+connectWs();
+poll();
+</script>
+</body>
+</html>
