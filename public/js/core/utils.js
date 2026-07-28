@@ -368,7 +368,7 @@ window.GraphicsUtils = {
     // offsetWidth (often 0), which forced shortening on every render and,
     // combined with the flag asset still loading, caused the "first letter
     // then …" truncation reported by operators.
-    requestAnimationFrame(() => requestAnimationFrame(() => {
+    const decide = () => {
       const ow = el.offsetWidth || 0;
       // If layout still isn't ready, fall back to shortening — better to
       // produce "F. Last / F. Last" than gamble on uncertain measurements.
@@ -383,7 +383,24 @@ window.GraphicsUtils = {
         })
         .join(' / ');
       el.textContent = shortened;
-    }));
+    };
+
+    // The elements tracker builds its Highest TES row while the panel body is
+    // still collapsed (max-height:0 until --el-body-delay, 2s), so measuring
+    // on the next frame reads offsetWidth 0 and shortens a name that would
+    // have fitted. Give the element a bounded chance to acquire a width
+    // before deciding; the fallback above still catches anything that never
+    // lays out. Re-checked names are guarded by the memo at the top.
+    let waited = 0;
+    const settle = () => {
+      if (el.offsetWidth > 0 || waited >= 3000 || el.dataset.initialsInput !== fullText) {
+        decide();
+        return;
+      }
+      waited += 150;
+      setTimeout(settle, 150);
+    };
+    requestAnimationFrame(() => requestAnimationFrame(settle));
   },
 
   /**

@@ -389,7 +389,16 @@
         if (scoreEl.textContent !== next) scoreEl.textContent = next;
       }
       const nameEl = existingSummary.querySelector('.el-summary-name');
-      if (nameEl && nameEl.textContent !== leaderName) nameEl.textContent = leaderName;
+      // Same treatment the skater name in the header gets: a pairs or dance
+      // name that will not fit becomes "M. Oreshkin / V. Furman" rather than
+      // being cut off mid-word.
+      if (nameEl) {
+        if (window.GraphicsUtils?.applyInitialsIfNeeded) {
+          window.GraphicsUtils.applyInitialsIfNeeded(nameEl, leaderName);
+        } else if (nameEl.textContent !== leaderName) {
+          nameEl.textContent = leaderName;
+        }
+      }
     } else {
       const summary = document.createElement('div');
       summary.className = 'el-row el-summary no-anim row-in';
@@ -403,7 +412,11 @@
       labelText.textContent = isFr ? hiFr : hiEn;
       const nameSpan = document.createElement('span');
       nameSpan.className = 'el-summary-name';
-      nameSpan.textContent = leaderName;
+      if (window.GraphicsUtils?.applyInitialsIfNeeded) {
+        window.GraphicsUtils.applyInitialsIfNeeded(nameSpan, leaderName);
+      } else {
+        nameSpan.textContent = leaderName;
+      }
       label.appendChild(labelText);
       label.appendChild(nameSpan);
       const bv = document.createElement('div');

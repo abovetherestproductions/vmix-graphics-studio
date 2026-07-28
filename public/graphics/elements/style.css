@@ -281,8 +281,33 @@
 .el-row.el-summary .el-summary-label-text {
   display: block;
 }
+/* The summary row leaves its base-value and GOE cells empty, so the label
+   spans them and the leader name gets that 108px instead of being squeezed
+   into the first column and ellipsised. padding-right keeps it off the
+   score rather than running right up against it.
+
+   The empty cells have to be taken out of the grid as well as spanned over —
+   left in place they are pushed into columns 4 and 5 and shove the score onto
+   a line of its own. */
+.el-row.el-summary .el-summary-label {
+  grid-column: 1 / 4;
+  padding-right: 12px;
+}
+.el-row.el-summary .el-bv,
+.el-row.el-summary .el-goe {
+  display: none;
+}
+.el-row.el-summary .el-score {
+  grid-column: 4;
+}
+
 .el-row.el-summary .el-summary-name {
   display: block;
+  /* Long pairs and dance names get shortened to initials by the graphic
+     before it comes to this; the ellipsis is the last resort. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-family: var(--font-body);
   font-weight: 600;
   letter-spacing: 0.02em;
