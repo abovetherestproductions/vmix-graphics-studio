@@ -139,6 +139,7 @@
       </div>
       <input type="file" id="workbookFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="uploadWorkbook(this.files[0])" />
       <div id="uploadStatus" class="status" style="margin-top:8px;">Loaded: <span id="currentFileName" style="color:#90caf9;">—</span></div>
+      <div id="uploadMessage" class="status" style="margin-top:4px;"></div>
 
       <details style="margin-top:14px;">
         <summary style="cursor:pointer;color:var(--muted);font-size:12px;">Advanced — path &amp; columns</summary>
@@ -208,6 +209,10 @@
 
   <script>
     const $ = id => document.getElementById(id);
+    // Never let one missing element stop the rest of a refresh — the message
+    // list matters more than any single status line.
+    const setText = (id, text) => { const el = $(id); if (el) el.textContent = text; };
+    const setHtml = (id, html) => { const el = $(id); if (el) el.innerHTML = html; };
     const STORAGE_KEY = 'messages-control-layout-v1';
     let selectedIndex = 0;
 
@@ -245,7 +250,7 @@
     }
 
     function showResponse(data) {
-      $('responseBox').textContent = JSON.stringify(data, null, 2);
+      setText('responseBox', JSON.stringify(data, null, 2));
     }
 
     function optionList(select, values, selected, allowBlank) {
@@ -288,21 +293,33 @@
     async function refresh() {
       const data = await jsonFetch('/api/messages/status');
       selectedIndex = data.selected?.index ?? data.settings?.selectedIndex ?? 0;
-      $('workbookPath').value = data.settings?.workbookPath || '';
-      optionList($('sheetName'), data.sheetNames || [], data.settings?.sheetName || '', true);
-      optionList($('topHeader'), data.headers || [], data.settings?.topHeader || 'top', false);
-      optionList($('bottomHeader'), data.headers || [], data.settings?.bottomHeader || 'bottom', false);
-      $('summary').innerHTML = `<span class="ok">${data.rows?.length || 0} rows</span> · selected #${selectedIndex + 1} · <code>${escapeHtml(data.workbookPath || '')}</code>`;
-      const fname = (data.settings?.workbookPath || '').split(/[\\/]/).pop();
-      $('currentFileName').textContent = fname || '— no file loaded —';
-      $('companionUrls').textContent = companionText();
+
+      // Rows first: everything below is presentation, and a hiccup in it
+      // shouldn't leave the operator looking at a stale or empty list.
       renderRows(data.rows || []);
+
+      const pathInput = $('workbookPath');
+      if (pathInput) pathInput.value = data.settings?.workbookPath || '';
+      const sheetSel = $('sheetName');
+      if (sheetSel) optionList(sheetSel, data.sheetNames || [], data.settings?.sheetName || '', true);
+      const topSel = $('topHeader');
+      if (topSel) optionList(topSel, data.headers || [], data.settings?.topHeader || 'top', false);
+      const bottomSel = $('bottomHeader');
+      if (bottomSel) optionList(bottomSel, data.headers || [], data.settings?.bottomHeader || 'bottom', false);
+
+      setHtml('summary', `<span class="ok">${data.rows?.length || 0} rows</span> · selected #${selectedIndex + 1} · <code>${escapeHtml(data.workbookPath || '')}</code>`);
+      const fname = (data.settings?.workbookPath || '').split(/[\\/]/).pop();
+      setText('currentFileName', fname || '— no file loaded —');
+      setText('companionUrls', companionText());
       showResponse(data);
     }
 
     async function uploadWorkbook(file) {
       if (!file) return;
-      const status = $('uploadStatus');
+      // Deliberately a separate element from #uploadStatus: that one holds the
+      // #currentFileName span refresh() writes into, and overwriting its
+      // innerHTML here used to delete the span mid-upload.
+      const status = $('uploadMessage');
       status.innerHTML = `Uploading <strong>${escapeHtml(file.name)}</strong>…`;
       try {
         const dataBase64 = await new Promise((resolve, reject) => {
@@ -317,7 +334,7 @@
         });
         showResponse(data);
         await refresh();
-        status.innerHTML = `Loaded: <span style="color:#90caf9;">${escapeHtml(data.filename)}</span> · <span class="ok">${data.rows?.length || 0} rows</span>`;
+        status.innerHTML = `<span class="ok">${data.rows?.length || 0} rows loaded</span>`;
       } catch (err) {
         status.innerHTML = `<span class="warn">Upload failed: ${escapeHtml(err.message)}</span>`;
         showResponse({ ok: false, error: err.message });
@@ -332,6 +349,9 @@
         showResponse(data);
         await refresh();
       } catch (err) {
+        // Visible, not just buried in the collapsed debug panel — a button that
+        // silently does nothing is worse than one that says why.
+        setHtml('summary', `<span class="warn">${escapeHtml(url)} failed: ${escapeHtml(err.message)}</span>`);
         showResponse({ ok: false, error: err.message });
       }
     }
