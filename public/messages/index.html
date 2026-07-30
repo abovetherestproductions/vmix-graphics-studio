@@ -39,8 +39,6 @@
     }
     .header-left { min-width: 0; }
     h1 { margin: 0; font-size: 20px; letter-spacing: .02em; }
-    .header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
-    .header-actions button { padding: 7px 10px; }
     main { padding: 14px 18px 24px; display: grid; gap: 12px; }
     .grid { display: grid; grid-template-columns: minmax(300px, 420px) 1fr; gap: 16px; align-items: start; }
     .panel {
@@ -90,17 +88,27 @@
     tr.active { background: rgba(216,17,53,0.24); }
     code { color: #90caf9; word-break: break-all; }
     pre { white-space: pre-wrap; word-break: break-word; color: var(--muted); font-size: 12px; line-height: 1.45; margin: 0; }
+    /* The hamburger lives here so it outlives the header. */
+    #nav-corner {
+      position: fixed;
+      top: 8px;
+      right: 10px;
+      z-index: 20;
+      display: flex;
+    }
+    /* Keep the header clear of the fixed hamburger. */
+    header { padding-right: 56px; }
+
+    /* Hidden controls means hidden: header, controls panel and debug panel all
+       go, leaving the message list and the hamburger. */
+    body.controls-hidden header { display: none; }
     body.controls-hidden main.grid { grid-template-columns: minmax(0, 1fr); }
     body.controls-hidden .controls-panel,
     body.controls-hidden .response-panel { display: none; }
-    body.controls-hidden .table-wrap { max-height: calc(100dvh - 88px); }
-    body.compact header { padding: 8px 10px; }
-    body.compact main { padding: 8px; gap: 8px; }
-    body.compact .list-header { padding: 8px 10px; }
-    body.compact th,
-    body.compact td { padding: 6px 8px; }
-    body.compact h1 { font-size: 16px; }
-    body.compact .status { font-size: 11px; }
+    body.controls-hidden main { padding: 8px; }
+    body.controls-hidden .list-header { padding-right: 52px; }
+    body.controls-hidden .table-wrap { max-height: calc(100dvh - 62px); }
+
     @media (max-width: 1000px) {
       .grid { grid-template-columns: 1fr; }
       .controls-panel { order: 2; }
@@ -109,25 +117,18 @@
     }
     @media (max-width: 720px) {
       header { align-items: flex-start; flex-direction: column; }
-      .header-actions { width: 100%; justify-content: flex-start; }
-      .header-actions button { flex: 1 1 auto; }
     }
   </style>
 </head>
 <body>
-<script src="/js/core/app-nav.js"></script>
+  <!-- Fixed rather than part of the header, because the header is exactly what
+       "hide controls" takes away — this has to survive it. -->
+  <div id="nav-corner"></div>
+  <script src="/js/core/app-nav.js" data-nav="menu" data-nav-mount="#nav-corner"></script>
   <header>
     <div class="header-left">
       <h1>Messages Control</h1>
       <div id="summary" class="status">Loading…</div>
-    </div>
-    <div class="header-actions">
-      <button class="secondary" id="controlsToggle" onclick="toggleControls()">Hide Controls</button>
-      <button class="secondary" id="compactToggle" onclick="toggleCompact()">Compact</button>
-      <button onclick="callApi('/api/messages/previous')">Prev</button>
-      <button onclick="callApi('/api/messages/next')">Next</button>
-      <button class="secondary" onclick="callApi('/api/messages/show')">Show</button>
-      <button class="secondary" onclick="callApi('/api/messages/hide')">Hide</button>
     </div>
   </header>
   <main class="grid">
@@ -229,17 +230,14 @@
 
     function applyLayout(layout = loadLayout()) {
       document.body.classList.toggle('controls-hidden', !!layout.controlsHidden);
-      document.body.classList.toggle('compact', !!layout.compact);
-      $('controlsToggle').textContent = layout.controlsHidden ? 'Show Controls' : 'Hide Controls';
-      $('compactToggle').textContent = layout.compact ? 'Comfort' : 'Compact';
+    }
+
+    function controlsHidden() {
+      return document.body.classList.contains('controls-hidden');
     }
 
     function toggleControls() {
-      saveLayout({ controlsHidden: !document.body.classList.contains('controls-hidden') });
-    }
-
-    function toggleCompact() {
-      saveLayout({ compact: !document.body.classList.contains('compact') });
+      saveLayout({ controlsHidden: !controlsHidden() });
     }
 
     async function jsonFetch(url, options = {}) {
@@ -390,6 +388,16 @@
     }
 
     applyLayout();
+
+    // The only way back once the header is hidden, so it goes in the menu —
+    // which is the one piece of chrome that always stays on screen.
+    if (window.AppNav) {
+      window.AppNav.addAction(
+        () => (controlsHidden() ? 'Show Controls' : 'Hide Controls'),
+        toggleControls
+      );
+    }
+
     refresh().catch(err => showResponse({ ok: false, error: err.message }));
   </script>
 </body>

@@ -32,6 +32,9 @@
   const mode   = (script && script.dataset.nav) || 'bar';
   const mount  = (script && script.dataset.navMount) || '';
 
+  const actions = [];   // page-supplied menu entries, see addAction
+  let menu = null;      // set once buildMenu has run
+
   function isActive(href) {
     const here = location.pathname.replace(/index\.html$/, '');
     const target = href.replace(/index\.html$/, '');
@@ -115,7 +118,15 @@
       '#app-nav-menu .nav-meta{padding:7px 11px 4px;border-top:1px solid rgba(255,255,255,0.10);',
       'margin-top:4px;font-size:10.5px;color:rgba(255,255,255,0.42);white-space:nowrap;}',
       '#app-nav-menu .nav-machine{display:none;font-weight:800;letter-spacing:1px;',
-      'text-transform:uppercase;color:#9cc0ff;font-size:10px;}'
+      'text-transform:uppercase;color:#9cc0ff;font-size:10px;}',
+      // Page-supplied actions, above the links and visually separated from them
+      // so "go somewhere else" and "do something here" don't blur together.
+      '#app-nav-menu .nav-actions:not(:empty){padding-bottom:4px;margin-bottom:4px;',
+      'border-bottom:1px solid rgba(255,255,255,0.10);}',
+      '#app-nav-menu .nav-action{display:block;width:100%;text-align:left;background:none;',
+      'border:0;padding:8px 11px;border-radius:5px;color:rgba(255,255,255,0.72);font-size:13px;',
+      "font-family:inherit;white-space:nowrap;cursor:pointer;}",
+      '#app-nav-menu .nav-action:hover{background:rgba(255,255,255,0.09);color:#fff;}'
     ].join('');
     document.head.appendChild(s);
   }
@@ -136,6 +147,10 @@
     const panel = document.createElement('div');
     panel.id = 'app-nav-menu';
     panel.style.display = 'none';
+
+    const actionHost = document.createElement('div');
+    actionHost.className = 'nav-actions';
+    panel.appendChild(actionHost);
 
     PAGES.forEach(([label, href]) => {
       const a = document.createElement('a');
@@ -171,6 +186,9 @@
     }
 
     function open() {
+      // Labels are read fresh each time, so a toggle can report its current
+      // state rather than whatever it said when the menu was built.
+      renderActions();
       panel.style.display = '';
       btn.setAttribute('aria-expanded', 'true');
       place();
@@ -202,6 +220,32 @@
 
     container.appendChild(btn);
     document.body.appendChild(panel);
+
+    menu = { actionHost, close, render: renderActions };
+    renderActions();
+  }
+
+  /**
+   * Page-supplied menu entries, e.g. a Show/Hide Controls toggle on a page
+   * whose chrome the menu has replaced. `label` may be a function so a toggle
+   * can name its next action rather than its current state.
+   */
+  function addAction(label, onClick) {
+    actions.push({ label, onClick });
+    renderActions();
+  }
+
+  function renderActions() {
+    if (!menu) return;  // queued until buildMenu runs
+    menu.actionHost.textContent = '';
+    actions.forEach(({ label, onClick }) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'nav-action';
+      b.textContent = typeof label === 'function' ? label() : label;
+      b.addEventListener('click', () => { menu.close(); onClick(); });
+      menu.actionHost.appendChild(b);
+    });
   }
 
   if (mode === 'menu') {
@@ -220,5 +264,5 @@
     else document.addEventListener('DOMContentLoaded', buildBar);
   }
 
-  window.AppNav = { PAGES: PAGES, buildMenu: buildMenu };
+  window.AppNav = { PAGES: PAGES, buildMenu: buildMenu, addAction: addAction };
 })();
