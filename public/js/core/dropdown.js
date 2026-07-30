@@ -181,6 +181,14 @@
     if (select.multiple || select.size > 1) return;
     select.dataset.ddBound = '1';
 
+    // Narrow selects truncate their selected option. Refresh the tooltip on
+    // hover rather than on change, so it stays correct even when the page sets
+    // `select.value` directly without firing an event.
+    select.addEventListener('mouseenter', function () {
+      var opt = select.options[select.selectedIndex];
+      if (opt) select.title = opt.textContent;
+    });
+
     // Suppress the native popup. mousedown is what opens it, so cancelling
     // there is what keeps the browser from choosing its own direction.
     select.addEventListener('mousedown', function (e) {

@@ -44,25 +44,27 @@
     overflow: hidden;
   }
 
-  #header {
-    flex-shrink: 0;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 8px 12px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
   #segment-selectors {
     flex-shrink: 0;
-    padding: 8px 10px;
+    padding: 6px 10px;
     background: var(--surface);
     border-bottom: 1px solid var(--border);
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
+    align-items: flex-end;
     gap: 6px;
   }
+  /* Weighted so the long category names get the room: rink stays narrow,
+     segment sits in between. They wrap to a second line rather than
+     squashing when the window is genuinely too narrow for three. */
+  /* Bases are kept small enough that all three plus the buttons still fit on
+     one line at the window widths these panels actually run at; flex-grow
+     hands the slack back weighted towards the category names. */
+  .sel-col { min-width: 0; }
+  #rink-selector-wrap { flex: 1 1 70px; max-width: 120px; }
+  .sel-col-cat { flex: 3 1 118px; }
+  .sel-col-seg { flex: 2 1 96px; }
+  .sel-actions { display: flex; align-items: center; gap: 5px; flex: 0 0 auto; padding-bottom: 1px; }
 
   #roster-area {
     flex: 1;
@@ -253,7 +255,7 @@
     padding: 6px 2px 4px;
   }
 
-  /* ── Header elements ────────────────────────────────────────────── */
+  /* ── Status + actions, inline with the selectors ────────────────── */
   #ws-dot {
     width: 7px; height: 7px;
     border-radius: 50%;
@@ -264,37 +266,18 @@
   #ws-dot.ok { background: var(--green); }
   #ws-dot.err { background: var(--red); }
 
-  #event-name {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text);
-    flex: 1;
-    min-width: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  #refresh-btn {
+  #refresh-btn, #repoll-btn {
     background: none;
     border: 1px solid var(--border);
     border-radius: 5px;
     color: var(--text2);
-    font-size: 11px;
-    padding: 3px 7px;
+    font-size: 12px;
+    line-height: 1;
+    padding: 7px 8px;
     cursor: pointer;
     flex-shrink: 0;
   }
   #refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
-  #repoll-btn {
-    background: none;
-    border: 1px solid var(--border);
-    border-radius: 5px;
-    color: var(--text2);
-    font-size: 11px;
-    padding: 3px 7px;
-    cursor: pointer;
-    flex-shrink: 0;
-  }
   #repoll-btn:hover { border-color: var(--green); color: var(--green); }
 
   /* ── Interview panel ────────────────────────────────────────────── */
@@ -374,49 +357,6 @@
   }
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-  /* ── StreamDeck URLs ────────────────────────────────────────────── */
-  #streamdeck-strip {
-    flex-shrink: 0;
-    border-top: 1px solid var(--border);
-    background: var(--surface);
-    padding: 6px 10px;
-    display: flex;
-    gap: 6px;
-  }
-  .sd-url-btn {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 5px 6px;
-    cursor: pointer;
-    transition: border-color 120ms, background 120ms;
-    text-align: center;
-    min-width: 0;
-  }
-  .sd-url-btn:hover { border-color: var(--accent); background: rgba(91,138,245,0.10); }
-  .sd-url-btn:active { background: rgba(91,138,245,0.20); }
-  .sd-url-label {
-    font-size: 9px;
-    font-weight: 800;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: var(--text2);
-  }
-  .sd-url-text {
-    font-size: 9px;
-    color: var(--accent);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    width: 100%;
-  }
-  .sd-url-btn.flash-ok { border-color: var(--green); background: rgba(76,175,80,0.15); }
-
   /* ── Empty state ────────────────────────────────────────────────── */
   #roster-empty {
     display: none;
@@ -446,49 +386,34 @@
 </style>
 </head>
 <body>
-<script src="/js/core/app-nav.js"></script>
 <script src="/js/core/dropdown.js"></script>
 <div id="app">
 
-  <!-- Header -->
-  <div id="header">
-    <div id="ws-dot" title="Server connection"></div>
-    <div id="event-name">No event selected</div>
-    <button id="repoll-btn" onclick="repollNow()" title="Force immediate re-poll from API">⟳ Poll</button>
-    <button id="refresh-btn" onclick="refreshRoster()" title="Refresh skater list">↻</button>
-  </div>
-
-  <!-- StreamDeck navigation URLs -->
-  <div id="streamdeck-strip">
-    <div class="sd-url-btn" id="sd-prev" onclick="sdNavigate('prev-skater', this)" ondblclick="sdCopy('prev-skater', this)" title="Click to go to previous skater — double-click to copy URL">
-      <div class="sd-url-label">◀ Prev Skater</div>
-      <div class="sd-url-text" id="sd-prev-url">…</div>
-    </div>
-    <div class="sd-url-btn" id="sd-next" onclick="sdNavigate('next-skater', this)" ondblclick="sdCopy('next-skater', this)" title="Click to go to next skater — double-click to copy URL">
-      <div class="sd-url-label">Next Skater ▶</div>
-      <div class="sd-url-text" id="sd-next-url">…</div>
-    </div>
-  </div>
-
-  <!-- Category + Segment selectors -->
+  <!-- Selectors. Deliberately the only chrome on this page: the operator
+       drives everything else from the roster below or the Stream Deck. -->
   <div id="segment-selectors">
-    <div id="rink-selector-wrap" style="display:none;">
-      <div class="sel-label">Rink — this machine</div>
+    <div id="rink-selector-wrap" class="sel-col" style="display:none;">
+      <div class="sel-label">Rink</div>
       <select id="rink-select" onchange="onRinkChange(this.value)">
         <option value="">All rinks</option>
       </select>
     </div>
-    <div>
+    <div class="sel-col sel-col-cat">
       <div class="sel-label">Category</div>
       <select id="cat-select" onchange="onCategoryChange(this.value)">
         <option value="">— loading —</option>
       </select>
     </div>
-    <div>
+    <div class="sel-col sel-col-seg">
       <div class="sel-label">Segment</div>
       <select id="seg-select" onchange="onSegmentChange(this.value)">
         <option value="">— select a category —</option>
       </select>
+    </div>
+    <div class="sel-actions">
+      <div id="ws-dot" title="Server connection"></div>
+      <button id="repoll-btn" onclick="repollNow()" title="Force immediate re-poll from API">⟳</button>
+      <button id="refresh-btn" onclick="refreshRoster()" title="Refresh skater list">↻</button>
     </div>
   </div>
 
@@ -597,7 +522,7 @@ async function loadEvent(eventId) {
     state.categories = data.categories || [];
     state.eventName  = data.event?.name || eventId;
 
-    document.getElementById('event-name').textContent = state.eventName;
+    setEventLabel(state.eventName);
     document.getElementById('no-event').style.display = 'none';
 
     renderCategoryOptions();
@@ -608,9 +533,18 @@ async function loadEvent(eventId) {
       await loadSegments(state.categoryId);
     }
   } catch(e) {
-    document.getElementById('event-name').textContent = 'Error loading event';
+    setEventLabel('Error loading event');
     console.warn('[loadEvent]', e.message);
   }
+}
+
+// The event name used to have its own title bar. It now lives in the window
+// title and on the status dot's tooltip, so the operator can still confirm
+// which event is loaded without giving up a row of screen.
+function setEventLabel(name) {
+  document.title = name ? `${name} — Skater Selector` : 'Event & Skater Selector';
+  const dot = document.getElementById('ws-dot');
+  if (dot) dot.title = name ? `${name} — server connection` : 'Server connection';
 }
 
 // ── Rink filter ──────────────────────────────────────────────────────
@@ -957,42 +891,9 @@ function connectWs() {
   ws.onerror = () => ws.close();
 }
 
-// ── StreamDeck URL helpers ────────────────────────────────────────────
-function sdUrl(action) {
-  return `${location.origin}/api/sc-api/${action}`;
-}
-
-function sdPopulateUrls() {
-  document.getElementById('sd-prev-url').textContent = sdUrl('prev-skater');
-  document.getElementById('sd-next-url').textContent = sdUrl('next-skater');
-}
-
-function sdCopy(action, btn) {
-  navigator.clipboard.writeText(sdUrl(action)).catch(() => {});
-}
-
-async function sdNavigate(action, btn) {
-  try {
-    const data = await api('POST', `/api/sc-api/${action}`);
-    if (data?.data?.name) {
-      // Update selected state in the roster
-      const entries = state.entries;
-      const match = entries.find(e => e.name === data.data.name);
-      if (match) {
-        state.selectedEntryId = match.id;
-        document.querySelectorAll('.skater-row').forEach(r => r.classList.remove('selected'));
-        const row = document.querySelector(`.skater-row[data-entry-id="${CSS.escape(match.id)}"]`);
-        if (row) { row.classList.add('selected'); row.scrollIntoView({ block: 'nearest' }); }
-        ivSyncFromSelection(match);
-      }
-      toast(`✓ ${data.data.name}`);
-    }
-    btn.classList.add('flash-ok');
-    setTimeout(() => btn.classList.remove('flash-ok'), 1200);
-  } catch(e) {
-    toast(`Error: ${e.message}`);
-  }
-}
+// The on-page Prev/Next buttons are gone — those calls come from the Stream
+// Deck now, and the roster highlight follows via the 'sc-api-selection'
+// broadcast in connectWs(). The URLs live on the Button Commands page.
 
 // ── Interview panel ──────────────────────────────────────────────────
 const ivState = { club: '', category: '' };
@@ -1073,7 +974,6 @@ async function ivHide() {
 // ── Init ─────────────────────────────────────────────────────────────
 boot();
 connectWs();
-sdPopulateUrls();
 
 </script>
 </body>
