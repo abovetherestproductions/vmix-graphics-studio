@@ -72,6 +72,9 @@
   function place(select, pop) {
     var r = select.getBoundingClientRect();
 
+    // Measuring needs the panel unclamped, but dropping maxHeight removes the
+    // overflow and takes scrollTop with it. Put the reader back where they were.
+    var scrollTop = pop.scrollTop;
     pop.style.maxHeight = 'none';
 
     // Width comes from the content, not from the select. A select narrow
@@ -93,21 +96,22 @@
     var room = window.innerHeight - r.bottom - GAP - EDGE;
     var needed = pop.scrollHeight;
 
-    if (needed <= room) return;
-
-    if (room >= MIN_HEIGHT) {
-      // Enough room to be useful — scroll inside it.
-      pop.style.maxHeight = room + 'px';
-      return;
+    if (needed > room) {
+      if (room >= MIN_HEIGHT) {
+        // Enough room to be useful — scroll inside it.
+        pop.style.maxHeight = room + 'px';
+      } else {
+        // The select is so near the bottom that a downward list would be a
+        // sliver. Still grow downward from the select, but lift the whole list
+        // up the minimum amount needed — never above the select's own top
+        // edge, so it can't end up behind something docked at the top.
+        var height = Math.min(needed, window.innerHeight - r.top - EDGE);
+        pop.style.maxHeight = height + 'px';
+        pop.style.top = Math.max(r.top, window.innerHeight - EDGE - height) + 'px';
+      }
     }
 
-    // The select is so near the bottom that a downward list would be a sliver.
-    // Still grow downward from the select, but lift the whole list up the
-    // minimum amount needed — never above the select's own top edge, so it
-    // can't end up behind something docked at the top of the screen.
-    var height = Math.min(needed, window.innerHeight - r.top - EDGE);
-    pop.style.maxHeight = height + 'px';
-    pop.style.top = Math.max(r.top, window.innerHeight - EDGE - height) + 'px';
+    pop.scrollTop = scrollTop;
   }
 
   function build(select) {
@@ -185,8 +189,14 @@
     document.body.appendChild(pop);
     place(select, pop);
 
-    var onScroll = function () {
-      if (open && open.select === select) place(select, pop);
+    // Capture, so the list keeps up with the select when any ancestor scrolls
+    // — but that also catches the list scrolling itself, and repositioning
+    // mid-scroll fights the reader for control of the wheel.
+    var onScroll = function (e) {
+      if (!open || open.select !== select) return;
+      var t = e && e.target;
+      if (t && t.nodeType === 1 && pop.contains(t)) return;  // the list's own scrolling
+      place(select, pop);
     };
     window.addEventListener('scroll', onScroll, true);
     window.addEventListener('resize', onScroll);
