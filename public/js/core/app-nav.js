@@ -1,9 +1,16 @@
 /**
- * Shared navigation strip for control pages.
- * Include with: <script src="/js/core/app-nav.js"></script>
+ * Shared navigation for control pages. One page list, two presentations.
+ *
+ *   <script src="/js/core/app-nav.js"></script>
+ *     The usual strip across the top of the page.
+ *
+ *   <script src="/js/core/app-nav.js" data-nav="menu" data-nav-mount=".sel-actions"></script>
+ *     A hamburger button appended to the given selector instead, for pages
+ *     where a full row of tabs costs more screen than it's worth. Same links,
+ *     same active highlight, same event/machine labels — just folded away.
+ *
  * Self-contained (styles inline) so it renders identically on every page
- * regardless of that page's own CSS. Highlights the current page and shows
- * the configured event name on the right.
+ * regardless of that page's own CSS.
  */
 (function () {
   const PAGES = [
@@ -21,12 +28,25 @@
     // the Skate Canada API. Re-add here if that changes.
   ];
 
+  const script = document.currentScript;
+  const mode   = (script && script.dataset.nav) || 'bar';
+  const mount  = (script && script.dataset.navMount) || '';
+
   function isActive(href) {
     const here = location.pathname.replace(/index\.html$/, '');
     const target = href.replace(/index\.html$/, '');
     return here === target;
   }
 
+  /** Event name + machine name, fetched once and handed to whoever wants them. */
+  function loadLabels(apply) {
+    fetch('/api/config')
+      .then(r => r.json())
+      .then(c => apply(c.eventName || '', (c.machineName || '').trim()))
+      .catch(() => {});
+  }
+
+  // ── Full-width strip ──────────────────────────────────────────────────
   function buildBar() {
     if (document.getElementById('app-nav')) return;
     const bar = document.createElement('nav');
@@ -66,18 +86,139 @@
     ev.style.cssText = 'color:rgba(255,255,255,0.45);white-space:nowrap;font-size:11px;';
     bar.appendChild(ev);
 
-    fetch('/api/config')
-      .then(r => r.json())
-      .then(c => {
-        ev.textContent = c.eventName || '';
-        const m = (c.machineName || '').trim();
-        if (m) { machine.textContent = m; machine.style.display = ''; }
-      })
-      .catch(() => {});
+    loadLabels((eventName, machineName) => {
+      ev.textContent = eventName;
+      if (machineName) { machine.textContent = machineName; machine.style.display = ''; }
+    });
 
     document.body.prepend(bar);
   }
 
-  if (document.body) buildBar();
-  else document.addEventListener('DOMContentLoaded', buildBar);
+  // ── Hamburger ─────────────────────────────────────────────────────────
+  function menuStyles() {
+    if (document.getElementById('app-nav-menu-styles')) return;
+    const s = document.createElement('style');
+    s.id = 'app-nav-menu-styles';
+    s.textContent = [
+      '#app-nav-btn{background:none;border:1px solid rgba(255,255,255,0.14);border-radius:5px;',
+      'color:#8888a0;font-size:13px;line-height:1;padding:7px 8px;cursor:pointer;flex-shrink:0;}',
+      '#app-nav-btn:hover{border-color:#5b8af5;color:#5b8af5;}',
+      '#app-nav-btn[aria-expanded="true"]{border-color:#5b8af5;color:#5b8af5;}',
+      '#app-nav-menu{position:fixed;z-index:100000;min-width:190px;max-height:80vh;overflow-y:auto;',
+      'background:#1c1c22;border:1px solid rgba(255,255,255,0.16);border-radius:8px;padding:4px;',
+      'box-shadow:0 14px 40px rgba(0,0,0,0.6);',
+      "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}",
+      '#app-nav-menu a{display:block;padding:8px 11px;border-radius:5px;text-decoration:none;',
+      'color:rgba(255,255,255,0.72);font-size:13px;white-space:nowrap;}',
+      '#app-nav-menu a:hover{background:rgba(255,255,255,0.09);color:#fff;}',
+      '#app-nav-menu a.active{background:rgba(200,16,46,0.42);color:#fff;font-weight:700;}',
+      '#app-nav-menu .nav-meta{padding:7px 11px 4px;border-top:1px solid rgba(255,255,255,0.10);',
+      'margin-top:4px;font-size:10.5px;color:rgba(255,255,255,0.42);white-space:nowrap;}',
+      '#app-nav-menu .nav-machine{display:none;font-weight:800;letter-spacing:1px;',
+      'text-transform:uppercase;color:#9cc0ff;font-size:10px;}'
+    ].join('');
+    document.head.appendChild(s);
+  }
+
+  function buildMenu(container) {
+    if (!container || document.getElementById('app-nav-btn')) return;
+    menuStyles();
+
+    const btn = document.createElement('button');
+    btn.id = 'app-nav-btn';
+    btn.type = 'button';
+    btn.innerHTML = '&#9776;';
+    btn.title = 'Go to another page';
+    btn.setAttribute('aria-label', 'Navigation menu');
+    btn.setAttribute('aria-expanded', 'false');
+    btn.setAttribute('aria-haspopup', 'true');
+
+    const panel = document.createElement('div');
+    panel.id = 'app-nav-menu';
+    panel.style.display = 'none';
+
+    PAGES.forEach(([label, href]) => {
+      const a = document.createElement('a');
+      a.textContent = label;
+      a.href = href;
+      if (isActive(href)) a.className = 'active';
+      panel.appendChild(a);
+    });
+
+    const meta = document.createElement('div');
+    meta.className = 'nav-meta';
+    const machine = document.createElement('div');
+    machine.className = 'nav-machine';
+    const ev = document.createElement('div');
+    meta.appendChild(machine);
+    meta.appendChild(ev);
+    panel.appendChild(meta);
+
+    loadLabels((eventName, machineName) => {
+      ev.textContent = eventName || 'No event loaded';
+      if (machineName) { machine.textContent = machineName; machine.style.display = ''; }
+    });
+
+    // Opens downward and right-aligned to the button, clamped to the window —
+    // same rule as the select dropdowns, so nothing lands off-screen or up
+    // underneath whatever is docked above the browser.
+    function place() {
+      const r = btn.getBoundingClientRect();
+      panel.style.top = (r.bottom + 4) + 'px';
+      panel.style.left = 'auto';
+      panel.style.right = Math.max(4, window.innerWidth - r.right) + 'px';
+      panel.style.maxHeight = Math.max(120, window.innerHeight - r.bottom - 12) + 'px';
+    }
+
+    function open() {
+      panel.style.display = '';
+      btn.setAttribute('aria-expanded', 'true');
+      place();
+      window.addEventListener('resize', place);
+      window.addEventListener('scroll', place, true);
+    }
+
+    function close() {
+      panel.style.display = 'none';
+      btn.setAttribute('aria-expanded', 'false');
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+    }
+
+    function isOpen() { return panel.style.display !== 'none'; }
+
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      isOpen() ? close() : open();
+    });
+
+    document.addEventListener('mousedown', e => {
+      if (!isOpen()) return;
+      if (panel.contains(e.target) || btn.contains(e.target)) return;
+      close();
+    }, true);
+
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+
+    container.appendChild(btn);
+    document.body.appendChild(panel);
+  }
+
+  if (mode === 'menu') {
+    // Needs its mount point, which is further down the page than this script.
+    const mountMenu = () => {
+      const container = mount ? document.querySelector(mount) : null;
+      if (container) buildMenu(container);
+      else console.warn('[app-nav] menu mount "%s" not found', mount);
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mountMenu);
+    else mountMenu();
+  } else {
+    // Unchanged from before the menu existed: render as soon as there's a body
+    // to prepend to, rather than waiting for the rest of the page.
+    if (document.body) buildBar();
+    else document.addEventListener('DOMContentLoaded', buildBar);
+  }
+
+  window.AppNav = { PAGES: PAGES, buildMenu: buildMenu };
 })();
