@@ -23,6 +23,7 @@
   var GAP = 4;           // breathing room between the select and the list
   var EDGE = 8;          // keep the list this far off the bottom of the window
   var MIN_HEIGHT = 120;  // never squash it smaller than this, scroll instead
+  var MIN_WIDTH = 160;   // floor for the content-width clamp on tiny windows
 
   var open = null;       // { select, pop, onScroll }
 
@@ -31,13 +32,20 @@
     var s = document.createElement('style');
     s.id = 'dd-styles';
     s.textContent = [
+      // scrollbar-gutter keeps the width measured before the list scrolls
+      // valid after it does, so the last characters can't end up under the bar.
       '.dd-pop{position:fixed;z-index:99999;overflow-y:auto;overscroll-behavior:contain;',
+      'scrollbar-gutter:stable;',
       'background:#2c2c34;border:1px solid rgba(255,255,255,0.16);border-radius:8px;',
       'box-shadow:0 12px 34px rgba(0,0,0,0.55);padding:4px;',
       'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;',
       '-webkit-overflow-scrolling:touch;}',
+      // Wraps rather than ellipsising: category names are distinguished by
+      // their tail ("Group A", "Under 13"), so cutting the end off is the one
+      // thing that must not happen. With the panel sized to max-content this
+      // only kicks in when a name is wider than the window itself.
       '.dd-opt{padding:8px 10px;border-radius:5px;color:#f0f0f2;font-size:13px;line-height:1.3;',
-      'cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+      'cursor:pointer;white-space:normal;overflow-wrap:anywhere;}',
       '.dd-opt:hover{background:rgba(255,255,255,0.10);}',
       '.dd-opt.dd-sel{background:rgba(91,138,245,0.32);color:#fff;font-weight:600;}',
       '.dd-opt.dd-dis{opacity:.4;cursor:default;}',
@@ -60,13 +68,27 @@
     window.removeEventListener('resize', o.onScroll);
   }
 
-  /** Position below the select, clamped to the window, scrolling if it can't fit. */
+  /** Size and position below the select, clamped to the window. */
   function place(select, pop) {
     var r = select.getBoundingClientRect();
-    pop.style.left = r.left + 'px';
-    pop.style.width = r.width + 'px';
-    pop.style.top = (r.bottom + GAP) + 'px';
+
     pop.style.maxHeight = 'none';
+
+    // Width comes from the content, not from the select. A select narrow
+    // enough to show "Pre-Novice Women · Group A · Si…" is exactly the case
+    // where the open list has to be wider than the thing that opened it.
+    pop.style.width = 'max-content';
+    pop.style.minWidth = r.width + 'px';
+    pop.style.maxWidth = Math.max(MIN_WIDTH, window.innerWidth - EDGE * 2) + 'px';
+
+    // Aligned to the select's left edge, pulled back only far enough to keep
+    // a wider list on screen.
+    var left = r.left;
+    var width = pop.offsetWidth;
+    if (left + width > window.innerWidth - EDGE) left = window.innerWidth - EDGE - width;
+    pop.style.left = Math.max(EDGE, left) + 'px';
+
+    pop.style.top = (r.bottom + GAP) + 'px';
 
     var room = window.innerHeight - r.bottom - GAP - EDGE;
     var needed = pop.scrollHeight;
