@@ -153,12 +153,15 @@
 
     const lang = document.documentElement.lang || 'en';
     const ovr = window.configHeaderOverrides?.['manual-skater'] || {};
-    // Independent operator toggles per card phase (all default ON). The
-    // legacy master msExtrasEnabled is still honored for old configs.
+    // Independent operator toggles per card phase. Coaches/quote/music are
+    // opt-IN — they need workbook data most events don't have, and when they
+    // are on they replace the category card entirely. The category card is the
+    // default because it works from the event data alone.
+    // The legacy master msExtrasEnabled is still honored for old configs.
     const extrasEnabled = ovr.msExtrasEnabled !== false;
-    const coaches = (extrasEnabled && ovr.msShowCoaches !== false) ? String(data.coaches || '').trim() : '';
-    const quote   = (extrasEnabled && ovr.msShowQuote   !== false) ? String(data.quote || '').trim() : '';
-    const music   = (extrasEnabled && ovr.msShowMusic   !== false) ? String(data.musicTitle || '').trim() : '';
+    const coaches = (extrasEnabled && ovr.msShowCoaches === true) ? String(data.coaches || '').trim() : '';
+    const quote   = (extrasEnabled && ovr.msShowQuote   === true) ? String(data.quote || '').trim() : '';
+    const music   = (extrasEnabled && ovr.msShowMusic   === true) ? String(data.musicTitle || '').trim() : '';
 
     if (coaches || quote || music) {
       const coachMs = Math.max(1000, Number(ovr.msCoachMs) || 4000);

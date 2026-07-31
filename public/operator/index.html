@@ -1462,11 +1462,13 @@ function setPosUI(id, pos) {
     if (fsEl) fsEl.checked = p.ltShowFlag !== false;
   }
   if (id === 'manual-skater') {
-    const setCk = (cid, val) => { const el = g(cid); if (el) el.checked = val !== false; };
-    setCk(`pos-ms-show-coaches-${id}`,  p.msShowCoaches);
-    setCk(`pos-ms-show-quote-${id}`,    p.msShowQuote);
-    setCk(`pos-ms-show-music-${id}`,    p.msShowMusic);
-    setCk(`pos-ms-show-category-${id}`, p.msShowCategory);
+    // Workbook phases are opt-in (default off); the category card is opt-out.
+    const setCkOff = (cid, val) => { const el = g(cid); if (el) el.checked = val === true; };
+    const setCkOn  = (cid, val) => { const el = g(cid); if (el) el.checked = val !== false; };
+    setCkOff(`pos-ms-show-coaches-${id}`,  p.msShowCoaches);
+    setCkOff(`pos-ms-show-quote-${id}`,    p.msShowQuote);
+    setCkOff(`pos-ms-show-music-${id}`,    p.msShowMusic);
+    setCkOn (`pos-ms-show-category-${id}`, p.msShowCategory);
     sv(`pos-ms-quote-secs-${id}`, p.msQuoteSecs ?? 4);
     st(`pv-ms-quote-secs-${id}`, `${p.msQuoteSecs ?? 4}s`);
     sv(`pos-ms-coach-secs-${id}`, p.msCoachSecs ?? 4);
@@ -1702,9 +1704,11 @@ function readPos(id) {
     ltFlagHeight: Number(g(`pos-fh-${id}`)?.value ?? 68),
     ltShowFlag:   FLAG_TOGGLE_TEMPLATES.includes(id) ? (g(`pos-flag-show-${id}`)?.checked !== false) : undefined,
     msExtrasEnabled: id === 'manual-skater' ? true : undefined,
-    msShowCoaches:   id === 'manual-skater' ? (g(`pos-ms-show-coaches-${id}`)?.checked !== false) : undefined,
-    msShowQuote:     id === 'manual-skater' ? (g(`pos-ms-show-quote-${id}`)?.checked !== false) : undefined,
-    msShowMusic:     id === 'manual-skater' ? (g(`pos-ms-show-music-${id}`)?.checked !== false) : undefined,
+    // Read the boxes as they actually are — a missing element must not read as
+    // "on", which is what `!== false` did.
+    msShowCoaches:   id === 'manual-skater' ? !!g(`pos-ms-show-coaches-${id}`)?.checked : undefined,
+    msShowQuote:     id === 'manual-skater' ? !!g(`pos-ms-show-quote-${id}`)?.checked : undefined,
+    msShowMusic:     id === 'manual-skater' ? !!g(`pos-ms-show-music-${id}`)?.checked : undefined,
     msShowCategory:  id === 'manual-skater' ? (g(`pos-ms-show-category-${id}`)?.checked !== false) : undefined,
     msQuoteSecs:     id === 'manual-skater' ? Number(g(`pos-ms-quote-secs-${id}`)?.value ?? 4) : undefined,
     msCoachSecs:     id === 'manual-skater' ? Number(g(`pos-ms-coach-secs-${id}`)?.value ?? 4) : undefined,
@@ -2067,7 +2071,7 @@ async function resetPos(id) {
 	  const elDefaults   = id === 'elements'    ? { elSkaterSize:18, elTotalSize:26, elLabelSize:9, elCodeSize:15, elValueSize:14, elTitleX:0, elTitleY:0, elAutoFit:false, elBodyDelay:2000, elHighestLabelSize:0, elHighestScoreSize:0, elHighestLabelColor:'#ffc848', elHighestScoreColor:'#ffc848' } : {};
   const ofDefaults   = id === 'officials'   ? { ofRoleAlign:'right' } : {};
   const msgDefaults  = id === 'messages'    ? { msgLine1Size:40, msgLine2Size:20 } : {};
-  const msExtrasDefaults = id === 'manual-skater' ? { msExtrasEnabled:true, msShowCoaches:true, msShowQuote:true, msShowMusic:true, msShowCategory:true, msQuoteSecs:4, msCoachSecs:4 } : {};
+  const msExtrasDefaults = id === 'manual-skater' ? { msExtrasEnabled:true, msShowCoaches:false, msShowQuote:false, msShowMusic:false, msShowCategory:true, msQuoteSecs:4, msCoachSecs:4 } : {};
   const defaults = { x:0, y:0, scale:1, width: NATURAL_WIDTHS[id]||880, height:0,
                      zoom:100, rowPad:0, rounded:true, radius:20, ltFlagHeight:68,
                      animPreset:'default', animSpeed:420, animEasing:'smooth',
@@ -2823,17 +2827,17 @@ function buildCards() {
             <div style="margin:8px 0 2px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);grid-column:1/-1;">Slide-Down Card Content</div>
             <div style="grid-column:1/-1;display:flex;flex-direction:column;gap:8px;margin-bottom:4px;">
               <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                <input type="checkbox" id="pos-ms-show-coaches-${t.id}" checked onchange="onPosChange('${t.id}')"
+                <input type="checkbox" id="pos-ms-show-coaches-${t.id}" onchange="onPosChange('${t.id}')"
                        style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;" />
                 <span style="font-size:12px;color:var(--text2);">Coaches (from workbook)</span>
               </label>
               <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                <input type="checkbox" id="pos-ms-show-quote-${t.id}" checked onchange="onPosChange('${t.id}')"
+                <input type="checkbox" id="pos-ms-show-quote-${t.id}" onchange="onPosChange('${t.id}')"
                        style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;" />
                 <span style="font-size:12px;color:var(--text2);">Skater's quote (from workbook)</span>
               </label>
               <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                <input type="checkbox" id="pos-ms-show-music-${t.id}" checked onchange="onPosChange('${t.id}')"
+                <input type="checkbox" id="pos-ms-show-music-${t.id}" onchange="onPosChange('${t.id}')"
                        style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;" />
                 <span style="font-size:12px;color:var(--text2);">Program music (from workbook, per segment)</span>
               </label>

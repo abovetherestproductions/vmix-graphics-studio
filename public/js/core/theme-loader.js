@@ -381,9 +381,10 @@
         msgLine1Size:   pos.msgLine1Size      ?? 40,
         msgLine2Size:   pos.msgLine2Size      ?? 20,
         msExtrasEnabled: pos.msExtrasEnabled !== false,
-        msShowCoaches:  pos.msShowCoaches !== false,
-        msShowQuote:    pos.msShowQuote !== false,
-        msShowMusic:    pos.msShowMusic !== false,
+        // Workbook-fed phases are opt-in; the category card is the default.
+        msShowCoaches:  pos.msShowCoaches === true,
+        msShowQuote:    pos.msShowQuote === true,
+        msShowMusic:    pos.msShowMusic === true,
         msShowCategory: pos.msShowCategory !== false,
         msQuoteMs:      (Number(pos.msQuoteSecs) || 4) * 1000,
         msCoachMs:      (Number(pos.msCoachSecs) || 4) * 1000,

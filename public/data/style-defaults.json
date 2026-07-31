@@ -163,7 +163,7 @@
       "radius": 20,
       "ltFlagHeight": 68,
       "ltShowFlag": true,
-      "msExtrasEnabled": false,
+      "msExtrasEnabled": true,
       "msQuoteSecs": 6,
       "msCoachSecs": 4,
       "ltInfoText": "",
@@ -181,7 +181,11 @@
       "logoX": 20,
       "logoY": 0,
       "logoOpacity": 0.9,
-      "caps": {}
+      "caps": {},
+      "msShowCoaches": false,
+      "msShowQuote": false,
+      "msShowMusic": false,
+      "msShowCategory": true
     },
     "officials": {
       "x": -150,
