@@ -59,6 +59,7 @@
       infoLabelEl.textContent = label || '';
       infoLabelEl.classList.toggle('is-visible', !!(label && text));
     }
+    if (infoBodyEl) infoBodyEl.classList.remove('lt-info-inline');
     infoCategoryEl.classList.toggle('lt-info-wrap', !!wrap);
     const hasInfo = setInfoLine(infoCategoryEl, text);
     setInfoLine(infoSegmentEl, '');
@@ -68,12 +69,17 @@
     return hasInfo;
   }
 
-  /** The category / segment / group card — the three-line detail layout. */
+  /**
+   * The category / segment / group card. Laid out on one line — there is
+   * plenty of room under the bar — with CSS supplying the separators, so any
+   * of the three can be absent without leaving a stray divider.
+   */
   function setDetailCard(category, segment, group) {
     if (infoLabelEl) {
       infoLabelEl.textContent = '';
       infoLabelEl.classList.remove('is-visible');
     }
+    if (infoBodyEl) infoBodyEl.classList.add('lt-info-inline');
     infoCategoryEl.classList.remove('lt-info-wrap');
     const a = setInfoLine(infoCategoryEl, category);
     const b = setInfoLine(infoSegmentEl, segment);
