@@ -18,23 +18,24 @@
   let queuedPayload = null;
   let lastData = null;
 
-  function groupLabelFromData(data = {}) {
-    const explicit = data.groupNumber ?? data.group ?? data.groupNo;
-    if (explicit !== undefined && explicit !== null && String(explicit).trim() !== '') {
-      return `Group ${String(explicit).trim()}`;
-    }
+  // Categories that are split arrive with the group on the end —
+  // "Pre-Novice Women Group A", "Femmes Pré-novice Groupe A". Lift it onto its
+  // own line. Anchored to the end because that's where the qualifier sits;
+  // `groupe?` so the French form doesn't parse as group "e".
+  //
+  // Note this is NOT data.groupNumber — that's the warm-up group, a different
+  // thing entirely, and showing both would put "Group A" and "Group 1" on the
+  // same card meaning two different things.
+  const GROUP_RE = /\s*[-–—·]?\s*\bgroupe?\s*([A-Za-z0-9]+)\s*$/i;
 
-    const category = data.categoryName || data.category || '';
-    const match = String(category).match(/\bgroup\s*([A-Za-z0-9]+)\b/i);
-    return match ? `Group ${match[1]}` : '';
-  }
-
-  function categoryWithoutParsedGroup(category, groupLabel) {
-    if (!category || !groupLabel) return category || '';
-    const groupNumber = groupLabel.replace(/^group\s*/i, '').trim();
-    return String(category)
-      .replace(new RegExp(`\\s*[-–—]?\\s*group\\s*${groupNumber}\\s*$`, 'i'), '')
-      .trim();
+  function splitCategoryGroup(category, lang) {
+    const text = String(category || '').trim();
+    const match = text.match(GROUP_RE);
+    if (!match) return { category: text, group: '' };
+    return {
+      category: text.replace(GROUP_RE, '').trim(),
+      group: `${lang === 'fr' ? 'Groupe' : 'Group'} ${match[1]}`,
+    };
   }
 
   function setInfoLine(element, value) {
@@ -62,6 +63,22 @@
     const hasInfo = setInfoLine(infoCategoryEl, text);
     setInfoLine(infoSegmentEl, '');
     setInfoLine(infoGroupEl, '');
+    infoCardEl.classList.toggle('has-info', hasInfo);
+    infoCardEl.setAttribute('aria-hidden', hasInfo ? 'false' : 'true');
+    return hasInfo;
+  }
+
+  /** The category / segment / group card — the three-line detail layout. */
+  function setDetailCard(category, segment, group) {
+    if (infoLabelEl) {
+      infoLabelEl.textContent = '';
+      infoLabelEl.classList.remove('is-visible');
+    }
+    infoCategoryEl.classList.remove('lt-info-wrap');
+    const a = setInfoLine(infoCategoryEl, category);
+    const b = setInfoLine(infoSegmentEl, segment);
+    const c = setInfoLine(infoGroupEl, group);
+    const hasInfo = a || b || c;
     infoCardEl.classList.toggle('has-info', hasInfo);
     infoCardEl.setAttribute('aria-hidden', hasInfo ? 'false' : 'true');
     return hasInfo;
@@ -179,19 +196,35 @@
     // Precedence chain:
     //   1. Per-template ltInfoText (most specific)
     //   2. Global Detail Override (operator-level)
-    //   3. Fall back to whatever the workbook's Category column says.
+    // Either replaces the whole card with a single line.
     const override = ovr.ltInfoText || '';
     const globalDetail = lang === 'fr'
       ? (window.globalDetailOverrideFr || window.globalDetailOverride || '')
       : (window.globalDetailOverride   || window.globalDetailOverrideFr || '');
-    // Strip redundant "Singles" from the workbook category for singles
-    // events. Pairs/Dance categories pass through unchanged.
-    const rawCat = String(data.category || '').trim();
+    const forced = override.trim() || globalDetail.trim();
+    if (forced) {
+      setCardContent('', forced, false);
+      return;
+    }
+
+    // 3. Otherwise the event's own category / segment / group.
+    //
+    // The API sends categoryName + segmentName; the workbook path sends
+    // category. Read both, or the card stays empty on one of them — which is
+    // what kept it from ever dropping down on an API-driven event.
+    const rawCat = String(
+      (lang === 'fr' ? (data.categoryNameFr || data.categoryName) : data.categoryName)
+      || data.category
+      || ''
+    ).trim();
+    // Strip redundant "Singles" for singles events. Pairs/Dance pass through.
     const cleanedCat = window.GraphicsUtils.cleanCategoryName(rawCat) || rawCat;
-    const details = override.trim()
-      || globalDetail.trim()
-      || cleanedCat;
-    setCardContent('', details, false);
+    const split = splitCategoryGroup(cleanedCat, lang);
+    const segment = String(
+      (lang === 'fr' ? (data.segmentNameFr || data.segmentName) : data.segmentName) || ''
+    ).trim();
+
+    setDetailCard(split.category, segment, split.group);
   }
 
   function render(data = {}) {
