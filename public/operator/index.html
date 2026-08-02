@@ -94,6 +94,12 @@
     }
     .form-field input:focus, .form-field select:focus { outline: none; border-color: var(--accent); }
     .form-field input[type="color"] { height: 38px; padding: 2px 6px; cursor: pointer; }
+    /* Paired swatch + hex box: the generic width:100% above would let the
+       swatch take the whole row and squeeze the hex field out. */
+    .accent-row { display: flex; align-items: center; gap: 8px; }
+    .accent-row input[type="color"] { flex: 0 0 52px; width: 52px; }
+    .accent-row input[type="text"]  { flex: 1 1 auto; min-width: 0; width: auto;
+      font-family: ui-monospace, Menlo, monospace; text-transform: uppercase; letter-spacing: 0.04em; }
     .form-field .hint { font-size: 11px; color: var(--text2); margin-top: 4px; }
 
     /* ── Buttons ─────────────────────────────────────── */
@@ -578,7 +584,16 @@
         </div>
         <div class="form-field">
           <label>Accent Colour</label>
-          <input type="color" id="cfg-accent" value="#C8102E" />
+          <div class="accent-row">
+            <input type="color" id="cfg-accent" value="#C8102E"
+                   oninput="syncAccentHex('picker')" />
+            <input type="text" id="cfg-accent-hex" value="#C8102E" spellcheck="false"
+                   maxlength="7" placeholder="#C8102E" aria-label="Accent colour hex code"
+                   oninput="syncAccentHex('hex')" onblur="syncAccentHex('hex', true)" />
+          </div>
+          <div class="hint" id="cfg-accent-hint" style="margin-top:4px;">
+            Pick a colour or paste a hex code — a section's brand colour, for example.
+          </div>
         </div>
         <div class="form-field">
           <label>Bar Gradient Hold <span id="cfg-grad-mid-val" style="color:var(--text2);font-weight:400;">55%</span></label>
@@ -1101,6 +1116,7 @@ async function loadAllConfig() {
     document.getElementById('cfg-location').value        = cfg.eventLocation  || '';
     document.getElementById('cfg-date').value            = cfg.eventDate      || '';
     document.getElementById('cfg-accent').value          = cfg.theme?.accentColor || '#C8102E';
+    syncAccentHex('picker');
     const gsEl = document.getElementById('cfg-group-style');
     if (gsEl) gsEl.value = cfg.categoryGroupStyle === 'number' ? 'number' : 'letter';
     const gradMid = cfg.theme?.headerGradientMid ?? 55;
@@ -1229,6 +1245,7 @@ async function saveEventConfig() {
   try {
     await api('POST', '/api/config', update);
     document.getElementById('event-name-display').textContent = update.eventName;
+    syncAccentHex('picker');  // show exactly what was stored
     toast('✓ Event config saved');
   } catch(e) { toast(`Error: ${e.message}`, 'err'); }
 }
@@ -3579,6 +3596,50 @@ function buildCards() {
     container.appendChild(card);
     loadData(t.id);
   });
+}
+
+// ── Accent colour: picker and hex box, two views of one value ──────────
+// `<input type=color>` only accepts #rrggbb, so the hex box normalises before
+// handing anything over: bare codes gain a #, shorthand expands, case is
+// ignored. The picker stays the source of truth for saving.
+function normaliseHex(raw) {
+  const s = String(raw || '').trim().replace(/^#/, '');
+  if (/^[0-9a-f]{3}$/i.test(s)) return '#' + s.split('').map(c => c + c).join('').toUpperCase();
+  if (/^[0-9a-f]{6}$/i.test(s)) return '#' + s.toUpperCase();
+  return null;
+}
+
+function syncAccentHex(source, commit = false) {
+  const picker = document.getElementById('cfg-accent');
+  const box    = document.getElementById('cfg-accent-hex');
+  const hint   = document.getElementById('cfg-accent-hint');
+  if (!picker || !box) return;
+
+  if (source === 'picker') {
+    box.value = (picker.value || '').toUpperCase();
+    box.style.borderColor = '';
+    if (hint) hint.style.color = '';
+    return;
+  }
+
+  const hex = normaliseHex(box.value);
+  if (hex) {
+    picker.value = hex;
+    // Only rewrite what they typed once they've finished, so normalising
+    // doesn't fight the cursor mid-entry.
+    if (commit) box.value = hex;
+    box.style.borderColor = '';
+    if (hint) hint.style.color = '';
+  } else if (commit) {
+    // Unparseable on blur — put the picker's colour back rather than leaving
+    // a value that looks saved but isn't.
+    box.value = (picker.value || '').toUpperCase();
+    box.style.borderColor = '';
+    if (hint) hint.style.color = '';
+  } else {
+    box.style.borderColor = 'var(--accent)';
+    if (hint) hint.style.color = 'var(--accent)';
+  }
 }
 
 // ── Colour helpers ─────────────────────────────────────────────────────
