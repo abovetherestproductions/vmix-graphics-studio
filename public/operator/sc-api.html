@@ -200,7 +200,29 @@
     0%, 100% { background: rgba(76,175,80,0.30); box-shadow: none; }
     50%       { background: rgba(76,175,80,0.55); box-shadow: 0 0 8px rgba(76,175,80,0.50); }
   }
-  .pill-scored { background: rgba(255,255,255,0.07); color: #ffffff; font-size: 10px; }
+  /* Placement and score match the skater name — same size, weight and colour.
+     At 10px with wide letter-spacing these were the hardest thing on the page
+     to read, and they're the numbers the operator is actually scanning for.
+     Tabular figures so the columns line up down the list. */
+  .pill-scored {
+    background: rgba(255,255,255,0.07);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0;
+    font-variant-numeric: tabular-nums;
+    padding: 3px 9px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .pill-rank { color: rgba(255,255,255,0.72); }
+  .pill-sep {
+    width: 1px;
+    align-self: stretch;
+    background: rgba(255,255,255,0.22);
+    flex-shrink: 0;
+  }
   .pill-withdrawn { background: rgba(229,57,53,0.25); color: #ef9a9a; border: 1px solid rgba(229,57,53,0.45); }
 
   .withdrawn-section {
@@ -799,7 +821,21 @@ function buildRow(entry) {
   } else if (entry.rank != null) {
     const p = document.createElement('div');
     p.className = 'pill pill-scored';
-    p.textContent = `#${entry.rank}  ${entry.score != null ? entry.score.toFixed(2) : ''}`;
+    const rank = document.createElement('span');
+    rank.className = 'pill-rank';
+    rank.textContent = `#${entry.rank}`;
+    p.appendChild(rank);
+    // Separator only when there's a score to separate it from — a rank that
+    // has arrived before the score shouldn't show a dangling divider.
+    if (entry.score != null) {
+      const sep = document.createElement('span');
+      sep.className = 'pill-sep';
+      p.appendChild(sep);
+      const score = document.createElement('span');
+      score.className = 'pill-score';
+      score.textContent = entry.score.toFixed(2);
+      p.appendChild(score);
+    }
     row.appendChild(p);
   }
 
