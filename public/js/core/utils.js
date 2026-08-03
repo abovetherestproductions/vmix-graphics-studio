@@ -123,6 +123,39 @@ window.GraphicsUtils = {
   },
 
   /**
+   * Drop a programme qualifier from the category when the segment already
+   * says it.
+   *
+   * Skate Canada sometimes splits a level into two *categories* rather than
+   * one category with two segments — Wild Rose 2026 has "Gold" (Free Program)
+   * and "Gold Short" (Short Program), both labelled Women. Combining category
+   * and segment then reads "Gold Short Women Short Program".
+   *
+   * Only "short" / "court" are stripped, and only when the segment carries the
+   * same word. "Free" is deliberately excluded: catEn appends the discipline
+   * to unqualified categories, so "Novice Free Skating" + "Free Program" would
+   * become "Novice Skating". No discipline is named "Short", so this direction
+   * is safe.
+   */
+  dropSegmentEcho(category, segment) {
+    const cat = String(category || '').trim();
+    const seg = String(segment || '').trim();
+    if (!cat || !seg) return cat;
+
+    let out = cat;
+    for (const word of ['short', 'court']) {
+      const present = new RegExp(`\\b${word}\\b`, 'i');
+      if (present.test(out) && present.test(seg)) {
+        out = out.replace(new RegExp(`\\s*\\b${word}\\b\\s*`, 'i'), ' ');
+      }
+    }
+    out = out.replace(/\s+/g, ' ').trim();
+    // Never hand back nothing — a category that was only the qualifier is
+    // better shown as-is than blanked.
+    return out || cat;
+  },
+
+  /**
    * Returns true when the original category includes the word "Singles".
    * Used by callers that want to append the segment name after stripping
    * (singles events read better as "Category + Segment").
@@ -280,7 +313,12 @@ window.GraphicsUtils = {
           // category (e.g. "Senior Pairs Free Program" + segment "Free Program").
           const cl = cleanCat.toLowerCase();
           const sl = autoSeg.toLowerCase();
-          out = cl.includes(sl) ? cleanCat : `${cleanCat} ${autoSeg}`.trim();
+          // The whole segment name repeated — show the category alone.
+          // Otherwise drop a bare qualifier the segment already carries
+          // ("Gold Short Women" + "Short Program") before joining.
+          out = cl.includes(sl)
+            ? cleanCat
+            : `${this.dropSegmentEcho(cleanCat, autoSeg)} ${autoSeg}`.trim();
         } else if (cleanCat) {
           out = cleanCat;
         } else if (autoSeg) {

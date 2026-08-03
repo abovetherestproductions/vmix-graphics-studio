@@ -76,8 +76,11 @@
     const categoryClean = window.GraphicsUtils.cleanCategoryName(
       (globalCategory || '').trim() || fedCategory
     );
-    const category = categoryClean || ((globalCategory || '').trim() || fedCategory);
+    const categoryResolved = categoryClean || ((globalCategory || '').trim() || fedCategory);
     const segment = data.segmentName || data.segment || data.segmentType || '';
+    // Category and segment are shown together, so drop a qualifier the segment
+    // already carries ("Gold Short" + "Short Program").
+    const category = window.GraphicsUtils.dropSegmentEcho(categoryResolved, segment);
     // Group label intentionally dropped from the auto-built string — operators
     // don't want "Group N" cluttering the lower-third detail line. The group
     // value is still parsed (and used to strip the trailing sub-category

@@ -228,10 +228,14 @@
     ).trim();
     // Strip redundant "Singles" for singles events. Pairs/Dance pass through.
     const cleanedCat = window.GraphicsUtils.cleanCategoryName(rawCat) || rawCat;
-    const split = splitCategoryGroup(cleanedCat, lang);
     const segment = String(
       (lang === 'fr' ? (data.segmentNameFr || data.segmentName) : data.segmentName) || ''
     ).trim();
+    // The category and segment sit side by side here, so the same qualifier
+    // echo that hit the header would read "Gold Short Women · Short Program".
+    const split = splitCategoryGroup(
+      window.GraphicsUtils.dropSegmentEcho(cleanedCat, segment), lang
+    );
 
     setDetailCard(split.category, segment, split.group);
   }
