@@ -396,7 +396,24 @@ async function runExport({
     if (wasPolling) { try { poller.start(); } catch { /* operator can restart it */ } }
   };
 
-  const puppeteer = require('puppeteer-core');
+  // A machine that was deployed before puppeteer-core was added pulls the code
+  // that needs it but not the module itself, because only the installer ever
+  // ran npm install. Say what to do rather than surfacing a require stack.
+  let puppeteer;
+  try {
+    puppeteer = require('puppeteer-core');
+  } catch (e) {
+    if (e && e.code === 'MODULE_NOT_FOUND') {
+      throw new Error(
+        'The rendering library (puppeteer-core) is not installed on this machine.\n\n'
+        + 'Open a Command Prompt in the install folder and run:\n'
+        + '    npm install --omit=dev\n\n'
+        + 'then restart the vMix Graphics service. Updates from now on install '
+        + 'new dependencies by themselves.'
+      );
+    }
+    throw e;
+  }
   const browser = await puppeteer.launch({
     executablePath: browser0.path,
     headless: true,

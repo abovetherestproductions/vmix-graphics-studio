@@ -1313,6 +1313,12 @@ async function runUpdate() {
           ? `✓ Checked ${at} — already running the latest (${v.commit}).`
           : `✓ Checked ${at} — already up to date.`;
       }
+    } else if (r.installError) {
+      // Code pulled but dependencies didn't install — the operator has to run
+      // one command, so don't bury it behind a restart message.
+      if (status) { status.style.color = 'var(--accent,#e8213f)'; status.textContent = `⚠ ${r.installError}`; }
+      if (btn) { btn.disabled = false; btn.textContent = 'Check & Update'; }
+      return;
     } else if (r.willRestart) {
       // Installed as a Windows service: the server exits and comes back on the
       // new code by itself. Poll until it answers, then reload so the operator

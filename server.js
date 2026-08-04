@@ -1843,9 +1843,23 @@ app.get('/api/version', (_req, res) => {
   });
 });
 
+// npm is a .cmd shim on Windows, which execFile cannot run without a shell.
+function npmInstall(cb) {
+  const cmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+  execFile(cmd, ['install', '--omit=dev', '--no-audit', '--no-fund'],
+    { cwd: __dirname, timeout: 300000, shell: process.platform === 'win32' },
+    (err, stdout, stderr) => cb(err, String(stdout || '').trim(), String(stderr || '').trim()));
+}
+
 // Pull the latest code. Reports the git output; the operator restarts the
 // server afterward (Node can't reliably relaunch itself without a supervisor).
 app.post('/api/update', (_req, res) => {
+  // Remember where we were, so we can tell whether the pull changed the
+  // dependency list. Only the installer used to run npm install, so a machine
+  // deployed before a dependency was added pulled the code that needs it and
+  // then failed at require() — which is exactly how puppeteer-core went
+  // missing on a vMix box while the code around it updated fine.
+  git(['rev-parse', 'HEAD'], (_e, headBefore) => {
   git(['pull', '--ff-only'], (err, out, stderr) => {
     if (err) {
       const raw = stderr || out || err.message || '';
@@ -1867,13 +1881,40 @@ app.post('/api/update', (_req, res) => {
     // the operator restarts manually instead.
     const supervised = process.env.VMIX_SUPERVISED === '1';
     const willRestart = supervised && !alreadyCurrent;
-    res.json({ ok: true, alreadyCurrent, willRestart, output: out || stderr });
 
-    if (willRestart) {
-      console.log('[update] pulled new code — exiting so the service restarts on it');
-      // Let the response flush before dropping the process.
-      setTimeout(() => process.exit(1), 750);
-    }
+    const finish = (installed, installError) => {
+      res.json({ ok: true, alreadyCurrent, willRestart, installed, installError,
+                 output: out || stderr });
+      if (willRestart) {
+        console.log('[update] pulled new code — exiting so the service restarts on it');
+        // Let the response flush before dropping the process.
+        setTimeout(() => process.exit(1), 750);
+      }
+    };
+
+    if (alreadyCurrent || !headBefore) return finish(false, null);
+
+    // Did the pull touch the dependency list? npm install is slow enough that
+    // running it on every update would make the button feel broken.
+    git(['diff', '--name-only', `${headBefore}..HEAD`], (e3, changed) => {
+      const touchesDeps = /(^|\n)(package\.json|package-lock\.json)\s*$/m.test(changed || '');
+      if (e3 || !touchesDeps) return finish(false, null);
+
+      console.log('[update] dependencies changed — running npm install');
+      npmInstall((iErr, iOut, iErrOut) => {
+        if (iErr) {
+          // Don't fail the whole update: the code is already pulled, and a
+          // machine that restarts on new code with old modules is easier to
+          // diagnose than one stuck refusing to update at all.
+          console.warn('[update] npm install failed:', (iErrOut || iErr.message || '').slice(0, 400));
+          return finish(false, 'Dependencies could not be installed automatically. '
+            + 'Run "npm install --omit=dev" in the install folder, then restart the service.');
+        }
+        console.log('[update] npm install finished');
+        finish(true, null);
+      });
+    });
+  });
   });
 });
 
