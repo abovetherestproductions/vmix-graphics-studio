@@ -42,8 +42,69 @@ const PER_SKATER = {
  * production machines have), then Edge (always present on Windows, so the
  * safety net), then a Chromium left in puppeteer's cache on a dev machine.
  */
+/**
+ * Every Windows location worth looking in, including the per-user installs.
+ *
+ * The catch that matters here: the app runs as a Windows service under
+ * LOCAL SERVICE, so os.homedir() is C:\Windows\ServiceProfiles\LocalService —
+ * not the operator's profile. Chrome installed without admin rights lands in
+ * the operator's own AppData and is invisible from the service account, so
+ * every C:\Users\* profile gets checked too.
+ */
+function windowsCandidates() {
+  const env = k => process.env[k] || '';
+  const list = [];
+  const push = (name, p) => { if (p) list.push([name, p]); };
+
+  // Registry first — the authoritative answer, and immune to install location.
+  for (const [name, exe] of [['Chrome', 'chrome.exe'], ['Edge', 'msedge.exe']]) {
+    for (const hive of ['HKLM', 'HKCU']) {
+      try {
+        const out = require('child_process').execFileSync('reg', [
+          'query', `${hive}\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\${exe}`,
+          '/ve',
+        ], { encoding: 'utf8', timeout: 4000, windowsHide: true });
+        const m = out.match(/REG_SZ\s+(.+\.exe)\s*$/mi);
+        if (m) push(name, m[1].trim());
+      } catch { /* not registered under this hive */ }
+    }
+  }
+
+  for (const base of [env('ProgramFiles'), env('ProgramFiles(x86)'), env('ProgramW6432'),
+                      'C:\\Program Files', 'C:\\Program Files (x86)']) {
+    if (!base) continue;
+    push('Chrome', path.join(base, 'Google\\Chrome\\Application\\chrome.exe'));
+    push('Edge',   path.join(base, 'Microsoft\\Edge\\Application\\msedge.exe'));
+    push('Brave',  path.join(base, 'BraveSoftware\\Brave-Browser\\Application\\brave.exe'));
+  }
+
+  // Per-user installs: this account's, then every other profile on the box.
+  const localApps = [env('LOCALAPPDATA'), path.join(os.homedir(), 'AppData\\Local')].filter(Boolean);
+  try {
+    const users = path.join(env('SystemDrive') || 'C:', '\\Users');
+    for (const u of fs.readdirSync(users)) {
+      localApps.push(path.join(users, u, 'AppData\\Local'));
+    }
+  } catch { /* unreadable Users dir — the fixed paths above still apply */ }
+
+  for (const la of localApps) {
+    push('Chrome', path.join(la, 'Google\\Chrome\\Application\\chrome.exe'));
+    push('Edge',   path.join(la, 'Microsoft\\Edge\\Application\\msedge.exe'));
+    push('Brave',  path.join(la, 'BraveSoftware\\Brave-Browser\\Application\\brave.exe'));
+  }
+
+  return list;
+}
+
 function findBrowser() {
-  const tryPath = p => { try { return p && fs.existsSync(p) ? p : null; } catch { return null; } };
+  const tried = [];
+  const tryPath = p => {
+    try {
+      if (!p) return null;
+      tried.push(p);
+      return fs.existsSync(p) ? p : null;
+    } catch { return null; }
+  };
 
   if (process.env.VMIX_CHROME_PATH) {
     const p = tryPath(process.env.VMIX_CHROME_PATH);
@@ -52,14 +113,7 @@ function findBrowser() {
   }
 
   const candidates = process.platform === 'win32'
-    ? [
-        ['Chrome', 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'],
-        ['Chrome', 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe'],
-        ['Chrome', path.join(os.homedir(), 'AppData\\Local\\Google\\Chrome\\Application\\chrome.exe')],
-        ['Edge',   'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe'],
-        ['Edge',   'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe'],
-        ['Brave',  'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe'],
-      ]
+    ? windowsCandidates()
     : process.platform === 'darwin'
     ? [
         ['Chrome', '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'],
@@ -104,9 +158,14 @@ function findBrowser() {
     }
   } catch { /* fall through to the error below */ }
 
+  // Say what was actually looked for. "No browser found" on a machine where
+  // the operator can see Chrome in their Start menu is not a useful error —
+  // the usual cause is a per-user install the service account can't see.
+  const shown = tried.slice(0, 12).map(p => `  ${p}`).join('\n');
   throw new Error(
-    'No Chrome, Edge or Chromium found on this machine. Install Google Chrome, ' +
-    'or set VMIX_CHROME_PATH to a browser executable.'
+    'No Chrome, Edge or Chromium found on this machine. Install Google Chrome ' +
+    '(for all users, if you can), or set VMIX_CHROME_PATH to a browser ' +
+    `executable and restart the service.\n\nLooked in ${tried.length} places, including:\n${shown}`
   );
 }
 
@@ -136,108 +195,65 @@ function folderName(catName, segName) {
   return `${catName} ${segName}`.replace(/[^\p{L}\p{N} -]/gu, '').replace(/\s+/g, '-');
 }
 
-// ── the job ─────────────────────────────────────────────────────────────────
+function tidyFolder(name, fallback) {
+  const s = String(name || '').replace(/[^\p{L}\p{N} -]/gu, '').replace(/\s+/g, '-').trim();
+  return s || fallback;
+}
 
-/**
- * @param {object}   opts
- * @param {string}   opts.segmentId
- * @param {string[]} opts.graphics    keys of PER_SKATER
- * @param {string}   opts.scoreKind   'segment' | 'category'
- * @param {string}   opts.apiBaseUrl  Skate Canada API base
- * @param {number}   opts.port        this server's port
- * @param {function} opts.onProgress  ({ done, total, message }) => void
- * @param {object}   [opts.poller]    sc-api service — paused while rendering
- * @param {string}   [opts.outRoot]   where to write; blank = <install>/exports
- */
-async function exportStills(opts) {
-  const {
-    segmentId, graphics, scoreKind = 'segment',
-    apiBaseUrl, port = 3012, onProgress = () => {}, poller = null, outRoot = '',
-  } = opts;
+/** One sub-folder per graphic, so a segment's stills arrive sorted by type. */
+function graphicFolder(graphic) {
+  return tidyFolder(PER_SKATER[graphic].label, graphic);
+}
 
-  if (!segmentId) throw new Error('segmentId is required');
-  const wanted = (graphics || []).filter(g => PER_SKATER[g]);
-  if (!wanted.length) throw new Error('Pick at least one graphic');
-
-  const newApi = require(path.join(ROOT, 'normalizers', 'skate-canada-new-api.js'));
-  const browser0 = findBrowser();
-  onProgress({ done: 0, total: 0, message: `Using ${browser0.name}` });
-
-  const seg = (await apiGet(apiBaseUrl, `/segment/${segmentId}`)).Segment;
-  if (!seg) throw new Error(`No segment ${segmentId}`);
-  const catId = seg.segmentCategoryId || seg.categoryId;
-  const cat = catId ? (await apiGet(apiBaseUrl, `/category/${catId}`)).Category : {};
-  const entries = ((await apiGet(apiBaseUrl, `/segment/${segmentId}/entries`)).CompetitorEntries || [])
-    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
-  if (!entries.length) throw new Error('That segment has no entries');
-
-  const catName = newApi.catEn(cat) || 'Category';
-  const root = String(outRoot || '').trim() || OUT_ROOT;
-  const outDir = path.join(root, folderName(catName, seg.segmentName));
+function assertWritable(dir, root) {
   try {
-    fs.mkdirSync(outDir, { recursive: true });
+    fs.mkdirSync(dir, { recursive: true });
     // Prove it is writable now rather than after rendering twenty stills.
-    const probe = path.join(outDir, '.write-test');
+    const probe = path.join(dir, '.write-test');
     fs.writeFileSync(probe, ''); fs.unlinkSync(probe);
   } catch (e) {
     throw new Error(`Cannot write to ${root} — ${e.message}. Check the folder in Export Stills.`);
   }
+}
 
-  // Category totals — the entry DTO only carries this segment's score.
-  const priorBySkater = new Map();
-  if (scoreKind === 'category' && catId) {
-    onProgress({ done: 0, total: 0, message: 'Summing the other segments…' });
-    for (const s of ((await apiGet(apiBaseUrl, `/category/${catId}/segments`)).Segments || [])) {
-      const sid = newApi.safeStr(s.segmentId);
-      if (!sid || sid === segmentId) continue;
-      for (const e of ((await apiGet(apiBaseUrl, `/segment/${sid}/entries`)).CompetitorEntries || [])) {
-        const k = newApi.safeStr(e.skaterId || e.skatingCompetitorId);
-        const v = newApi.safeNum(e.score);
-        if (k && v != null) priorBySkater.set(k, (priorBySkater.get(k) || 0) + v);
-      }
+/**
+ * Category totals, keyed by skater: the entry DTO only carries the score for
+ * its own segment, so a "category total" needs every sibling segment summed.
+ */
+function priorsFromSiblings(newApi, siblings, thisSegmentId) {
+  const prior = new Map();
+  for (const sib of siblings) {
+    if (sib.segmentId === thisSegmentId) continue;
+    for (const e of sib.entries) {
+      const k = newApi.safeStr(e.skaterId || e.skatingCompetitorId);
+      const v = newApi.safeNum(e.score);
+      if (k && v != null) prior.set(k, (prior.get(k) || 0) + v);
     }
   }
+  return prior;
+}
 
-  // The live poller rewrites these same files every couple of seconds. Left
-  // running it overwrites each payload between the write and the screenshot,
-  // so stills come out carrying the CURRENT event's data — the elements
-  // panel's "Highest TES" is the giveaway. Pause it for the duration.
-  const wasPolling = !!(poller && poller.isActive && poller.isActive());
-  if (wasPolling) {
-    onProgress({ done: 0, total: 0, message: 'Pausing live polling…' });
-    try { poller.stop(); } catch { /* not fatal — worst case a still is stale */ }
-  }
+// ── the job ─────────────────────────────────────────────────────────────────
 
-  // Borrow the live data files; always hand them back.
-  const touched = wanted.map(g => path.join(DATA_DIR, `${g}.json`));
-  const backup = new Map();
-  for (const f of touched) if (fs.existsSync(f)) backup.set(f, fs.readFileSync(f));
-  const restore = () => {
-    for (const [f, buf] of backup) { try { fs.writeFileSync(f, buf); } catch {} }
-    if (wasPolling) { try { poller.start(); } catch { /* operator can restart it */ } }
-  };
-
-  const puppeteer = require('puppeteer-core');
-  const browser = await puppeteer.launch({
-    executablePath: browser0.path,
-    headless: true,
-    args: ['--force-device-scale-factor=1', '--disable-lcd-text', '--no-sandbox'],
-  });
-
-  const total = entries.length * wanted.length;
+/**
+ * Render every still for one segment. The browser, the paused poller and the
+ * borrowed data files are owned by runExport — this only draws.
+ *
+ * @param {object} ctx  shared across segments: page, wanted, tick, cancel…
+ * @param {object} job  { seg, cat, catName, entries, dir, priorBySkater }
+ */
+async function renderSegment(ctx, job) {
+  const { newApi, apiBaseUrl, port, scoreKind, page, wanted, tick, advance, checkCancelled } = ctx;
+  const { seg, cat, catName, entries, dir, priorBySkater } = job;
   const files = [];
-  let done = 0;
 
-  try {
-    const page = await browser.newPage();
-    await page.setViewport({ width: 1920, height: 1080, deviceScaleFactor: 1 });
-
-    for (const entry of entries) {
+  for (const entry of entries) {
       const label = safeName(entry.sortOrder, entry.competitorName);
 
       for (const graphic of wanted) {
         const meta = PER_SKATER[graphic];
-        onProgress({ done, total, message: `${label} — ${meta.label}` });
+        checkCancelled();
+        tick(`${catName} — ${seg.segmentName} · ${label} — ${meta.label}`);
 
         let payload = null;
         if (graphic === 'manual-skater') {
@@ -253,13 +269,13 @@ async function exportStills(opts) {
           payload = newApi.normalizeScoring(entry, comps, adjs, cat, seg, 'en', { visible: true, state: 'visible' }, catTotal);
         } else if (graphic === 'elements') {
           const els = (await apiGet(apiBaseUrl, `/entry/${entry.competitorEntryId}/elements`)).SkateElements || [];
-          if (!els.length) { done++; continue; }        // withdrew, or never skated
+          if (!els.length) { advance(); continue; }        // withdrew, or never skated
           let hi = 0, hiName = '';
           for (const e of entries) if ((e.tes || 0) > hi) { hi = e.tes; hiName = e.competitorName; }
           payload = newApi.normalizeElements(els, entry, cat, seg, { visible: true, state: 'visible' },
             { highestTes: hi, highestTesName: hiName, scoredCount: entries.filter(e => e.score > 0).length });
         }
-        if (!payload) { done++; continue; }
+        if (!payload) { advance(); continue; }
 
         payload.control = { visible: true, state: 'visible' };
         fs.writeFileSync(path.join(DATA_DIR, `${graphic}.json`), JSON.stringify(payload, null, 2));
@@ -319,23 +335,235 @@ async function exportStills(opts) {
           const y2 = Math.min(1080, Math.max(...parts.map(r => r.bottom)) + pad);
           return { x: Math.floor(x1), y: Math.floor(y1), width: Math.ceil(x2 - x1), height: Math.ceil(y2 - y1) };
         });
-        if (!box || box.width < 4 || box.height < 4) { done++; continue; }
+        if (!box || box.width < 4 || box.height < 4) { advance(); continue; }
 
-        const file = path.join(outDir, `${label} - ${meta.suffix}.png`);
+        const graphicDir = path.join(dir, graphicFolder(graphic));
+        fs.mkdirSync(graphicDir, { recursive: true });
+        const file = path.join(graphicDir, `${label} - ${meta.suffix}.png`);
         // omitBackground is what gives a real alpha channel rather than a
         // screenshot with the page background baked in.
         await page.screenshot({ path: file, omitBackground: true, clip: box });
         files.push(path.basename(file));
-        done++;
+        advance();
       }
+  }
+
+  return files;
+}
+
+/**
+ * Own the expensive, shared things — the browser, the paused poller, the
+ * borrowed data files — and walk a list of segments through renderSegment.
+ * One browser for the whole run: launching it per segment turned a
+ * whole-event export into minutes of dead time.
+ */
+async function runExport({
+  jobs, wanted, scoreKind, apiBaseUrl, port, onProgress, poller, root, isCancelled,
+}) {
+  const newApi = require(path.join(ROOT, 'normalizers', 'skate-canada-new-api.js'));
+  const browser0 = findBrowser();
+
+  const total = jobs.reduce((n, j) => n + j.entries.length * wanted.length, 0);
+  let done = 0;
+  let message = `Using ${browser0.name}`;
+  const report = () => onProgress({ done, total, message });
+  report();
+
+  const checkCancelled = () => {
+    if (isCancelled && isCancelled()) {
+      const e = new Error('Export stopped.');
+      e.cancelled = true;
+      throw e;
+    }
+  };
+
+  // The live poller rewrites these same files every couple of seconds. Left
+  // running it overwrites each payload between the write and the screenshot,
+  // so stills come out carrying the CURRENT event's data — the elements
+  // panel's "Highest TES" is the giveaway. Pause it for the duration.
+  const wasPolling = !!(poller && poller.isActive && poller.isActive());
+  if (wasPolling) {
+    message = 'Pausing live polling…'; report();
+    try { poller.stop(); } catch { /* not fatal — worst case a still is stale */ }
+  }
+
+  // Borrow the live data files; always hand them back.
+  const touched = wanted.map(g => path.join(DATA_DIR, `${g}.json`));
+  const backup = new Map();
+  for (const f of touched) if (fs.existsSync(f)) backup.set(f, fs.readFileSync(f));
+  const restore = () => {
+    for (const [f, buf] of backup) { try { fs.writeFileSync(f, buf); } catch {} }
+    if (wasPolling) { try { poller.start(); } catch { /* operator can restart it */ } }
+  };
+
+  const puppeteer = require('puppeteer-core');
+  const browser = await puppeteer.launch({
+    executablePath: browser0.path,
+    headless: true,
+    args: ['--force-device-scale-factor=1', '--disable-lcd-text', '--no-sandbox'],
+  });
+
+  const segments = [];
+  let count = 0;
+
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1920, height: 1080, deviceScaleFactor: 1 });
+
+    const ctx = {
+      newApi, apiBaseUrl, port, scoreKind, page, wanted, checkCancelled,
+      tick: msg => { message = msg; report(); },
+      advance: () => { done++; report(); },
+    };
+
+    for (const job of jobs) {
+      checkCancelled();
+      const files = await renderSegment(ctx, job);
+      count += files.length;
+      segments.push({
+        category: job.catName, segment: job.seg.segmentName,
+        dir: job.dir, count: files.length, files,
+      });
     }
   } finally {
     await browser.close().catch(() => {});
     restore();
   }
 
-  onProgress({ done: total, total, message: 'Done' });
-  return { outDir, files, count: files.length, category: catName, segment: seg.segmentName };
+  message = 'Done';
+  onProgress({ done: total, total, message });
+  return { root, segments, count, outDir: jobs.length === 1 ? jobs[0].dir : root };
 }
 
-module.exports = { exportStills, findBrowser, PER_SKATER, OUT_ROOT };
+/** Fetch a segment's entries in skate order. */
+async function segmentEntries(apiBaseUrl, segmentId) {
+  return ((await apiGet(apiBaseUrl, `/segment/${segmentId}/entries`)).CompetitorEntries || [])
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+}
+
+/**
+ * One segment.
+ *
+ * @param {object}   opts
+ * @param {string}   opts.segmentId
+ * @param {string[]} opts.graphics    keys of PER_SKATER
+ * @param {string}   opts.scoreKind   'segment' | 'category'
+ * @param {string}   opts.apiBaseUrl  Skate Canada API base
+ * @param {number}   opts.port        this server's port
+ * @param {function} opts.onProgress  ({ done, total, message }) => void
+ * @param {object}   [opts.poller]    sc-api service — paused while rendering
+ * @param {string}   [opts.outRoot]   where to write; blank = <install>/exports
+ * @param {function} [opts.isCancelled]
+ */
+async function exportStills(opts) {
+  const {
+    segmentId, graphics, scoreKind = 'segment',
+    apiBaseUrl, port = 3012, onProgress = () => {}, poller = null, outRoot = '',
+    isCancelled = null,
+  } = opts;
+
+  if (!segmentId) throw new Error('segmentId is required');
+  const wanted = (graphics || []).filter(g => PER_SKATER[g]);
+  if (!wanted.length) throw new Error('Pick at least one graphic');
+
+  const newApi = require(path.join(ROOT, 'normalizers', 'skate-canada-new-api.js'));
+  const seg = (await apiGet(apiBaseUrl, `/segment/${segmentId}`)).Segment;
+  if (!seg) throw new Error(`No segment ${segmentId}`);
+  const catId = seg.segmentCategoryId || seg.categoryId;
+  const cat = catId ? (await apiGet(apiBaseUrl, `/category/${catId}`)).Category : {};
+  const entries = await segmentEntries(apiBaseUrl, segmentId);
+  if (!entries.length) throw new Error('That segment has no entries');
+
+  const catName = newApi.catEn(cat) || 'Category';
+  const root = String(outRoot || '').trim() || OUT_ROOT;
+  const dir = path.join(root, folderName(catName, seg.segmentName));
+  assertWritable(dir, root);
+
+  let priorBySkater = new Map();
+  if (scoreKind === 'category' && catId) {
+    onProgress({ done: 0, total: 0, message: 'Summing the other segments…' });
+    const siblings = [];
+    for (const s of ((await apiGet(apiBaseUrl, `/category/${catId}/segments`)).Segments || [])) {
+      const sid = newApi.safeStr(s.segmentId);
+      if (!sid || sid === segmentId) continue;
+      siblings.push({ segmentId: sid, entries: await segmentEntries(apiBaseUrl, sid) });
+    }
+    priorBySkater = priorsFromSiblings(newApi, siblings, segmentId);
+  }
+
+  return runExport({
+    jobs: [{ seg, cat, catName, entries, dir, priorBySkater }],
+    wanted, scoreKind, apiBaseUrl, port, onProgress, poller, root, isCancelled,
+  });
+}
+
+/**
+ * Every segment of every category in an event.
+ *
+ * Lays out <root>/<Event>/<Category-Segment>/<Graphic>/, so a rebuild session
+ * is a matter of opening the folder for the segment you're cutting.
+ *
+ * Segments with no entries are skipped rather than failing the run — a
+ * schedule always contains a few that never happened.
+ */
+async function exportEvent(opts) {
+  const {
+    eventId, graphics, scoreKind = 'segment',
+    apiBaseUrl, port = 3012, onProgress = () => {}, poller = null, outRoot = '',
+    isCancelled = null,
+  } = opts;
+
+  if (!eventId) throw new Error('eventId is required');
+  const wanted = (graphics || []).filter(g => PER_SKATER[g]);
+  if (!wanted.length) throw new Error('Pick at least one graphic');
+
+  const newApi = require(path.join(ROOT, 'normalizers', 'skate-canada-new-api.js'));
+
+  const ev = (await apiGet(apiBaseUrl, `/event/${eventId}`)).Event || {};
+  // EventName, capital E — matches normalizeEventInfo and scApiService.
+  const eventName = newApi.safeStr(ev.EventName) || newApi.safeStr(ev.eventCode) || 'Event';
+  const root = String(outRoot || '').trim() || OUT_ROOT;
+  const eventDir = path.join(root, tidyFolder(eventName, 'Event'));
+  assertWritable(eventDir, root);
+
+  const cats = (await apiGet(apiBaseUrl, `/event/${eventId}/categories`)).Categories || [];
+  if (!cats.length) throw new Error('That event has no categories');
+
+  // Read the whole schedule first so the progress bar is honest, and so
+  // category totals can reuse the entries instead of re-fetching them.
+  const jobs = [];
+  let seen = 0;
+  for (const cat of cats) {
+    if (isCancelled && isCancelled()) throw Object.assign(new Error('Export stopped.'), { cancelled: true });
+    const catId = cat.categoryId || cat.id;
+    const catName = newApi.catEn(cat) || 'Category';
+    onProgress({ done: 0, total: 0, message: `Reading ${catName} (${++seen} of ${cats.length})…` });
+
+    const segs = (await apiGet(apiBaseUrl, `/category/${catId}/segments`)).Segments || [];
+    const withEntries = [];
+    for (const s of segs) {
+      const sid = newApi.safeStr(s.segmentId);
+      if (!sid) continue;
+      withEntries.push({ segmentId: sid, seg: s, entries: await segmentEntries(apiBaseUrl, sid) });
+    }
+
+    for (const { segmentId, seg, entries } of withEntries) {
+      if (!entries.length) continue;             // scheduled but never skated
+      jobs.push({
+        seg, cat, catName, entries,
+        dir: path.join(eventDir, folderName(catName, seg.segmentName)),
+        priorBySkater: scoreKind === 'category'
+          ? priorsFromSiblings(newApi, withEntries, segmentId)
+          : new Map(),
+      });
+    }
+  }
+
+  if (!jobs.length) throw new Error('No segment in that event has any entries');
+
+  return runExport({
+    jobs, wanted, scoreKind, apiBaseUrl, port, onProgress, poller, root: eventDir, isCancelled,
+  });
+}
+
+module.exports = { exportStills, exportEvent, findBrowser, PER_SKATER, OUT_ROOT };

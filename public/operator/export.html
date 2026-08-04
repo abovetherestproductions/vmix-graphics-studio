@@ -105,7 +105,7 @@
   </div>
 
   <div class="panel">
-    <div class="panel-title">Choose the segment</div>
+    <div class="panel-title">Choose what to export</div>
 
     <div class="field">
       <label for="event-id">Event ID</label>
@@ -116,11 +116,22 @@
     </div>
 
     <div class="field">
+      <label for="scope">Scope</label>
+      <select id="scope" onchange="onScope(this.value)">
+        <option value="segment">One segment</option>
+        <option value="event">The whole event — every segment of every category</option>
+      </select>
+      <div class="hint" id="scope-hint" style="margin-top:5px;">
+        Pick a category and segment below.
+      </div>
+    </div>
+
+    <div class="field" id="cat-field">
       <label for="cat-select">Category</label>
       <select id="cat-select" disabled onchange="onCategory(this.value)"><option>— load an event first —</option></select>
     </div>
 
-    <div class="field">
+    <div class="field" id="seg-field">
       <label for="seg-select">Segment</label>
       <select id="seg-select" disabled onchange="onSegment(this.value)"><option>— pick a category —</option></select>
     </div>
@@ -152,7 +163,10 @@
 
   <div class="panel">
     <div class="panel-title">Render <span class="spacer"></span><span class="status" id="job-status"></span></div>
-    <button class="btn-go" id="go-btn" onclick="startExport()" disabled>Generate stills</button>
+    <div class="row" style="align-items:center;">
+      <button class="btn-go" id="go-btn" onclick="startExport()" disabled>Generate stills</button>
+      <button id="stop-btn" onclick="stopExport()" style="flex:0 0 auto;display:none;">Stop</button>
+    </div>
     <div class="bar"><div id="bar-fill"></div></div>
     <div class="hint" id="progress-text">Pick a segment to begin.</div>
     <div id="result"></div>
@@ -163,6 +177,8 @@
 
 <script>
 const $ = id => document.getElementById(id);
+const escapeHtml = v => String(v ?? '').replace(/[&<>"']/g,
+  c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 let _t = null;
 function toast(m) { const e=$('toast'); e.textContent=m; e.classList.add('show');
   clearTimeout(_t); _t=setTimeout(()=>e.classList.remove('show'),2400); }
@@ -176,7 +192,7 @@ async function api(method, path, body) {
   return j;
 }
 
-const state = { eventId:null, categories:[], segments:[], categoryId:null, segmentId:null };
+const state = { eventId:null, categories:[], segments:[], categoryId:null, segmentId:null, scope:'segment' };
 
 async function loadFolder() {
   try {
@@ -204,8 +220,12 @@ async function checkBrowser() {
     if (r.available) { el.textContent = `✓ rendering with ${r.name}`; el.className = 'status ok'; }
     else {
       el.textContent = '⚠ no browser found'; el.className = 'status err';
+      // Show the whole message, newlines and all — it lists the paths that
+      // were checked, which is the difference between "it says no browser"
+      // and knowing Chrome is installed somewhere the service can't reach.
       $('progress-text').innerHTML =
-        `<span style="color:var(--red)">${r.error}</span><br>Install Google Chrome on this machine, then reload this page.`;
+        `<div style="color:var(--red);white-space:pre-wrap;font-family:ui-monospace,Menlo,monospace;`
+        + `font-size:11.5px;line-height:1.5;">${escapeHtml(r.error || 'No browser found')}</div>`;
     }
   } catch { el.textContent = ''; }
 }
@@ -217,6 +237,7 @@ async function loadEvent() {
   try {
     const d = await api('GET', `/api/sc-api/browse/event/${encodeURIComponent(id)}`);
     state.eventId = id; state.categories = d.categories || [];
+    refreshReady();
     const sel = $('cat-select');
     sel.innerHTML = '<option value="">— select category —</option>';
     for (const c of state.categories) {
@@ -253,8 +274,40 @@ async function onCategory(categoryId) {
 
 function onSegment(segmentId) {
   state.segmentId = segmentId || null;
-  $('go-btn').disabled = !segmentId;
-  $('progress-text').textContent = segmentId ? 'Ready.' : 'Pick a segment to begin.';
+  refreshReady();
+}
+
+function onScope(scope) {
+  state.scope = scope === 'event' ? 'event' : 'segment';
+  const perSegment = state.scope === 'segment';
+  $('cat-field').style.display = perSegment ? '' : 'none';
+  $('seg-field').style.display = perSegment ? '' : 'none';
+  $('scope-hint').textContent = perSegment
+    ? 'Pick a category and segment below.'
+    : 'Every segment of every category, into one folder per segment. This can take a while — the Stop button ends it cleanly.';
+  refreshReady();
+}
+
+/** The Generate button needs an event for a whole-event run, a segment otherwise. */
+function refreshReady() {
+  if (state.scope === 'event') {
+    const ready = !!state.eventId;
+    $('go-btn').disabled = !ready;
+    $('progress-text').textContent = ready
+      ? 'Ready — the whole event.'
+      : 'Load an event to begin.';
+    return;
+  }
+  $('go-btn').disabled = !state.segmentId;
+  $('progress-text').textContent = state.segmentId ? 'Ready.' : 'Pick a segment to begin.';
+}
+
+async function stopExport() {
+  try {
+    await api('POST', '/api/export/cancel', {});
+    $('stop-btn').disabled = true;
+    $('job-status').textContent = 'stopping…';
+  } catch (e) { toast(`Error: ${e.message}`); }
 }
 
 function chosenGraphics() {
@@ -265,14 +318,23 @@ async function startExport() {
   const graphics = chosenGraphics();
   if (!graphics.length) return toast('Tick at least one graphic');
   $('go-btn').disabled = true;
+  $('stop-btn').style.display = ''; $('stop-btn').disabled = false;
   $('result').innerHTML = '';
   $('job-status').textContent = ''; $('job-status').className = 'status';
   try {
     await api('POST', '/api/export/stills', {
-      segmentId: state.segmentId, graphics, scoreKind: $('score-kind').value,
+      scope: state.scope,
+      eventId: state.eventId,
+      segmentId: state.segmentId,
+      graphics,
+      scoreKind: $('score-kind').value,
     });
     poll();
-  } catch (e) { toast(`Error: ${e.message}`); $('go-btn').disabled = false; }
+  } catch (e) {
+    toast(`Error: ${e.message}`);
+    $('stop-btn').style.display = 'none';
+    refreshReady();
+  }
 }
 
 function paint(job) {
@@ -284,19 +346,36 @@ function paint(job) {
     : (job.message || '');
   if (job.running) { $('job-status').textContent = 'running…'; return; }
 
-  $('go-btn').disabled = !state.segmentId;
+  $('stop-btn').style.display = 'none';
+  refreshReady();
+
   if (job.error) {
     $('job-status').textContent = '⚠ failed'; $('job-status').className = 'status err';
-    $('result').innerHTML = `<div class="hint" style="color:var(--red);margin-top:8px;">${job.error}</div>`;
+    $('result').innerHTML =
+      `<div class="hint" style="color:var(--red);margin-top:8px;white-space:pre-wrap;">${escapeHtml(job.error)}</div>`;
+    return;
+  }
+  if (job.cancelled) {
+    $('job-status').textContent = 'stopped'; $('job-status').className = 'status';
+    $('result').innerHTML =
+      '<div class="hint" style="margin-top:8px;">Stopped. The stills already written are still in the output folder.</div>';
     return;
   }
   if (job.result) {
-    $('job-status').textContent = `✓ ${job.result.count} PNGs`; $('job-status').className = 'status ok';
+    const r = job.result;
+    $('job-status').textContent = `✓ ${r.count} PNGs`; $('job-status').className = 'status ok';
     $('bar-fill').style.width = '100%';
+    // A whole-event run lists a line per segment; a single segment lists files.
+    const segs = r.segments || [];
+    const body = segs.length > 1
+      ? `<div class="files">${segs.map(s =>
+          `<div>${escapeHtml(s.category)} — ${escapeHtml(s.segment)} · ${s.count}</div>`).join('')}</div>`
+      : `<div class="files">${(segs[0]?.files || r.files || [])
+          .map(f => `<div>${escapeHtml(f)}</div>`).join('')}</div>`;
     $('result').innerHTML =
-      `<div class="hint" style="margin-top:10px;">Saved to</div>
-       <div class="path">${job.result.outDir}</div>
-       <div class="files">${job.result.files.map(f => `<div>${f}</div>`).join('')}</div>`;
+      `<div class="hint" style="margin-top:10px;">${segs.length > 1
+          ? `${segs.length} segments saved under` : 'Saved to'}</div>
+       <div class="path">${escapeHtml(r.outDir || r.root || '')}</div>${body}`;
   }
 }
 

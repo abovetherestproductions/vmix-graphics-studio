@@ -1908,39 +1908,63 @@ app.get('/api/export/status', (_req, res) => {
   res.json({ ok: true, job: stillsJob });
 });
 
+// A whole-event export runs for a long time; the operator needs a way out
+// that isn't restarting the service.
+let stillsCancel = false;
+
+app.post('/api/export/cancel', (_req, res) => {
+  if (!stillsJob?.running) return res.json({ ok: true, running: false });
+  stillsCancel = true;
+  res.json({ ok: true, stopping: true });
+});
+
 app.post('/api/export/stills', async (req, res) => {
   if (stillsJob?.running) {
     return res.status(409).json({ ok: false, error: 'An export is already running.' });
   }
-  const { segmentId, graphics, scoreKind } = req.body || {};
-  if (!segmentId) return res.status(400).json({ ok: false, error: 'segmentId is required' });
+  const { segmentId, eventId, scope, graphics, scoreKind } = req.body || {};
+  const wholeEvent = scope === 'event';
+  if (wholeEvent && !eventId) return res.status(400).json({ ok: false, error: 'eventId is required' });
+  if (!wholeEvent && !segmentId) return res.status(400).json({ ok: false, error: 'segmentId is required' });
 
-  stillsJob = { running: true, done: 0, total: 0, message: 'Starting…', error: null, result: null, startedAt: Date.now() };
+  stillsCancel = false;
+  stillsJob = { running: true, done: 0, total: 0, message: 'Starting…', error: null, result: null,
+                startedAt: Date.now(), scope: wholeEvent ? 'event' : 'segment' };
   res.json({ ok: true, started: true });   // return immediately; progress is polled
 
   const cfg = readConfig().dataSource?.scApi || {};
   const apiBaseUrl = (cfg.baseUrl || 'https://sc-css-public-api-cmh9d3htgxfpdkb7.canadacentral-01.azurewebsites.net').replace(/\/$/, '');
 
+  const common = {
+    graphics: Array.isArray(graphics) ? graphics : ['manual-skater', 'scoring'],
+    scoreKind: scoreKind === 'category' ? 'category' : 'segment',
+    apiBaseUrl,
+    port: PORT,
+    poller: scApiService,
+    outRoot: settingsService.readSettings()?.exports?.folder || '',
+    isCancelled: () => stillsCancel,
+    onProgress: p => {
+      if (!stillsJob) return;
+      Object.assign(stillsJob, p);
+      broadcast({ type: 'export-progress', job: stillsJob });
+    },
+  };
+
   try {
-    const result = await stills.exportStills({
-      segmentId,
-      graphics: Array.isArray(graphics) ? graphics : ['manual-skater', 'scoring'],
-      scoreKind: scoreKind === 'category' ? 'category' : 'segment',
-      apiBaseUrl,
-      port: PORT,
-      poller: scApiService,
-      outRoot: settingsService.readSettings()?.exports?.folder || '',
-      onProgress: p => {
-        if (!stillsJob) return;
-        Object.assign(stillsJob, p);
-        broadcast({ type: 'export-progress', job: stillsJob });
-      },
-    });
+    const result = wholeEvent
+      ? await stills.exportEvent({ ...common, eventId })
+      : await stills.exportStills({ ...common, segmentId });
     stillsJob = { ...stillsJob, running: false, result, message: 'Done' };
   } catch (e) {
-    console.warn('[export] failed:', e.message);
-    stillsJob = { ...stillsJob, running: false, error: e.message, message: 'Failed' };
+    if (e.cancelled) {
+      console.warn('[export] stopped by operator');
+      stillsJob = { ...stillsJob, running: false, message: 'Stopped', cancelled: true };
+    } else {
+      console.warn('[export] failed:', e.message);
+      stillsJob = { ...stillsJob, running: false, error: e.message, message: 'Failed' };
+    }
   }
+  stillsCancel = false;
   broadcast({ type: 'export-progress', job: stillsJob });
   // The renderer restored the live data files; tell the graphics to reload.
   broadcast({ type: 'config-update' });
