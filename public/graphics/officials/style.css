@@ -153,21 +153,38 @@
   text-transform: uppercase;
   color: var(--color-accent-light);
   text-align: var(--of-role-align, right);
+  /* A role label this studio hasn't broadcast before (e.g. "Data & Video
+     Replay Operator") can be much longer than "Judge" — truncate rather
+     than wrap and inflate the row, matching .of-name's treatment below. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .of-name {
   font-family: var(--font-body);
   font-weight: 600;
-  font-size: var(--of-name-size, 20px);
   color: var(--color-text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* Compact mode for 9-judge panels */
-.officials.layout-compact .of-row { min-height: var(--row-min-height, 46px); }
-.officials.layout-compact .of-name { font-size: 17px; }
+/* Row-count tiers — mirrors Final Rankings' three-step scale, so a short
+   list (a referee and two judges) and a full technical panel each get a
+   size suited to their own row count. Before this, only >=8 rows (the only
+   count this studio had ever actually broadcast) was handled: it hardcoded
+   17px. Anything below fell through to the raw configured Name Size —
+   36px in the shipped default — completely unclamped, which is the
+   "abnormally large" font this fixes. -sm below reproduces that same
+   17px a busy panel already looked correct at; -lg/-md are new. */
+.officials.layout-large    .of-row  { min-height: var(--row-min-height, 58px); }
+.officials.layout-standard .of-row  { min-height: var(--row-min-height, 58px); }
+.officials.layout-compact  .of-row  { min-height: var(--row-min-height, 46px); }
+
+.officials.layout-large    .of-name { font-size: var(--of-name-size-lg, 25px); }
+.officials.layout-standard .of-name { font-size: var(--of-name-size-md, 21px); }
+.officials.layout-compact  .of-name { font-size: var(--of-name-size-sm, 17px); }
 
 /* ── Animation states ─────────────────────────────── */
 .officials.visible .of-panel {

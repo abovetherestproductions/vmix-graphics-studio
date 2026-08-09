@@ -43,6 +43,19 @@
     return 2;
   }
 
+  // Row-count layout tiers — same thresholds and naming as Final Rankings,
+  // so a short officials list (a referee and two judges) and a full
+  // technical panel each render at a size suited to their own row count,
+  // instead of one >=8 cutoff that left every smaller panel showing the
+  // raw, unclamped configured Name Size. See officials/style.css.
+  const ROW_COUNT_THRESHOLDS = { large: 4, standard: 7 }; // <=4 large, <=7 standard, else compact
+
+  function getLayoutClass(rowCount) {
+    if (rowCount <= ROW_COUNT_THRESHOLDS.large)    return 'layout-large';
+    if (rowCount <= ROW_COUNT_THRESHOLDS.standard) return 'layout-standard';
+    return 'layout-compact';
+  }
+
   function render(payload) {
     const data = payload.data || {};
     titleEl.textContent    = window.GraphicsUtils.resolveTitle('officials', data, 'Officials');
@@ -53,8 +66,8 @@
     const rows = Array.isArray(data.rows)
       ? [...data.rows].sort((a, b) => roleOrder(a.role) - roleOrder(b.role))
       : [];
-    // Auto compact for large panels
-    root.classList.toggle('layout-compact', rows.length >= 8);
+    root.classList.remove('layout-large', 'layout-standard', 'layout-compact');
+    root.classList.add(getLayoutClass(rows.length));
 
     rowsEl.innerHTML = '';
     rows.forEach(row => rowsEl.appendChild(buildRow(row)));

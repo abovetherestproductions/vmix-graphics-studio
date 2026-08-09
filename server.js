@@ -299,6 +299,20 @@ function readConfig() {
 
 migrateConfigIfNeeded();
 
+// Refresh the graphics' derived config snapshot on every boot. The graphics
+// pages (theme-loader.js) read event-config.json directly rather than the
+// live-merged /api/config, so a style-defaults.json change delivered by
+// `git pull` would otherwise sit inert — showing whatever value was baked
+// into this file at the last operator save — until someone happened to
+// save an unrelated setting and regenerated it as a side effect. A service
+// restart, which every self-update already performs, should be enough on
+// its own to bring the graphics up to date; this is what makes that true.
+try {
+  fs.writeFileSync(CONFIG_FILE, JSON.stringify(readConfig(), null, 2));
+} catch (e) {
+  console.warn('[config] could not refresh event-config.json on boot:', e.message);
+}
+
 // ── Config history (auto-backup) + presets ───────────────────────────────
 // Every save to event-config.json drops a timestamped snapshot into
 // config/history/, keeping the last MAX_BACKUPS. Operators can roll back to

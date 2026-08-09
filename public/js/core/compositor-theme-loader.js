@@ -360,7 +360,12 @@
         graphicRoot.style.setProperty('--of-title-size',    `${pos.ofTitleSize    ?? 36}px`);
         graphicRoot.style.setProperty('--of-subtitle-size', `${pos.ofSubtitleSize ?? 16}px`);
         graphicRoot.style.setProperty('--of-role-size',     `${pos.ofRoleSize     ?? 14}px`);
-        graphicRoot.style.setProperty('--of-name-size',     `${pos.ofNameSize     ?? 20}px`);
+        // Three tiers instead of one raw size — see officials/style.css and
+        // the matching block in theme-loader.js for why.
+        const ofName = pos.ofNameSize ?? 20;
+        graphicRoot.style.setProperty('--of-name-size-lg', `${ofName}px`);
+        graphicRoot.style.setProperty('--of-name-size-md', `${Math.round(ofName * 0.846)}px`);
+        graphicRoot.style.setProperty('--of-name-size-sm', `${Math.round(ofName * 0.692)}px`);
         graphicRoot.style.setProperty('--of-title-sub-gap', `${pos.titleSubGap    ?? 4}px`);
         graphicRoot.style.setProperty('--of-col-role',      `${pos.colRole ?? 220}px`);
         graphicRoot.style.setProperty('--of-role-align',     pos.ofRoleAlign || 'right');

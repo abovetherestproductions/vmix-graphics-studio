@@ -290,7 +290,14 @@
         root.style.setProperty('--of-title-size',    `${pos.ofTitleSize    ?? 36}px`);
         root.style.setProperty('--of-subtitle-size', `${pos.ofSubtitleSize ?? 16}px`);
         root.style.setProperty('--of-role-size',     `${pos.ofRoleSize     ?? 14}px`);
-        root.style.setProperty('--of-name-size',     `${pos.ofNameSize     ?? 20}px`);
+        // Three tiers instead of one raw size (see officials/style.css for why:
+        // a panel of 3-4 officials was rendering the configured size completely
+        // unclamped). -sm reproduces what a busy 8+ panel already looked like,
+        // since that was the only row count this ever actually ran at.
+        const ofName = pos.ofNameSize ?? 20;
+        root.style.setProperty('--of-name-size-lg', `${ofName}px`);
+        root.style.setProperty('--of-name-size-md', `${Math.round(ofName * 0.846)}px`);
+        root.style.setProperty('--of-name-size-sm', `${Math.round(ofName * 0.692)}px`);
         root.style.setProperty('--of-title-sub-gap', `${pos.titleSubGap    ?? 4}px`);
       }
 
