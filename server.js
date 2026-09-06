@@ -3770,6 +3770,7 @@ async function applyScApiManualSkater(entryId) {
     coaches:        extras?.coaches || '',
     quote:          extras?.quote || '',
     musicTitle:     skaterExtrasService.musicForSegment(extras, data.segmentName),
+    scoreToFirst:   data.scoreToFirst ?? null,
   };
   existing.meta.revision  = Date.now();
   existing.meta.updatedAt = new Date().toISOString();

@@ -185,7 +185,10 @@
       "msShowCoaches": false,
       "msShowQuote": false,
       "msShowMusic": false,
-      "msShowCategory": true
+      "msShowCategory": true,
+      "msShowScoreToFirst": false,
+      "msFirstDelaySecs": 3,
+      "msFirstHoldSecs": 4
     },
     "officials": {
       "x": -150,

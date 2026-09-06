@@ -1496,6 +1496,11 @@ function setPosUI(id, pos) {
     st(`pv-ms-quote-secs-${id}`, `${p.msQuoteSecs ?? 4}s`);
     sv(`pos-ms-coach-secs-${id}`, p.msCoachSecs ?? 4);
     st(`pv-ms-coach-secs-${id}`, `${p.msCoachSecs ?? 4}s`);
+    setCkOff(`pos-ms-show-first-${id}`, p.msShowScoreToFirst);
+    sv(`pos-ms-first-delay-${id}`, p.msFirstDelaySecs ?? 3);
+    st(`pv-ms-first-delay-${id}`, `${p.msFirstDelaySecs ?? 3}s`);
+    sv(`pos-ms-first-hold-${id}`, p.msFirstHoldSecs ?? 4);
+    st(`pv-ms-first-hold-${id}`, `${p.msFirstHoldSecs ?? 4}s`);
   }
   if (id === 'interview') {
     sv('pos-l2src-interview', p.ltLine2Source || 'club');
@@ -1735,6 +1740,9 @@ function readPos(id) {
     msShowCategory:  id === 'manual-skater' ? (g(`pos-ms-show-category-${id}`)?.checked !== false) : undefined,
     msQuoteSecs:     id === 'manual-skater' ? Number(g(`pos-ms-quote-secs-${id}`)?.value ?? 4) : undefined,
     msCoachSecs:     id === 'manual-skater' ? Number(g(`pos-ms-coach-secs-${id}`)?.value ?? 4) : undefined,
+    msShowScoreToFirst: id === 'manual-skater' ? !!g(`pos-ms-show-first-${id}`)?.checked : undefined,
+    msFirstDelaySecs:   id === 'manual-skater' ? Number(g(`pos-ms-first-delay-${id}`)?.value ?? 3) : undefined,
+    msFirstHoldSecs:    id === 'manual-skater' ? Number(g(`pos-ms-first-hold-${id}`)?.value  ?? 4) : undefined,
     ltLine2Source: id === 'interview' ? (g('pos-l2src-interview')?.value || 'club') : undefined,
     ltLine2Custom: id === 'interview' ? (g('pos-l2custom-interview')?.value || '') : undefined,
     ltFlagPad:    id === 'lower-third' ? Number(g(`pos-fp-${id}`)?.value ?? 24) : undefined,
@@ -1966,6 +1974,8 @@ function onPosChange(id) {
 	  if (id === 'manual-skater') {
 	    st(`pv-ms-quote-secs-${id}`, `${p.msQuoteSecs}s`);
 	    st(`pv-ms-coach-secs-${id}`, `${p.msCoachSecs}s`);
+	    st(`pv-ms-first-delay-${id}`, `${p.msFirstDelaySecs}s`);
+	    st(`pv-ms-first-hold-${id}`, `${p.msFirstHoldSecs}s`);
 	  }
 	  if (id === 'elements') {
 	    st(`pv-el-title-x-${id}`, `${p.elTitleX ?? 0}px`);
@@ -2094,7 +2104,7 @@ async function resetPos(id) {
 	  const elDefaults   = id === 'elements'    ? { elSkaterSize:18, elTotalSize:26, elLabelSize:9, elCodeSize:15, elValueSize:14, elTitleX:0, elTitleY:0, elAutoFit:false, elBodyDelay:2000, elHighestLabelSize:0, elHighestScoreSize:0, elHighestLabelColor:'#ffc848', elHighestScoreColor:'#ffc848' } : {};
   const ofDefaults   = id === 'officials'   ? { ofRoleAlign:'right' } : {};
   const msgDefaults  = id === 'messages'    ? { msgLine1Size:40, msgLine2Size:20 } : {};
-  const msExtrasDefaults = id === 'manual-skater' ? { msExtrasEnabled:true, msShowCoaches:false, msShowQuote:false, msShowMusic:false, msShowCategory:true, msQuoteSecs:4, msCoachSecs:4 } : {};
+  const msExtrasDefaults = id === 'manual-skater' ? { msExtrasEnabled:true, msShowCoaches:false, msShowQuote:false, msShowMusic:false, msShowCategory:true, msQuoteSecs:4, msCoachSecs:4, msShowScoreToFirst:false, msFirstDelaySecs:3, msFirstHoldSecs:4 } : {};
   const defaults = { x:0, y:0, scale:1, width: NATURAL_WIDTHS[id]||880, height:0,
                      zoom:100, rowPad:0, rounded:true, radius:20, ltFlagHeight:68,
                      animPreset:'default', animSpeed:420, animEasing:'smooth',
@@ -2882,7 +2892,28 @@ function buildCards() {
                      oninput="onPosChange('${t.id}')" title="How long the quote shows before switching to music">
               <span class="pos-val" id="pv-ms-quote-secs-${t.id}">4s</span>
             </div>
-            
+
+            <div style="margin:8px 0 2px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);grid-column:1/-1;">Score To Lead Callout</div>
+            <div style="grid-column:1/-1;margin-bottom:4px;">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;"
+                     title="Briefly shows how many points this skater needs to move into first place. Skips the first skater of the running order, and anyone already in the lead.">
+                <input type="checkbox" id="pos-ms-show-first-${t.id}" onchange="onPosChange('${t.id}')"
+                       style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;" />
+                <span style="font-size:12px;color:var(--text2);">Show "Score needed to go into first place"</span>
+              </label>
+            </div>
+            <div class="pos-row">
+              <label>Appears After</label>
+              <input type="range" id="pos-ms-first-delay-${t.id}" min="0" max="10" value="3" step="0.5"
+                     oninput="onPosChange('${t.id}')" title="Seconds after the skater bar is shown before this callout appears">
+              <span class="pos-val" id="pv-ms-first-delay-${t.id}">3s</span>
+            </div>
+            <div class="pos-row">
+              <label>Stays Visible</label>
+              <input type="range" id="pos-ms-first-hold-${t.id}" min="1" max="10" value="4" step="0.5"
+                     oninput="onPosChange('${t.id}')" title="How long the callout stays on screen before disappearing">
+              <span class="pos-val" id="pv-ms-first-hold-${t.id}">4s</span>
+            </div>
             ` : ''}
             ${FLAG_TOGGLE_TEMPLATES.includes(t.id) ? `
             <div style="margin:8px 0 2px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);grid-column:1/-1;">Flag (Right Side)</div>

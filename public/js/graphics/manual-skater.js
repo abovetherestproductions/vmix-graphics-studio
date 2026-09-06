@@ -11,6 +11,9 @@
   const infoCategoryEl = document.getElementById('lt-info-category');
   const infoSegmentEl = document.getElementById('lt-info-segment');
   const infoGroupEl = document.getElementById('lt-info-group');
+  const firstCardEl = document.getElementById('lt-first-card');
+  const firstLabelEl = document.getElementById('lt-first-label');
+  const firstValueEl = document.getElementById('lt-first-value');
 
   let currentRevision = null;
   let currentVisible = false;
@@ -258,8 +261,76 @@
     renderInfoCard(data);
   }
 
+  // ── "Score needed to lead" callout ──────────────────────────────────
+  // A timed, one-shot flourish — independent of the category/coach/quote
+  // card and of the bar's own show/hide animation. Scheduled fresh every
+  // time a skater is actually pushed to the bar (animateIn or
+  // animateUpdate), not on every render() — a language switch or other
+  // config refresh re-renders the SAME skater and must not restart it.
+  //
+  // theme-loader's config fetch and this page's own skater-data delivery
+  // (WS + the poller's own first HTTP fetch, both firing on load) race each
+  // other, and the data reliably wins on a local network — so the very
+  // first skater pushed to a freshly-loaded page routinely arrives before
+  // configHeaderOverrides exists at all. Guessing at the delay/hold with
+  // fallback numbers in that case would silently ignore whatever the
+  // operator actually configured, so instead this waits for the
+  // 'graphics-config-updated' event theme-loader fires once it's done, and
+  // only then reads the real values and starts the countdown.
+  let firstShowTimer = null;
+  let firstHideTimer = null;
+  let themeReady = false;
+  let pendingScoreToFirstData = null;
+
+  function hideScoreToFirst() {
+    clearTimeout(firstShowTimer);
+    clearTimeout(firstHideTimer);
+    pendingScoreToFirstData = null;
+    if (firstCardEl) {
+      firstCardEl.classList.remove('is-visible');
+      firstCardEl.setAttribute('aria-hidden', 'true');
+    }
+  }
+
+  function scheduleScoreToFirst(data = {}) {
+    hideScoreToFirst(); // clear any leftover timer/visibility/pending retry
+    if (!firstCardEl) return;
+
+    const value = Number(data.scoreToFirst);
+    if (!Number.isFinite(value) || value <= 0) return;
+
+    if (!themeReady) {
+      // Config isn't loaded yet — wait for it rather than schedule off a
+      // guess. The 'graphics-config-updated' listener below retries this
+      // exact call the moment theme-loader signals it's ready.
+      pendingScoreToFirstData = data;
+      return;
+    }
+
+    const ovr = window.configHeaderOverrides?.['manual-skater'] || {};
+    if (ovr.msShowScoreToFirst !== true) return;
+
+    const lang = document.documentElement.lang || 'en';
+    if (firstLabelEl) {
+      firstLabelEl.textContent = lang === 'fr'
+        ? 'Pointage requis pour la 1re place'
+        : 'Score needed to go into first place';
+    }
+    if (firstValueEl) firstValueEl.textContent = value.toFixed(2);
+
+    const delayMs = Math.max(0, Number(ovr.msFirstDelayMs) || 3000);
+    const holdMs  = Math.max(500, Number(ovr.msFirstHoldMs)  || 4000);
+
+    firstShowTimer = setTimeout(() => {
+      firstCardEl.classList.add('is-visible');
+      firstCardEl.setAttribute('aria-hidden', 'false');
+      firstHideTimer = setTimeout(hideScoreToFirst, holdMs);
+    }, delayMs);
+  }
+
   function animateIn(payload) {
     render(payload.data);
+    scheduleScoreToFirst(payload.data);
     root.classList.remove('hidden', 'out');
     requestAnimationFrame(() => requestAnimationFrame(() => root.classList.add('visible')));
     currentVisible = true;
@@ -267,6 +338,7 @@
 
   function animateOut() {
     return new Promise(resolve => {
+      hideScoreToFirst(); // don't let it pop up (or keep counting) over a hidden bar
       root.classList.remove('visible');
       root.classList.add('out');
       setTimeout(() => {
@@ -287,12 +359,14 @@
 
     if (nextLine1 === currentLine1 && nextLine2 === currentLine2) {
       render(payload.data);
+      scheduleScoreToFirst(payload.data);
       return;
     }
 
     textColEl.classList.add('lt-text-fading');
     await window.GraphicsUtils.delay(150);
     render(payload.data);
+    scheduleScoreToFirst(payload.data);
     requestAnimationFrame(() => textColEl.classList.remove('lt-text-fading'));
   }
 
@@ -334,6 +408,18 @@
   if (window.WsListener) window.WsListener.subscribe('manual-skater', handlePayload);
 
   window.addEventListener('graphics-config-updated', () => {
+    const justBecameReady = !themeReady;
+    themeReady = true;
     if (lastData) render(lastData);
+    // A skater arrived before config did (see scheduleScoreToFirst) — now
+    // that it's here, run the one retry that was waiting on it. Only on the
+    // FIRST time theme-loader reports ready: later config-updated events
+    // (an operator changing a slider mid-broadcast) must not restart an
+    // already-decided callout.
+    if (justBecameReady && pendingScoreToFirstData) {
+      const data = pendingScoreToFirstData;
+      pendingScoreToFirstData = null;
+      scheduleScoreToFirst(data);
+    }
   });
 })();

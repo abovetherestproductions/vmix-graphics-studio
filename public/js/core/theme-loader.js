@@ -395,6 +395,12 @@
         msShowCategory: pos.msShowCategory !== false,
         msQuoteMs:      (Number(pos.msQuoteSecs) || 4) * 1000,
         msCoachMs:      (Number(pos.msCoachSecs) || 4) * 1000,
+        // "Score needed to lead" callout — off by default; a separate,
+        // independently-timed flourish, not part of the coach/quote/music
+        // phase chain above.
+        msShowScoreToFirst: pos.msShowScoreToFirst === true,
+        msFirstDelayMs: (Number(pos.msFirstDelaySecs) || 3) * 1000,
+        msFirstHoldMs:  (Number(pos.msFirstHoldSecs)  || 4) * 1000,
       };
 
     }

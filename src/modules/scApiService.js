@@ -65,6 +65,43 @@ function createScApiService({
     priorScores = { key, bySkater, fetchedAt: Date.now() };
     return bySkater;
   }
+  /**
+   * "Score needed to reach 1st place" for the manual-skater bar — the gap
+   * between the current category leader's total (from the live rankings
+   * cache, refreshed every poll) and this skater's own total so far.
+   *
+   * Null — meaning "don't show anything" — when: this is the first skater
+   * of the running order, nobody in the category has a score yet, or this
+   * skater is already the leader (a negative/zero gap would look broken on
+   * air, not just be an uninteresting stat).
+   */
+  async function scoreNeededForFirst(entry, cfg) {
+    const startOrder = entry?.sortOrder ?? null;
+    if (startOrder == null || startOrder <= 1) return null;
+    if (!cfg.categoryId) return null;
+
+    const leaderRow = rankingsCache.allRows.find(r => r.rank === 1);
+    if (!leaderRow || leaderRow.total == null) return null; // nobody's scored yet
+
+    // Already skated this segment (re-selecting a past skater)? Use their
+    // full category total straight from the same live leaderboard row.
+    const entryIdStr = newApi.safeStr(entry?.competitorEntryId);
+    const ownRow = rankingsCache.allRows.find(r => newApi.safeStr(r.entryId) === entryIdStr);
+    let ownTotal = ownRow ? ownRow.total : null;
+
+    if (ownTotal == null) {
+      // Hasn't skated this segment yet — their total-so-far is whatever they
+      // brought in from earlier segments (0 if this is the category's first).
+      const skaterId = newApi.safeStr(entry?.skaterId || entry?.skatingCompetitorId);
+      if (!skaterId || !cfg.segmentId) return null;
+      const prior = await getPriorSegmentScores(cfg.categoryId, cfg.segmentId);
+      ownTotal = prior.get(skaterId) || 0;
+    }
+
+    const need = Math.round((leaderRow.total - ownTotal) * 100) / 100;
+    return need > 0 ? need : null;
+  }
+
   // Cache segment/category DTOs so we don't fetch them every single poll tick
   let _segmentCache  = { id: null, dto: null };
   let _categoryCache = { id: null, dto: null };
@@ -614,12 +651,20 @@ function createScApiService({
     const segName  = newApi.safeStr(segmentDto?.segmentName);
     const segNameFr = newApi.safeStr(segmentDto?.segmentFrenchName) || newApi.tr(segName);
 
+    let scoreToFirst = null;
+    try {
+      scoreToFirst = await scoreNeededForFirst(entry, cfg);
+    } catch (err) {
+      console.warn('[sc-api] scoreToFirst error:', err.message);
+    }
+
     return {
       name, club, section, flagUrl,
       categoryName: catName, categoryNameFr: catNameFr,
       segmentName: segName,  segmentNameFr:  segNameFr,
       groupNumber: entry?.warmUpGroup ?? null,
       startOrder:  entry?.sortOrder   ?? null,
+      scoreToFirst,
     };
   }
 
