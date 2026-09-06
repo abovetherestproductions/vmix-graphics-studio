@@ -113,23 +113,29 @@
    quote card below it — this is a timed, one-shot flourish scheduled
    entirely in JS (see scheduleScoreToFirst in manual-skater.js): appears a
    few seconds after a skater is pushed to the bar, holds, then disappears
-   on its own. Visually it mirrors .lt-info-card (same right-alignment,
-   same dark rounded card) but sits above the bar instead of below it, and
-   fades/slides under its own class rather than tucking behind the bar —
-   it has no "at rest, hidden behind the bar" state to return to. */
+   on its own. Visually it mirrors .lt-info-card (same dark rounded card,
+   same edge inset — mirrored to the left) but sits above the bar instead
+   of below it, and fades/slides under its own class rather than tucking
+   behind the bar: it has no "at rest, hidden behind the bar" state to
+   return to. Label and value share one baseline-aligned row. */
 .manual-skater .lt-first-card {
   position: absolute;
-  right: var(--lt-info-card-right, 20px);
+  /* Same operator-controlled inset as the category card, measured from the
+     opposite edge so the two cards sit symmetrically about the bar. */
+  left: var(--lt-info-card-right, 20px);
   bottom: calc(100% + var(--lt-first-gap, 14px));
   max-width: var(--lt-info-card-max-width, 760px);
   width: max-content;
   min-width: 0;
+  display: flex;
+  align-items: baseline;
+  column-gap: var(--lt-first-gap-x, 14px);
   padding: var(--lt-info-card-pad-y, 15px) var(--lt-info-card-pad-x, 18px);
   border-radius: var(--lt-info-card-radius, 18px);
   background: var(--lt-info-card-bg, rgba(6, 7, 11, 0.94));
   box-shadow: var(--lt-info-card-shadow, 0 12px 26px rgba(0, 0, 0, 0.24));
   color: var(--lt-info-card-color, #fff);
-  text-align: right;
+  text-align: left;
   opacity: 0;
   transform: translateY(10px);
   pointer-events: none;
@@ -141,15 +147,22 @@
   transform: translateY(0);
 }
 
+/* Same size as the category card's own lines (.lt-info-line) so the two
+   cards read as one family; the uppercase weight keeps it reading as a
+   label for the number beside it. */
 .manual-skater .lt-first-label {
   font-family: var(--font-body);
-  font-size: calc(var(--lt-info-card-font-size, 18px) * 0.62);
+  font-size: var(--lt-info-card-font-size, 18px);
   font-weight: 800;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   opacity: 0.7;
-  margin-bottom: 3px;
   white-space: nowrap;
+  /* If the operator's max-width ever clamps the card, the label gives way
+     rather than the number. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .manual-skater .lt-first-value {
@@ -159,4 +172,5 @@
   font-variant-numeric: tabular-nums;
   line-height: 1;
   white-space: nowrap;
+  flex: 0 0 auto;
 }
