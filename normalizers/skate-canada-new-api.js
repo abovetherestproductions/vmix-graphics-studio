@@ -891,6 +891,12 @@ function normalizeElements(elements, entry, categoryDto, segmentDto, existingCon
       // this file.
       name:           skaterName,
       skaterName,
+      // Who this tracker is currently showing. Not rendered by the graphic —
+      // it lets other code tell "these elements belong to the skater I'm
+      // asking about" from "the tracker is still holding the previous
+      // skater", which a name match can't do reliably once the operator's
+      // name-format options are in play. See scoreNeededForFirst().
+      entryId:        entry ? safeStr(entry.competitorEntryId) : '',
       categoryName:   catName,
       categoryNameFr: catNameFr,
       segmentName:    segName,

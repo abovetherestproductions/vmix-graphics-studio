@@ -71,21 +71,36 @@ function createScApiService({
    * cache, refreshed every poll) and this skater's own total so far.
    *
    * Null — meaning "don't show anything" — when: this is the first skater
-   * of the running order, nobody in the category has a score yet, or this
+   * of the running order, nobody in the category has a score yet, this
    * skater is already the leader (a negative/zero gap would look broken on
-   * air, not just be an uninteresting stat).
+   * air, not just be an uninteresting stat), or their program is already
+   * under way (see the element-tracker check below).
    */
   async function scoreNeededForFirst(entry, cfg) {
     const startOrder = entry?.sortOrder ?? null;
     if (startOrder == null || startOrder <= 1) return null;
     if (!cfg.categoryId) return null;
 
+    const entryIdStr = newApi.safeStr(entry?.competitorEntryId);
+
+    // Program already under way? The element tracker fills in as the tech
+    // panel enters each element, so a single scored element for THIS skater
+    // means they are on the ice or done — and "what they need to lead" is no
+    // longer something they can go out and do. Matching on entry id is the
+    // point of the check: the tracker routinely still holds the PREVIOUS
+    // skater when the next one is pushed to the bar, and that must not
+    // suppress a callout that is perfectly valid.
+    if (entryIdStr) {
+      const els = readData('elements')?.data;
+      const scoredElements = els?.elements?.length || els?.rows?.length || 0;
+      if (scoredElements > 0 && newApi.safeStr(els.entryId) === entryIdStr) return null;
+    }
+
     const leaderRow = rankingsCache.allRows.find(r => r.rank === 1);
     if (!leaderRow || leaderRow.total == null) return null; // nobody's scored yet
 
     // Already skated this segment (re-selecting a past skater)? Use their
     // full category total straight from the same live leaderboard row.
-    const entryIdStr = newApi.safeStr(entry?.competitorEntryId);
     const ownRow = rankingsCache.allRows.find(r => newApi.safeStr(r.entryId) === entryIdStr);
     let ownTotal = ownRow ? ownRow.total : null;
 
