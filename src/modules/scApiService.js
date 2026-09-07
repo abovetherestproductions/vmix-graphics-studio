@@ -13,6 +13,42 @@
 const { fetchJson } = require('../../normalizers');
 const newApi = require('../../normalizers/skate-canada-new-api');
 
+/**
+ * Skate Canada's option-set code for a category whose scores are ranked and
+ * public. STAR 1-4 are assessed, not ranked: a score exists in the system,
+ * and we are not permitted to put it on air.
+ *
+ * Verified against two real events (61 and 100 categories): this one code
+ * covers every competitive category (Pre-Juvenile through Senior, all
+ * disciplines) plus STAR 5 through STAR 10, Gold, and Adult Artistic. The
+ * assessed levels carry their own codes - STAR 4 is 947960002, and STAR 2
+ * and 3 are 947960001, which did not appear in the first event at all.
+ *
+ * That is exactly why the check that uses this is an allow-list and fails
+ * CLOSED - see isPubliclyScored(). A block-list built from the first event
+ * alone would have put STAR 2 and 3 scores on air.
+ */
+const SCORED_CATEGORY_METHOD = 947960000;
+
+/**
+ * May this category's scores go on air?
+ *
+ * Deliberately an allow-list of one rather than a block-list of the assessed
+ * codes: a code we have never seen before hides the number instead of
+ * leaking it. The cost of being wrong in that direction is a callout that
+ * silently stops appearing; the cost of the other direction is broadcasting
+ * a score we are not allowed to show. Those are not equivalent.
+ */
+function isPubliclyScored(categoryDto) {
+  // Compared as a number so the feature survives the API ever quoting the
+  // code as a string - that variation carries no ambiguity about which
+  // category we are looking at. Anything genuinely absent or unrecognised
+  // (null DTO, missing definitions, a code we have not seen) is NaN or a
+  // non-match here, and stays blocked.
+  const method = categoryDto?.skatingcategorydefinitions?.categoryDefinitionScoringMethod;
+  return method != null && Number(method) === SCORED_CATEGORY_METHOD;
+}
+
 function createScApiService({
   getConfig,           // () => event-config object
   readData,            // (template) => payload | null
@@ -73,13 +109,21 @@ function createScApiService({
    * Null — meaning "don't show anything" — when: this is the first skater
    * of the running order, nobody in the category has a score yet, this
    * skater is already the leader (a negative/zero gap would look broken on
-   * air, not just be an uninteresting stat), or their program is already
-   * under way (see the element-tracker check below).
+   * air, not just be an uninteresting stat), their program is already under
+   * way (see the element-tracker check below), or the category is assessed
+   * rather than ranked and its scores may not be shown at all.
    */
-  async function scoreNeededForFirst(entry, cfg) {
+  async function scoreNeededForFirst(entry, cfg, categoryDto) {
     const startOrder = entry?.sortOrder ?? null;
     if (startOrder == null || startOrder <= 1) return null;
     if (!cfg.categoryId) return null;
+
+    // STAR 1-4 and anything else not positively known to be publicly ranked:
+    // the callout is nothing but a score, so there is no version of it that
+    // is safe to show here. (STAR 1-3 are doubly covered - no score is
+    // published for them, so the leader lookup below would find nothing
+    // either - but this check is the one that states the intent.)
+    if (!isPubliclyScored(categoryDto)) return null;
 
     const entryIdStr = newApi.safeStr(entry?.competitorEntryId);
 
@@ -668,7 +712,7 @@ function createScApiService({
 
     let scoreToFirst = null;
     try {
-      scoreToFirst = await scoreNeededForFirst(entry, cfg);
+      scoreToFirst = await scoreNeededForFirst(entry, cfg, categoryDto);
     } catch (err) {
       console.warn('[sc-api] scoreToFirst error:', err.message);
     }
