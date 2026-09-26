@@ -352,10 +352,10 @@
         root.style.setProperty('--sp-club-size', `${pos.spClubSize ?? 18}px`);
         root.style.setProperty('--sp-stat-size', `${pos.spStatSize ?? 32}px`);
         root.style.setProperty('--sp-detail-size', `${pos.spDetailSize ?? 19}px`);
-        root.style.setProperty('--sp-detail-base', `${pos.spDetailSize ?? 19}px`);
         root.style.setProperty('--sp-bio-size', `${pos.spBioSize ?? 16}px`);
         // Wider photo column for two stacked portraits than for one.
-        root.style.setProperty('--sp-photo-width', `${pos.spPhotoWidth ?? 440}px`);
+        root.style.setProperty('--sp-photo-width', `${pos.spPhotoWidth ?? 560}px`);
+        root.style.setProperty('--sp-inset-y', `${pos.spInsetY ?? 20}px`);
         root.style.setProperty('--sp-fade-start', `${pos.spFadeStart ?? 90}%`);
         root.style.setProperty('--sp-event-size', `${pos.spEventSize ?? 19}px`);
         root.style.setProperty('--sp-subtitle-size', `${pos.spSubtitleSize ?? 14}px`);

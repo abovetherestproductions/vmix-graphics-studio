@@ -1674,8 +1674,9 @@ function setPosUI(id, pos) {
     sv(`pos-sp-club-${id}`, p.spClubSize ?? 18);  st(`pv-sp-club-${id}`, `${p.spClubSize ?? 18}px`);
     sv(`pos-sp-stat-${id}`, p.spStatSize ?? 32);  st(`pv-sp-stat-${id}`, `${p.spStatSize ?? 32}px`);
     sv(`pos-sp-detail-${id}`, p.spDetailSize ?? 19); st(`pv-sp-detail-${id}`, `${p.spDetailSize ?? 19}px`);
-    sv(`pos-sp-photow-${id}`, p.spPhotoWidth ?? 440); st(`pv-sp-photow-${id}`, `${p.spPhotoWidth ?? 440}px`);
+    sv(`pos-sp-photow-${id}`, p.spPhotoWidth ?? 560); st(`pv-sp-photow-${id}`, `${p.spPhotoWidth ?? 560}px`);
     sv(`pos-sp-fade-${id}`, p.spFadeStart ?? 90); st(`pv-sp-fade-${id}`, `${p.spFadeStart ?? 90}%`);
+    sv(`pos-sp-inset-${id}`, p.spInsetY ?? 20); st(`pv-sp-inset-${id}`, `${p.spInsetY ?? 20}px`);
     sv(`pos-sp-event-${id}`, p.spEventSize ?? 19); st(`pv-sp-event-${id}`, `${p.spEventSize ?? 19}px`);
     sv(`pos-sp-sub-${id}`, p.spSubtitleSize ?? 14); st(`pv-sp-sub-${id}`, `${p.spSubtitleSize ?? 14}px`);
     // Details are opt-in, the two score tiles opt-out. Declared here rather
@@ -1859,6 +1860,7 @@ function readPos(id) {
     spDetailSize:   id === 'skater-profile' ? Number(g(`pos-sp-detail-${id}`)?.value ?? 19) : undefined,
     spPhotoWidth:   id === 'skater-profile' ? Number(g(`pos-sp-photow-${id}`)?.value ?? 380) : undefined,
     spFadeStart:    id === 'skater-profile' ? Number(g(`pos-sp-fade-${id}`)?.value ?? 90) : undefined,
+    spInsetY:       id === 'skater-profile' ? Number(g(`pos-sp-inset-${id}`)?.value ?? 20) : undefined,
     spEventSize:    id === 'skater-profile' ? Number(g(`pos-sp-event-${id}`)?.value ?? 19) : undefined,
     spSubtitleSize: id === 'skater-profile' ? Number(g(`pos-sp-sub-${id}`)?.value ?? 14) : undefined,
     ...(id === 'skater-profile'
@@ -2047,6 +2049,7 @@ function onPosChange(id) {
     st(`pv-sp-detail-${id}`, `${p.spDetailSize}px`);
     st(`pv-sp-photow-${id}`, `${p.spPhotoWidth}px`);
     st(`pv-sp-fade-${id}`, `${p.spFadeStart}%`);
+    st(`pv-sp-inset-${id}`, `${p.spInsetY}px`);
     st(`pv-sp-event-${id}`, `${p.spEventSize}px`);
     st(`pv-sp-sub-${id}`, `${p.spSubtitleSize}px`);
   }
@@ -2170,7 +2173,7 @@ async function resetPos(id) {
   const msExtrasDefaults = id === 'manual-skater' ? { msExtrasEnabled:true, msShowCoaches:false, msShowQuote:false, msShowMusic:false, msShowCategory:true, msQuoteSecs:4, msCoachSecs:4, msShowScoreToFirst:false, msFirstDelaySecs:3, msFirstHoldSecs:4 } : {};
   // Skater profile: details off, the two score tiles on — the panel as it
   // was before any of the optional rows existed.
-  const spDefaults = id === 'skater-profile' ? { spNameSize:44, spClubSize:18, spStatSize:32, spDetailSize:19, spBioSize:16, spPhotoWidth:440, spFadeStart:90, spEventSize:19, spSubtitleSize:14, spShowBio:false, spShowPbEvent:false, spShowSeasonBest:true, spShowPersonalBest:true, ...Object.fromEntries(SP_DETAIL_ROWS.map(([f]) => [spCfgKey(f), false])) } : {};
+  const spDefaults = id === 'skater-profile' ? { spNameSize:44, spClubSize:18, spStatSize:32, spDetailSize:19, spBioSize:16, spPhotoWidth:560, spFadeStart:90, spInsetY:20, spEventSize:19, spSubtitleSize:14, spShowBio:false, spShowPbEvent:false, spShowSeasonBest:true, spShowPersonalBest:true, ...Object.fromEntries(SP_DETAIL_ROWS.map(([f]) => [spCfgKey(f), false])) } : {};
   const defaults = { x:0, y:0, scale:1, width: NATURAL_WIDTHS[id]||880, height:0,
                      zoom:100, rowPad:0, rounded:true, radius:20, ltFlagHeight:68,
                      animPreset:'default', animSpeed:420, animEasing:'smooth',
@@ -3612,8 +3615,13 @@ function buildCards() {
             </div>
             <div class="pos-row">
               <label>Photo Width</label>
-              <input type="range" id="pos-sp-photow-${t.id}" min="120" max="520" value="440" step="5" oninput="onPosChange('${t.id}')">
-              <span class="pos-val" id="pv-sp-photow-${t.id}">440px</span>
+              <input type="range" id="pos-sp-photow-${t.id}" min="120" max="760" value="560" step="5" oninput="onPosChange('${t.id}')">
+              <span class="pos-val" id="pv-sp-photow-${t.id}">560px</span>
+            </div>
+            <div class="pos-row">
+              <label>Top/Bottom Gap</label>
+              <input type="range" id="pos-sp-inset-${t.id}" min="0" max="160" value="20" step="2" oninput="onPosChange('${t.id}')">
+              <span class="pos-val" id="pv-sp-inset-${t.id}">20px</span>
             </div>
             <div class="pos-row">
               <label>Photo Fade</label>

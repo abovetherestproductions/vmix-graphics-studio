@@ -2,8 +2,12 @@
 .skater-profile {
   position: absolute;
   left: var(--safe-left, 70px);
-  top: var(--safe-top, 60px);
-  bottom: var(--safe-bottom, 60px);
+  /* One inset for both edges, so the panel is always evenly spaced top and
+     bottom however it is tuned. Deliberately tighter than the shared safe
+     area other graphics use: this is a full-height panel and the extra room
+     is what lets the detail rows stay at a readable size. */
+  top: var(--sp-inset-y, 20px);
+  bottom: var(--sp-inset-y, 20px);
   width: 680px;
   pointer-events: none;
   display: flex;
@@ -21,7 +25,7 @@
    splitting it vertically gives each portrait a portrait-shaped frame,
    where splitting it horizontally would give each a 100px-wide sliver. */
 .sp-photo-wrap {
-  width: var(--sp-photo-width, 440px);
+  width: var(--sp-photo-width, 560px);
   flex-shrink: 0;
   position: relative;
   overflow: hidden;
@@ -249,22 +253,6 @@
   min-height: 0;
 }
 
-/* Row-count tiers, the same idea the officials and rankings panels use: the
-   more rows are switched on, the tighter they sit, so a heavily loaded panel
-   still fits the safe area instead of running off the bottom. Sizes are
-   fractions of the operator's own detail size, so their setting still leads. */
-.sp-details.rows-many {
-  --sp-details-gap: 8px;
-  --sp-detail-size: calc(var(--sp-detail-base, 19px) * 0.88);
-}
-.sp-details.rows-packed {
-  --sp-details-gap: 6px;
-  --sp-detail-size: calc(var(--sp-detail-base, 19px) * 0.78);
-}
-.sp-details.rows-many .sp-detail-label,
-.sp-details.rows-packed .sp-detail-label {
-  margin-bottom: 0;
-}
 .sp-detail-label {
   font-family: var(--font-display);
   font-size: var(--sp-detail-label-size, 11px);
