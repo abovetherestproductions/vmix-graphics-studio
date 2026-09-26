@@ -133,6 +133,13 @@
     });
     detailsEl.hidden = !anyDetail;
 
+    // Tighten the rows as more of them are switched on. Thresholds chosen
+    // against the panel's own height: comfortable spacing runs out somewhere
+    // around nine rows, and the packed tier carries the rest.
+    const rowsOn = detailsEl.querySelectorAll('.sp-detail:not([hidden])').length;
+    detailsEl.classList.toggle('rows-many',   rowsOn >= 7  && rowsOn < 10);
+    detailsEl.classList.toggle('rows-packed', rowsOn >= 10);
+
     const bio = show.bio && (data.bio || '').trim();
     bioEl.hidden = !bio;
     bioEl.textContent = bio || '';

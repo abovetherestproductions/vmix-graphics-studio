@@ -435,6 +435,7 @@
         graphicRoot.style.setProperty('--sp-club-size', `${pos.spClubSize ?? 18}px`);
         graphicRoot.style.setProperty('--sp-stat-size', `${pos.spStatSize ?? 32}px`);
         graphicRoot.style.setProperty('--sp-detail-size', `${pos.spDetailSize ?? 19}px`);
+        graphicRoot.style.setProperty('--sp-detail-base', `${pos.spDetailSize ?? 19}px`);
         graphicRoot.style.setProperty('--sp-bio-size', `${pos.spBioSize ?? 16}px`);
         graphicRoot.style.setProperty('--sp-photo-width', `${pos.spPhotoWidth ?? 440}px`);
         graphicRoot.style.setProperty('--sp-fade-start', `${pos.spFadeStart ?? 90}%`);
