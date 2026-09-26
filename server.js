@@ -24,6 +24,7 @@ const { createMessagesService } = require('./src/modules/messages');
 const { createManualSkatersService } = require('./src/modules/manualSkaters');
 const { createSkaterExtrasService } = require('./src/modules/skaterExtras');
 const { createScApiService }         = require('./src/modules/scApiService');
+const { createIsuDbService }        = require('./src/modules/isuDbService');
 const { createVmixClient }           = require('./src/modules/vmixClient');
 
 const app    = express();
@@ -425,7 +426,21 @@ function getDataSourceMode(cfg = readConfig()) {
   const mode = cfg.dataSource?.mode;
   if (mode === 'csv-folder') return 'csv-folder';
   if (mode === 'sc-api')     return 'sc-api';
+  if (mode === 'isu-db')     return 'isu-db';
   return 'live-json';
+}
+
+/**
+ * Modes whose starting-order data is already sitting in starting-order.json,
+ * written whole (every warm-up group) by a polling service. Switching groups
+ * for these is a re-slice of that file, not another trip to the source.
+ *
+ * Both members are here because the slicing is genuinely source-agnostic - it
+ * only ever touches allRows. Nothing about sc-api's behaviour changes by
+ * isu-db joining it.
+ */
+function usesFileBackedStartOrder(mode) {
+  return mode === 'sc-api' || mode === 'isu-db';
 }
 
 function getCsvSettings(cfg = readConfig()) {
@@ -914,8 +929,19 @@ const scApiService = createScApiService({
   onSkaterElementsReady,
 });
 
+// ISU practice mode. Feeds start order, name bar and skater profile from the
+// standalone profile database; see src/modules/isuDbService.js. Dormant unless
+// dataSource.mode is 'isu-db'.
+const isuDbService = createIsuDbService({
+  getConfig: readConfig,
+  readData,
+  writeAndBroadcast,
+  logger: actionLogger,
+});
+
 function isSourcePollingActive() {
-  return Object.keys(liveTimers).length > 0 || !!csvPollTimer || scApiService.isActive();
+  return Object.keys(liveTimers).length > 0 || !!csvPollTimer
+    || scApiService.isActive() || isuDbService.isActive();
 }
 
 function sliceRankingsPage(payload, currentPage = 1) {
@@ -1244,9 +1270,9 @@ async function setStartingOrderGroup(group) {
     };
   }
 
-  if (getDataSourceMode(cfg) === 'sc-api') {
-    // sc-api mode: pollOnce() writes allRows (every group) into the file.
-    // Re-slice by warmUpGroup without hitting the API again.
+  if (usesFileBackedStartOrder(getDataSourceMode(cfg))) {
+    // The polling service writes allRows (every group) into the file.
+    // Re-slice by warmUpGroup without hitting the source again.
     const existing = readData('starting-order');
     if (!existing) throw new Error('No starting-order data — select a segment first');
     const allRows = existing.data?.allRows || existing.data?.rows || [];
@@ -1725,7 +1751,15 @@ function startConfiguredPolling() {
   if (mode === 'csv-folder') {
     stopLivePolling();
     scApiService.stop();
+    isuDbService.stop();
     startCsvPolling();
+    return;
+  }
+  if (mode === 'isu-db') {
+    stopLivePolling();
+    stopCsvPolling();
+    scApiService.stop();
+    isuDbService.start();
     return;
   }
   if (mode === 'sc-api') {
@@ -1798,6 +1832,9 @@ chokidar.watch(path.join(DATA_DIR, '*.json'), { ignoreInitial: true })
         // config write (applyEventInfoPatch writes config on every poll tick,
         // which would cause an infinite restart loop in sc-api mode).
         if (mode === 'sc-api') return;
+        // Same reasoning for isu-db: it manages its own polling, and the
+        // operator page restarts it explicitly on connect.
+        if (mode === 'isu-db') return;
         if (cfg.dataSource?.livePoll?.enabled) startConfiguredPolling();
         else stopAllPolling();
       }, 600);
@@ -3137,9 +3174,9 @@ app.get('/api/preview/starting-order/group/:n', async (req, res) => {
 
   try {
     let payload;
-    if (sourceMode === 'sc-api') {
-      // sc-api mode: pollOnce() already wrote the correct data to starting-order.json.
-      // Just read that file and serve the requested group slice from it.
+    if (usesFileBackedStartOrder(sourceMode)) {
+      // The polling service already wrote the correct data to
+      // starting-order.json. Read it and serve the requested group slice.
       const existing = readData('starting-order');
       if (!existing) throw new Error('No starting-order data available yet — select a segment first');
       const allRows = existing.data?.allRows || existing.data?.rows || [];
@@ -3577,6 +3614,7 @@ app.post('/api/config', (req, res) => {
       const mode = getDataSourceMode(freshCfg);
       if (mode === 'csv-folder') { pollCsvFolder(); return; }
       if (mode === 'sc-api') { scApiService.pollOnce().catch(() => {}); return; }
+      if (mode === 'isu-db') { isuDbService.pollOnce().catch(() => {}); return; }
       const endpoints = Object.keys(freshCfg.dataSource?.urls || {});
       for (const endpoint of endpoints) {
         if (LIVE_ENDPOINTS[endpoint]) pollEndpoint(endpoint, freshCfg).catch(() => {});
@@ -3685,6 +3723,173 @@ app.post('/api/sc-api/select', async (req, res) => {
   // already contain the new segment's data and a preview-wall reload is immediate.
   await Promise.allSettled([scApiService.pollOnce(), scApiService.pollOfficials()]);
   res.json({ ok: true, mode: 'sc-api', segmentId });
+});
+
+// ── ISU practice mode ───────────────────────────────────────────────────────
+// Reads the standalone profile database instead of Skate Canada's CSS. See
+// src/modules/isuDbService.js for what this mode does and deliberately does
+// not do. Every route here is inert unless the operator connects.
+
+// Probe a database without committing to it - what the Connect button calls
+// first, so a wrong address fails before the mode is switched.
+app.get('/api/isu/status', async (req, res) => {
+  try {
+    // ?baseUrl= tests an address without saving it or changing mode.
+    const probe = String(req.query.baseUrl || '').trim();
+    const status = await isuDbService.getStatus(probe ? { baseUrlOverride: probe } : {});
+    res.json({ ok: true, ...status });
+  } catch (err) {
+    res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
+// Switch into ISU mode: save the address, blank what this mode cannot feed,
+// and start polling the published board.
+app.post('/api/isu/connect', async (req, res) => {
+  const { baseUrl, pollIntervalMs } = req.body || {};
+  const cfg = readConfig();
+  cfg.dataSource = cfg.dataSource || {};
+  cfg.dataSource.mode  = 'isu-db';
+  cfg.dataSource.isuDb = Object.assign({}, cfg.dataSource.isuDb || {}, {
+    baseUrl:        String(baseUrl || 'http://127.0.0.1:8766').replace(/\/$/, ''),
+    pollIntervalMs: Number(pollIntervalMs) || 3000,
+  });
+  writeConfig(cfg);
+
+  isuDbService.invalidateRoster();
+
+  // Scoring, rankings, standings, elements and officials have no ISU source.
+  // Emptied rather than left holding the last Skate Canada event's rows.
+  isuDbService.blankUnfedTemplates();
+
+  try {
+    startConfiguredPolling();
+    await isuDbService.pollOnce();
+    res.json({ ok: true, mode: 'isu-db', ...(await isuDbService.getStatus()) });
+  } catch (err) {
+    res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/api/isu/stop', (_req, res) => {
+  isuDbService.stop();
+  res.json({ ok: true, active: false });
+});
+
+app.post('/api/isu/refresh', async (_req, res) => {
+  try {
+    isuDbService.invalidateRoster();
+    await isuDbService.pollOnce();
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
+// Full 42-entry roster for the operator's athlete picker.
+app.get('/api/isu/roster', async (_req, res) => {
+  try {
+    const rows = await isuDbService.getRoster();
+    res.json({
+      ok: true,
+      entries: rows.map(r => ({
+        id:       String(r.EntryID || ''),
+        name:     String(r.Name || ''),
+        category: String(r.Category || ''),
+        country:  String(r.Country || ''),
+        code:     String(r.CountryCode || ''),
+        isTeam:   !!String(r.Skater2Name || '').trim(),
+      })),
+    });
+  } catch (err) {
+    res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
+// Push one athlete to the name bar and the profile graphic, and set the
+// recording metadata at the same time - one operator action, not three.
+app.post('/api/isu/select', async (req, res) => {
+  const entryId = String(req.body?.entryId || '').trim();
+  if (!entryId) return res.status(400).json({ ok: false, error: 'entryId is required' });
+
+  try {
+    const d = await isuDbService.buildSkaterData(entryId);
+
+    const bar = readData('manual-skater') || {
+      meta:    { template: 'manual-skater', revision: 0, updatedAt: new Date().toISOString() },
+      control: { visible: false, state: 'hidden' },
+      data:    {},
+    };
+    bar.data = {
+      line1:          d.name,
+      line2:          d.club,
+      name:           d.name,
+      club:           d.club,
+      flagUrl:        d.flagUrl,
+      categoryName:   d.categoryName,
+      categoryNameFr: d.categoryNameFr,
+      segmentName:    d.segmentName,
+      segmentNameFr:  d.segmentNameFr,
+      groupNumber:    d.groupNumber,
+      coaches:        d.coaches,
+      quote:          '',
+      musicTitle:     d.musicTitle,
+      // Practice sessions are not scored, so there is never a gap to chase.
+      scoreToFirst:   null,
+    };
+    bar.meta.revision  = Date.now();
+    bar.meta.updatedAt = new Date().toISOString();
+    writeData('manual-skater', bar);
+    graphicState['manual-skater'] = { visible: bar.control.visible, state: bar.control.state };
+    broadcast({ type: 'update', template: 'manual-skater', payload: bar });
+
+    const profile = readData('skater-profile') || {
+      meta:    { template: 'skater-profile', revision: 0, updatedAt: new Date().toISOString() },
+      control: { visible: false, state: 'hidden' },
+      data:    {},
+    };
+    profile.data = {
+      event:        [d.categoryName, d.segmentName].filter(Boolean).join(' '),
+      startNumber:  d.startNumber,
+      name:         d.name,
+      club:         d.club,
+      section:      d.section,
+      flagUrl:      d.flagUrl,
+      photoUrl:     d.photoUrl,
+      // Teams carry a second portrait; the graphic picks its layout from this
+      // being present. Singles leave it blank.
+      photoUrl2:    d.photoUrl2,
+      skater1Name:  d.skater1Name,
+      skater2Name:  d.skater2Name,
+      isTeam:       d.isTeam,
+      seasonBest:   d.seasonBest,
+      personalBest: d.personalBest,
+    };
+    profile.meta.revision  = Date.now();
+    profile.meta.updatedAt = new Date().toISOString();
+    writeData('skater-profile', profile);
+    graphicState['skater-profile'] = { visible: profile.control.visible, state: profile.control.state };
+    broadcast({ type: 'update', template: 'skater-profile', payload: profile });
+
+    // Recording metadata. The sorter reads this snapshot when the operator
+    // hits record, so picking a skater is all that is needed for the file to
+    // land in the right folder under the right name.
+    stateService.setCurrentSkater({
+      startOrder: d.startNumber,
+      skaterName: d.name,
+      club:       d.club,
+    });
+
+    broadcast({ type: 'isu-selection', entryId, name: d.name });
+
+    // Keep the profile desk's own preview in step. Never allowed to fail the
+    // push - the graphics are already out by this point.
+    isuDbService.mirrorSelection(entryId).catch(() => {});
+
+    res.json({ ok: true, entryId, name: d.name, startNumber: d.startNumber, isTeam: d.isTeam });
+  } catch (err) {
+    res.status(502).json({ ok: false, error: err.message });
+  }
 });
 
 // Stop sc-api polling (operator can stop without changing mode)
@@ -3947,5 +4152,6 @@ server.listen(PORT, () => {
   const cfg = readConfig();
   const mode = getDataSourceMode(cfg);
   if (mode === 'sc-api') startConfiguredPolling();
+  else if (mode === 'isu-db') startConfiguredPolling();
   else if (cfg.dataSource?.livePoll?.enabled) startConfiguredPolling();
 });

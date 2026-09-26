@@ -65,3 +65,8 @@ config/presets/
 
 # Rendered graphic stills — event-specific output, and they carry skater names
 exports/
+
+# Athlete portraits cached from the ISU profile database. Event-specific, they
+# carry likenesses of real people, and usage clearance is not asserted by the
+# source — so they are pulled per-machine at run time, never shipped.
+public/assets/portraits/
