@@ -3747,8 +3747,15 @@ app.get('/api/isu/status', async (req, res) => {
 // Switch into ISU mode: save the address, blank what this mode cannot feed,
 // and start polling the published board.
 app.post('/api/isu/connect', async (req, res) => {
-  const { baseUrl, pollIntervalMs } = req.body || {};
+  const { baseUrl, pollIntervalMs, eventName, eventNameFr } = req.body || {};
   const cfg = readConfig();
+
+  // The profile database holds one event's roster but no event name, so it is
+  // typed on the ISU page. Blank leaves the existing name alone rather than
+  // wiping it - reconnecting mid-session must not blank a header.
+  if (String(eventName   || '').trim()) cfg.eventName   = String(eventName).trim();
+  if (String(eventNameFr || '').trim()) cfg.eventNameFr = String(eventNameFr).trim();
+
   cfg.dataSource = cfg.dataSource || {};
   cfg.dataSource.mode  = 'isu-db';
   cfg.dataSource.isuDb = Object.assign({}, cfg.dataSource.isuDb || {}, {

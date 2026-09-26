@@ -71,6 +71,17 @@
   button.primary:hover:not(:disabled) { background: rgba(91,138,245,0.34); }
 
   /* ── Status strip ───────────────────────────────────────────────── */
+  #event-bar {
+    flex-shrink: 0;
+    padding: 0 10px 8px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
   #status {
     flex-shrink: 0; padding: 7px 10px; font-size: 12px;
     border-bottom: 1px solid var(--border); background: var(--surface2);
@@ -151,6 +162,22 @@
     </div>
     <button id="btn-connect" class="primary">Connect</button>
     <button id="btn-refresh" disabled>Refresh</button>
+  </div>
+
+  <!-- The profile database is one event's roster and carries no event name of
+       its own, so it is set here rather than pulled. Blank leaves whatever the
+       event config already holds untouched. -->
+  <div id="event-bar">
+    <div class="field">
+      <div class="sel-label">Event name</div>
+      <input type="text" id="event-name" spellcheck="false" autocomplete="off"
+             placeholder="2026 Skate Canada International">
+    </div>
+    <div class="field">
+      <div class="sel-label">Event name (French)</div>
+      <input type="text" id="event-name-fr" spellcheck="false" autocomplete="off"
+             placeholder="Internationaux Patinage Canada 2026">
+    </div>
   </div>
 
   <div id="status"><span class="muted">Not connected.</span></div>
@@ -257,7 +284,11 @@
       const s = await api('/api/isu/connect', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ baseUrl }),
+        body:    JSON.stringify({
+          baseUrl,
+          eventName:   el('event-name').value.trim(),
+          eventNameFr: el('event-name-fr').value.trim(),
+        }),
       });
       state.connected = true;
       renderConnectedStatus(s);
@@ -423,6 +454,8 @@
       const cfg = await (await fetch('/api/config')).json();
       const isu = cfg?.dataSource?.isuDb;
       if (isu?.baseUrl) baseUrlInput.value = isu.baseUrl;
+      if (cfg?.eventName)   el('event-name').value    = cfg.eventName;
+      if (cfg?.eventNameFr) el('event-name-fr').value = cfg.eventNameFr;
       if (cfg?.dataSource?.mode !== 'isu-db') return;
 
       const s = await api('/api/isu/status');
