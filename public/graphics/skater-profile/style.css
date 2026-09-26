@@ -236,7 +236,6 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-bottom: 20px;
 }
 .sp-detail-label {
   font-family: var(--font-display);
@@ -260,6 +259,20 @@
   -webkit-box-orient: vertical;
   -webkit-line-clamp: var(--sp-detail-lines, 2);
   overflow: hidden;
+}
+
+/* Two answers, one per skater — stacked like the two names above them.
+   Each gets a single line so a row stays two lines tall no matter how
+   talkative the source is about somebody's hobbies. */
+.sp-detail-value.is-stacked {
+  display: block;
+  -webkit-line-clamp: none;
+}
+.sp-detail-line {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Biography excerpt. Wraps and is capped in height — the source can run to
@@ -288,9 +301,17 @@
   line-height: 1.2;
 }
 
+/* The two headline numbers lead the panel, directly under the divider, so
+   they can be read at a glance before any of the biographical detail. */
 .sp-stats {
   display: flex;
   gap: 24px;
+}
+
+/* Lighter than the main rule under the name — a separation, not a break. */
+.sp-divider-tight {
+  margin: 14px 0;
+  opacity: 0.55;
 }
 
 .sp-stat { flex: 1; }

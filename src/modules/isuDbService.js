@@ -439,13 +439,17 @@ function createIsuDbService({ getConfig, readData, writeAndBroadcast, applyEvent
   /** Drop a leading standalone integer. No place name begins with one, so
    *  this is safe even if the number turns out to mean something else. */
   function stripLeadingCount(value) {
+    if (Array.isArray(value)) return value.map(stripLeadingCount);
     return str(value).replace(/^\d+\s+/, '');
   }
 
-  function joinDistinct(a, b, sep = ' · ') {
+  /** Two answers stack, one answer stays a line. Same rule as pairField,
+   *  but for values that belong to the entry rather than to a skater, so
+   *  there is no name to attribute them to. */
+  function joinDistinct(a, b) {
     const x = str(a), y = str(b);
     if (!x || !y) return x || y;
-    return x === y ? x : `${x}${sep}${y}`;
+    return x === y ? x : [x, y];
   }
 
   /** "7th (2025/2026)" — rank and the season it was set, never one implying
@@ -457,14 +461,26 @@ function createIsuDbService({ getConfig, readData, writeAndBroadcast, applyEvent
     return sn ? `${r} (${sn})` : r;
   }
 
+  /**
+   * A per-athlete detail for the profile graphic.
+   *
+   * Anything with two answers is stacked: this returns an ARRAY of one line
+   * per skater when the halves of a team differ, and the graphic renders
+   * them the way it renders their two names. A plain string comes back for a
+   * single skater, and for a team that gives the same answer twice - there
+   * is nothing to attribute or stack then.
+   *
+   * Lines are attributed by first name, which is not decoration. Hometown
+   * makes it concrete: one real entry answers "Winnipeg/Toronto" on its own,
+   * so any joined form leaves the reader guessing which half is whose.
+   */
   function pairField(v1, v2, name1, name2) {
     const a = str(v1), b = str(v2);
-    if (!b) return a;
-    if (!a) return b;
+    if (!a || !b) return a || b;
     if (a === b) return a;
     const first = full => str(full).split(/\s+/)[0] || '';
     const f1 = first(name1), f2 = first(name2);
-    return (f1 && f2) ? `${f1} ${a} · ${f2} ${b}` : `${a} · ${b}`;
+    return (f1 && f2) ? [`${f1} ${a}`, `${f2} ${b}`] : [a, b];
   }
 
   /**

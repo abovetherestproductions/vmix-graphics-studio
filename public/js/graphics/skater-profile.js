@@ -105,11 +105,29 @@
     let anyDetail = false;
     detailsEl.querySelectorAll('.sp-detail').forEach(rowEl => {
       const field = rowEl.dataset.field;
-      const value = (data[field] || '').toString().trim();
-      const on    = show.row(field) && !!value;
+      const raw   = data[field];
+      // A field with two answers arrives as an array — one line per skater,
+      // stacked like their names. Everything else is a plain string.
+      const lines = (Array.isArray(raw) ? raw : [raw])
+        .map(v => (v == null ? '' : String(v).trim()))
+        .filter(Boolean);
+      const on = show.row(field) && lines.length > 0;
       rowEl.hidden = !on;
       if (on) {
-        rowEl.querySelector('.sp-detail-value').textContent = value;
+        const valueEl = rowEl.querySelector('.sp-detail-value');
+        const stacked = lines.length > 1;
+        valueEl.classList.toggle('is-stacked', stacked);
+        if (stacked) {
+          valueEl.textContent = '';
+          for (const line of lines) {
+            const el = document.createElement('div');
+            el.className = 'sp-detail-line';
+            el.textContent = line;
+            valueEl.appendChild(el);
+          }
+        } else {
+          valueEl.textContent = lines[0];
+        }
         anyDetail = true;
       }
     });
