@@ -10,10 +10,9 @@
   const statSbEl   = document.getElementById('stat-sb');
   const statPbEl   = document.getElementById('stat-pb');
   const eventEl    = document.getElementById('sp-event');
-  const startNumEl = document.getElementById('sp-start-num');
+  const subtitleEl = document.getElementById('sp-subtitle');
   const nameEl     = document.getElementById('sp-name');
   const clubEl     = document.getElementById('sp-club');
-  const sectionEl  = document.getElementById('sp-section');
   const sbEl       = document.getElementById('sp-sb');
   const pbEl       = document.getElementById('sp-pb');
   const flagEl     = document.getElementById('sp-flag');
@@ -44,18 +43,16 @@
   function shown() {
     const o = (window.configHeaderOverrides || {})['skater-profile'] || {};
     return {
-      age:           o.spShowAge           === true,
-      hometown:      o.spShowHometown      === true,
-      skaterClub:    o.spShowClub          === true,
-      coach:         o.spShowCoach         === true,
-      choreographer: o.spShowChoreographer === true,
-      height:        o.spShowHeight        === true,
-      bio:           o.spShowBio           === true,
-      pbEvent:       o.spShowPbEvent       === true,
-      seasonBest:    o.spShowSeasonBest    !== false,
-      personalBest:  o.spShowPersonalBest  !== false,
+      // Detail rows are opt-in and named by their data-field, so a new row
+      // needs nothing here beyond its markup and its switch.
+      row: field => o['spShow' + field.charAt(0).toUpperCase() + field.slice(1)] === true,
+      bio:          o.spShowBio          === true,
+      pbEvent:      o.spShowPbEvent      === true,
+      seasonBest:   o.spShowSeasonBest   !== false,
+      personalBest: o.spShowPersonalBest !== false,
     };
   }
+
 
   function render(payload) {
     lastPayload = payload;
@@ -68,10 +65,29 @@
       { ...data, title: data.event, titleEn: data.event },
       data.event || ''
     );
-    startNumEl.textContent = data.startNumber ? `#${data.startNumber}` : '';
-    window.GraphicsUtils.applyInitialsIfNeeded(nameEl, data.name || '');
+    // Second line. Defaults to the category, which on this graphic is the
+    // discipline — "Men", "Ice Dance". Empty collapses the line rather than
+    // leaving a gap under the title.
+    subtitleEl.textContent = window.GraphicsUtils.resolveSubtitle(
+      'skater-profile', data, ''
+    );
+    // Teams get a line each so both names stay whole; singles keep the
+    // existing behaviour, including the shrink-to-initials fallback.
+    const twoNames = !!(data.skater1Name && data.skater2Name);
+    nameEl.classList.toggle('is-team', twoNames);
+    nameEl.textContent = '';
+    delete nameEl.dataset.initialsInput; // clear the initials memo either way
+    if (twoNames) {
+      for (const who of [data.skater1Name, data.skater2Name]) {
+        const line = document.createElement('div');
+        line.className = 'sp-name-line';
+        line.textContent = who;
+        nameEl.appendChild(line);
+      }
+    } else {
+      window.GraphicsUtils.applyInitialsIfNeeded(nameEl, data.name || '');
+    }
     clubEl.textContent     = data.club     || '';
-    sectionEl.textContent  = data.section  || '';
     sbEl.textContent       = fmt(data.seasonBest);
     pbEl.textContent       = fmt(data.personalBest);
 
@@ -90,7 +106,7 @@
     detailsEl.querySelectorAll('.sp-detail').forEach(rowEl => {
       const field = rowEl.dataset.field;
       const value = (data[field] || '').toString().trim();
-      const on    = show[field] === true && !!value;
+      const on    = show.row(field) && !!value;
       rowEl.hidden = !on;
       if (on) {
         rowEl.querySelector('.sp-detail-value').textContent = value;

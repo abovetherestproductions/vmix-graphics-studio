@@ -3862,15 +3862,17 @@ app.post('/api/isu/select', async (req, res) => {
       data:    {},
     };
     profile.data = {
-      event:        [d.categoryName, d.segmentName].filter(Boolean).join(' '),
-      // The header resolver composes its title from category and segment and
-      // falls back to event config when the payload has neither. That would
-      // caption this athlete with whichever board is currently published -
-      // wrong the moment someone is called up from the full roster rather
-      // than the board. Carrying the athlete's own session name here keeps
-      // the caption tied to the person on screen.
-      categoryName:   d.categoryName,
-      categoryNameFr: d.categoryNameFr,
+      event:        d.categoryName,
+      // The header reads: event title on top, discipline beneath. The
+      // discipline goes in categoryName because that is what the subtitle
+      // resolver reads, and because on this graphic it is literally the
+      // category - "Men", not "Men's Practice", which would repeat what the
+      // start order already said. Carrying it on the payload rather than
+      // leaning on event config also keeps the caption tied to the athlete
+      // on screen, which matters the moment somebody is called up from the
+      // full roster instead of the published board.
+      categoryName:   d.discipline,
+      categoryNameFr: d.disciplineFr,
       segmentName:    '',
       segmentNameFr:  '',
       startNumber:  d.startNumber,
@@ -3895,6 +3897,18 @@ app.post('/api/isu/select', async (req, res) => {
       height:            d.height,
       coach:             d.coaches,
       choreographer:     d.choreographer,
+      formerCoach:       d.formerCoach,
+      birthplace:        d.birthplace,
+      startedSkating:    d.startedSkating,
+      profession:        d.profession,
+      hobbies:           d.hobbies,
+      trainsIn:          d.trainsIn,
+      shortMusic:        d.shortMusic,
+      freeMusic:         d.freeMusic,
+      worldsRank:        d.worldsRank,
+      nationalsRank:     d.nationalsRank,
+      fourCCRank:        d.fourCCRank,
+      olympicsRank:      d.olympicsRank,
       personalBestEvent: d.personalBestEvent,
       bio:               d.bio,
     };

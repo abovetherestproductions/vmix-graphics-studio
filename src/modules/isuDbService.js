@@ -436,6 +436,27 @@ function createIsuDbService({ getConfig, readData, writeAndBroadcast, applyEvent
    * guessing which is which. Hometowns make that concrete: "Winnipeg/Toronto"
    * is one skater's own answer, and a slash-joined pair would be unreadable.
    */
+  /** Drop a leading standalone integer. No place name begins with one, so
+   *  this is safe even if the number turns out to mean something else. */
+  function stripLeadingCount(value) {
+    return str(value).replace(/^\d+\s+/, '');
+  }
+
+  function joinDistinct(a, b, sep = ' · ') {
+    const x = str(a), y = str(b);
+    if (!x || !y) return x || y;
+    return x === y ? x : `${x}${sep}${y}`;
+  }
+
+  /** "7th (2025/2026)" — rank and the season it was set, never one implying
+   *  the other. Blank rank means blank row, season alone says nothing. */
+  function rankField(rank, season) {
+    const r = str(rank);
+    if (!r) return '';
+    const sn = str(season);
+    return sn ? `${r} (${sn})` : r;
+  }
+
   function pairField(v1, v2, name1, name2) {
     const a = str(v1), b = str(v2);
     if (!b) return a;
@@ -478,6 +499,7 @@ function createIsuDbService({ getConfig, readData, writeAndBroadcast, applyEvent
       segmentName:    '',
       segmentNameFr:  '',
       discipline,
+      disciplineFr:   categoryFr(discipline),
       groupNumber:    boardRow?.warmUpGroup ?? null,
       startNumber:    boardRow?.position ?? null,
       coaches:        str(entry.Coach),
@@ -503,7 +525,35 @@ function createIsuDbService({ getConfig, readData, writeAndBroadcast, applyEvent
                         entry.Skater2HeightCM ? `${str(entry.Skater2HeightCM)} cm` : '',
                         entry.Skater1Name, entry.Skater2Name),
       choreographer:  str(entry.Choreographer),
+      formerCoach:    str(entry.FormerCoach),
       personalBestEvent: str(entry.PBTotalEvent),
+
+      birthplace:     pairField(entry.Skater1Birthplace,     entry.Skater2Birthplace,     entry.Skater1Name, entry.Skater2Name),
+      startedSkating: pairField(entry.Skater1StartedSkating, entry.Skater2StartedSkating, entry.Skater1Name, entry.Skater2Name),
+      profession:     pairField(entry.Skater1Profession,     entry.Skater2Profession,     entry.Skater1Name, entry.Skater2Name),
+      hobbies:        pairField(entry.Skater1Hobbies,        entry.Skater2Hobbies,        entry.Skater1Name, entry.Skater2Name),
+
+      // Where they train. The source splits it by season and the two are
+      // usually the same rink, so identical values collapse to one.
+      //
+      // The raw values carry a leading bare number - "20 London, ON;
+      // Montreal, QC", "16 Toronto, Irvine/USA", "18 Chiba" - which reads
+      // across the roster as training hours per week rather than part of any
+      // place name. It is stripped so the row airs as a location. Nothing is
+      // published as an hours figure, because that reading is inferred from
+      // the shape of the data rather than stated by the source.
+      trainsIn:       stripLeadingCount(joinDistinct(entry.TrainingLowSeason, entry.TrainingHighSeason)),
+
+      // Both programs, each labelled. Safe on a profile in a way it is not
+      // on the name bar: naming both makes no claim about which one the
+      // skater is about to run.
+      shortMusic:     str(entry.ShortMusic),
+      freeMusic:      str(entry.FreeMusic),
+
+      worldsRank:     rankField(entry.LatestWorldsRank,        entry.LatestWorldsSeason),
+      nationalsRank:  rankField(entry.LatestNationalsRank,     entry.LatestNationalsSeason),
+      fourCCRank:     rankField(entry.LatestFourContinentsRank, entry.LatestFourContinentsSeason),
+      olympicsRank:   rankField(entry.LatestOlympicsRank,      entry.LatestOlympicsSeason),
       // At most 60 words from the ISU biography. Long enough to need an
       // editorial eye before it goes on air, which is why it is off by
       // default like the rest.

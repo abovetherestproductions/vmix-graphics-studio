@@ -268,19 +268,14 @@
         msFirstDelayMs: (Number(pos.msFirstDelaySecs) || 3) * 1000,
         msFirstHoldMs:  (Number(pos.msFirstHoldSecs)  || 4) * 1000,
 
-        // Skater profile: which optional rows are on air. Details default
-        // OFF and the two score tiles default ON, so a profile with nothing
-        // configured renders as it always has.
-        spShowAge:           pos.spShowAge           === true,
-        spShowHometown:      pos.spShowHometown      === true,
-        spShowClub:          pos.spShowClub          === true,
-        spShowCoach:         pos.spShowCoach         === true,
-        spShowChoreographer: pos.spShowChoreographer === true,
-        spShowHeight:        pos.spShowHeight        === true,
-        spShowBio:           pos.spShowBio           === true,
-        spShowPbEvent:       pos.spShowPbEvent       === true,
-        spShowSeasonBest:    pos.spShowSeasonBest    !== false,
-        spShowPersonalBest:  pos.spShowPersonalBest  !== false,
+        // Skater profile: which optional rows are on air. Passed through by
+        // prefix rather than named one at a time, so adding a row to the
+        // graphic does not mean editing both theme loaders as well. Absent
+        // means off for the detail rows and on for the two score tiles; the
+        // graphic decides which way each default falls.
+        ...Object.fromEntries(
+          Object.entries(pos).filter(([key]) => key.startsWith('spShow'))
+        ),
       };
 
       // Apply title override for custom/event sources
@@ -441,7 +436,10 @@
         graphicRoot.style.setProperty('--sp-stat-size', `${pos.spStatSize ?? 32}px`);
         graphicRoot.style.setProperty('--sp-detail-size', `${pos.spDetailSize ?? 19}px`);
         graphicRoot.style.setProperty('--sp-bio-size', `${pos.spBioSize ?? 16}px`);
-        graphicRoot.style.setProperty('--sp-photo-width', `${pos.spPhotoWidth ?? 200}px`);
+        graphicRoot.style.setProperty('--sp-photo-width', `${pos.spPhotoWidth ?? 440}px`);
+        graphicRoot.style.setProperty('--sp-fade-start', `${pos.spFadeStart ?? 90}%`);
+        graphicRoot.style.setProperty('--sp-event-size', `${pos.spEventSize ?? 19}px`);
+        graphicRoot.style.setProperty('--sp-subtitle-size', `${pos.spSubtitleSize ?? 14}px`);
         graphicRoot.style.setProperty('--sp-flag-h',    `${pos.flagH ?? 36}px`);
         graphicRoot.style.setProperty('--sp-flag-w',    (pos.flagW > 0) ? `${pos.flagW}px` : 'auto');
       }

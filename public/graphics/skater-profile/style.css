@@ -21,7 +21,7 @@
    splitting it vertically gives each portrait a portrait-shaped frame,
    where splitting it horizontally would give each a 100px-wide sliver. */
 .sp-photo-wrap {
-  width: var(--sp-photo-width, 200px);
+  width: var(--sp-photo-width, 440px);
   flex-shrink: 0;
   position: relative;
   overflow: hidden;
@@ -51,10 +51,21 @@
   object-fit: cover;
   object-position: var(--sp-photo-position, center top);
 }
+/* The blend from portrait into panel.
+   The athlete is not meant to be dimmed at all: the photo stays completely
+   untouched out to --sp-fade-start, and only the strip beyond it dissolves
+   into the panel colour, which is there to kill the hard vertical seam
+   rather than to shade anybody. Push the start further right for a harder
+   edge, further left for a longer dissolve. */
 .sp-photo-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to right, transparent 60%, rgba(14,14,18,0.80) 100%);
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    transparent var(--sp-fade-start, 90%),
+    var(--color-panel-bg, rgba(14, 14, 18, 0.92)) 100%
+  );
 }
 
 /* Info panel */
@@ -110,23 +121,36 @@
   bottom: -60px; left: 40%;
 }
 
-.sp-event {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 15px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: rgba(255,255,255,0.80);
+/* Header text block: event title on top, discipline beneath. */
+.sp-header-text {
   position: relative; z-index: 1;
-}
-.sp-start-num {
-  font-family: var(--font-numbers);
-  font-weight: 800;
-  font-size: 28px;
-  color: rgba(255,255,255,0.85);
-  position: relative; z-index: 1;
+  min-width: 0;
 }
 
+.sp-event {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--sp-event-size, 19px);
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #ffffff;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sp-subtitle {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--sp-subtitle-size, 14px);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.78);
+  line-height: 1.2;
+  margin-top: 2px;
+}
+.sp-subtitle:empty { display: none; }
 /* Logo slot */
 .sp-logo-wrap {
   position: relative; z-index: 1;
@@ -150,7 +174,18 @@
   flex-direction: column;
 }
 
+/* Flag sits with the name rather than in a bar at the foot of the panel:
+   at an international event the country belongs next to who they are. */
+.sp-name-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-flag-gap, 14px);
+  min-width: 0;
+}
+
 .sp-name {
+  flex: 1;
+  min-width: 0;
   font-family: var(--font-display);
   font-weight: 800;
   font-size: var(--sp-name-size, 44px);
@@ -162,22 +197,30 @@
   text-overflow: ellipsis;
 }
 
+/* Pairs and dance: one skater per line, both in full.
+   A team name on a single line has to shrink to initials to fit —
+   "A. KEMP / Y. ELIZAROV" — which is a poor trade on a graphic whose whole
+   job is introducing the athletes. Two lines carry both names whole, at a
+   fraction of the single-name size so the pair of them occupies about the
+   same height as one. */
+.sp-name.is-team {
+  font-size: calc(var(--sp-name-size, 44px) * var(--sp-name-team-scale, 0.72));
+  line-height: 1.12;
+  white-space: normal;
+}
+.sp-name-line {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .sp-club {
   font-family: var(--font-body);
   font-size: var(--sp-club-size, 18px);
   font-weight: 400;
   color: var(--color-text-secondary);
   margin-top: 8px;
-}
-
-.sp-section {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 14px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: var(--color-accent-light);
-  margin-top: 6px;
 }
 
 .sp-divider {
@@ -210,6 +253,13 @@
   font-weight: 500;
   line-height: 1.25;
   color: var(--color-text-primary);
+  /* Capped because the source can be genuinely enormous — one real ice dance
+     entry lists nine coaches, which unclamped would push the scores and the
+     biography off the bottom of the panel. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--sp-detail-lines, 2);
+  overflow: hidden;
 }
 
 /* Biography excerpt. Wraps and is capped in height — the source can run to
@@ -262,15 +312,10 @@
   color: var(--color-text-primary);
 }
 
-/* Flag bar at bottom */
-.sp-flag-bar {
-  padding: 12px 24px;
-  border-top: 1px solid var(--color-row-border);
-}
-
 .sp-flag {
   height: var(--sp-flag-h, 36px);
   width: var(--sp-flag-w, auto);
+  flex-shrink: 0;
   object-fit: contain;
   border-radius: 4px;
 }

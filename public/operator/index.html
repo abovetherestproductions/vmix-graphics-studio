@@ -789,6 +789,32 @@ const TEMPLATES = [
 //   clock + time-of-day — controlled from the dedicated Clocks page
 //   (/operator/clocks.html).
 
+// Optional rows on the Skater Profile, in the order they appear on the
+// graphic. Declared once: the checkboxes, the load and the save all derive
+// from this, so adding a row means adding a line here and a matching
+// <div data-field> in the graphic's markup. Every one defaults to off.
+const SP_DETAIL_ROWS = [
+  ['age',            'Age'],
+  ['hometown',       'Hometown'],
+  ['birthplace',     'Birthplace'],
+  ['skaterClub',     'Home club'],
+  ['trainsIn',       'Trains in'],
+  ['coach',          'Coach'],
+  ['formerCoach',    'Former coach'],
+  ['choreographer',  'Choreographer'],
+  ['height',         'Height'],
+  ['startedSkating', 'Started skating'],
+  ['profession',     'Profession'],
+  ['hobbies',        'Hobbies'],
+  ['shortMusic',     'Short program music'],
+  ['freeMusic',      'Free program music'],
+  ['worldsRank',     'World ranking'],
+  ['nationalsRank',  'National ranking'],
+  ['fourCCRank',     'Four Continents ranking'],
+  ['olympicsRank',   'Olympic ranking'],
+];
+const spCfgKey = field => 'spShow' + field.charAt(0).toUpperCase() + field.slice(1);
+
 // Natural panel widths for each template — used as default for width slider
 const NATURAL_WIDTHS = {
   'starting-order': 880, 'rankings': 880, 'officials': 900,
@@ -1648,18 +1674,16 @@ function setPosUI(id, pos) {
     sv(`pos-sp-club-${id}`, p.spClubSize ?? 18);  st(`pv-sp-club-${id}`, `${p.spClubSize ?? 18}px`);
     sv(`pos-sp-stat-${id}`, p.spStatSize ?? 32);  st(`pv-sp-stat-${id}`, `${p.spStatSize ?? 32}px`);
     sv(`pos-sp-detail-${id}`, p.spDetailSize ?? 19); st(`pv-sp-detail-${id}`, `${p.spDetailSize ?? 19}px`);
-    sv(`pos-sp-photow-${id}`, p.spPhotoWidth ?? 200); st(`pv-sp-photow-${id}`, `${p.spPhotoWidth ?? 200}px`);
+    sv(`pos-sp-photow-${id}`, p.spPhotoWidth ?? 440); st(`pv-sp-photow-${id}`, `${p.spPhotoWidth ?? 440}px`);
+    sv(`pos-sp-fade-${id}`, p.spFadeStart ?? 90); st(`pv-sp-fade-${id}`, `${p.spFadeStart ?? 90}%`);
+    sv(`pos-sp-event-${id}`, p.spEventSize ?? 19); st(`pv-sp-event-${id}`, `${p.spEventSize ?? 19}px`);
+    sv(`pos-sp-sub-${id}`, p.spSubtitleSize ?? 14); st(`pv-sp-sub-${id}`, `${p.spSubtitleSize ?? 14}px`);
     // Details are opt-in, the two score tiles opt-out. Declared here rather
     // than shared with the manual-skater block above, whose copies are scoped
     // to that branch.
     const setCkOff = (cid, val) => { const el = g(cid); if (el) el.checked = val === true; };
     const setCkOn  = (cid, val) => { const el = g(cid); if (el) el.checked = val !== false; };
-    setCkOff(`pos-sp-age-${id}`,     p.spShowAge);
-    setCkOff(`pos-sp-home-${id}`,    p.spShowHometown);
-    setCkOff(`pos-sp-club2-${id}`,   p.spShowClub);
-    setCkOff(`pos-sp-coach-${id}`,   p.spShowCoach);
-    setCkOff(`pos-sp-choreo-${id}`,  p.spShowChoreographer);
-    setCkOff(`pos-sp-height-${id}`,  p.spShowHeight);
+    SP_DETAIL_ROWS.forEach(([field]) => setCkOff(`pos-sp-${field}-${id}`, p[spCfgKey(field)]));
     setCkOff(`pos-sp-bio-${id}`,     p.spShowBio);
     setCkOff(`pos-sp-pbevent-${id}`, p.spShowPbEvent);
     setCkOn(`pos-sp-sb-${id}`,       p.spShowSeasonBest);
@@ -1833,13 +1857,13 @@ function readPos(id) {
     spClubSize:     id === 'skater-profile' ? Number(g(`pos-sp-club-${id}`)?.value ?? 18) : undefined,
     spStatSize:     id === 'skater-profile' ? Number(g(`pos-sp-stat-${id}`)?.value ?? 32) : undefined,
     spDetailSize:   id === 'skater-profile' ? Number(g(`pos-sp-detail-${id}`)?.value ?? 19) : undefined,
-    spPhotoWidth:   id === 'skater-profile' ? Number(g(`pos-sp-photow-${id}`)?.value ?? 200) : undefined,
-    spShowAge:           id === 'skater-profile' ? !!g(`pos-sp-age-${id}`)?.checked     : undefined,
-    spShowHometown:      id === 'skater-profile' ? !!g(`pos-sp-home-${id}`)?.checked    : undefined,
-    spShowClub:          id === 'skater-profile' ? !!g(`pos-sp-club2-${id}`)?.checked   : undefined,
-    spShowCoach:         id === 'skater-profile' ? !!g(`pos-sp-coach-${id}`)?.checked   : undefined,
-    spShowChoreographer: id === 'skater-profile' ? !!g(`pos-sp-choreo-${id}`)?.checked  : undefined,
-    spShowHeight:        id === 'skater-profile' ? !!g(`pos-sp-height-${id}`)?.checked  : undefined,
+    spPhotoWidth:   id === 'skater-profile' ? Number(g(`pos-sp-photow-${id}`)?.value ?? 380) : undefined,
+    spFadeStart:    id === 'skater-profile' ? Number(g(`pos-sp-fade-${id}`)?.value ?? 90) : undefined,
+    spEventSize:    id === 'skater-profile' ? Number(g(`pos-sp-event-${id}`)?.value ?? 19) : undefined,
+    spSubtitleSize: id === 'skater-profile' ? Number(g(`pos-sp-sub-${id}`)?.value ?? 14) : undefined,
+    ...(id === 'skater-profile'
+      ? Object.fromEntries(SP_DETAIL_ROWS.map(([f]) => [spCfgKey(f), !!g(`pos-sp-${f}-${id}`)?.checked]))
+      : {}),
     spShowBio:           id === 'skater-profile' ? !!g(`pos-sp-bio-${id}`)?.checked     : undefined,
     spShowPbEvent:       id === 'skater-profile' ? !!g(`pos-sp-pbevent-${id}`)?.checked : undefined,
     spShowSeasonBest:    id === 'skater-profile' ? !!g(`pos-sp-sb-${id}`)?.checked      : undefined,
@@ -2022,6 +2046,9 @@ function onPosChange(id) {
     st(`pv-sp-stat-${id}`, `${p.spStatSize}px`);
     st(`pv-sp-detail-${id}`, `${p.spDetailSize}px`);
     st(`pv-sp-photow-${id}`, `${p.spPhotoWidth}px`);
+    st(`pv-sp-fade-${id}`, `${p.spFadeStart}%`);
+    st(`pv-sp-event-${id}`, `${p.spEventSize}px`);
+    st(`pv-sp-sub-${id}`, `${p.spSubtitleSize}px`);
   }
   st(`pv-as-${id}`, `${p.animSpeed}ms`);
   if (LOGO_TEMPLATES.includes(id)) {
@@ -2143,7 +2170,7 @@ async function resetPos(id) {
   const msExtrasDefaults = id === 'manual-skater' ? { msExtrasEnabled:true, msShowCoaches:false, msShowQuote:false, msShowMusic:false, msShowCategory:true, msQuoteSecs:4, msCoachSecs:4, msShowScoreToFirst:false, msFirstDelaySecs:3, msFirstHoldSecs:4 } : {};
   // Skater profile: details off, the two score tiles on — the panel as it
   // was before any of the optional rows existed.
-  const spDefaults = id === 'skater-profile' ? { spNameSize:44, spClubSize:18, spStatSize:32, spDetailSize:19, spBioSize:16, spPhotoWidth:200, spShowAge:false, spShowHometown:false, spShowClub:false, spShowCoach:false, spShowChoreographer:false, spShowHeight:false, spShowBio:false, spShowPbEvent:false, spShowSeasonBest:true, spShowPersonalBest:true } : {};
+  const spDefaults = id === 'skater-profile' ? { spNameSize:44, spClubSize:18, spStatSize:32, spDetailSize:19, spBioSize:16, spPhotoWidth:440, spFadeStart:90, spEventSize:19, spSubtitleSize:14, spShowBio:false, spShowPbEvent:false, spShowSeasonBest:true, spShowPersonalBest:true, ...Object.fromEntries(SP_DETAIL_ROWS.map(([f]) => [spCfgKey(f), false])) } : {};
   const defaults = { x:0, y:0, scale:1, width: NATURAL_WIDTHS[id]||880, height:0,
                      zoom:100, rowPad:0, rounded:true, radius:20, ltFlagHeight:68,
                      animPreset:'default', animSpeed:420, animEasing:'smooth',
@@ -3554,6 +3581,16 @@ function buildCards() {
             ${t.id === 'skater-profile' ? `
             <div style="margin:8px 0 2px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);grid-column:1/-1;">Font Sizes</div>
             <div class="pos-row">
+              <label>Header Title</label>
+              <input type="range" id="pos-sp-event-${t.id}" min="12" max="48" value="19" step="1" oninput="onPosChange('${t.id}')">
+              <span class="pos-val" id="pv-sp-event-${t.id}">19px</span>
+            </div>
+            <div class="pos-row">
+              <label>Header Line 2</label>
+              <input type="range" id="pos-sp-sub-${t.id}" min="10" max="36" value="14" step="1" oninput="onPosChange('${t.id}')">
+              <span class="pos-val" id="pv-sp-sub-${t.id}">14px</span>
+            </div>
+            <div class="pos-row">
               <label>Skater Name</label>
               <input type="range" id="pos-sp-name-${t.id}" min="20" max="72" value="44" step="1" oninput="onPosChange('${t.id}')">
               <span class="pos-val" id="pv-sp-name-${t.id}">44px</span>
@@ -3575,8 +3612,13 @@ function buildCards() {
             </div>
             <div class="pos-row">
               <label>Photo Width</label>
-              <input type="range" id="pos-sp-photow-${t.id}" min="120" max="360" value="200" step="5" oninput="onPosChange('${t.id}')">
-              <span class="pos-val" id="pv-sp-photow-${t.id}">200px</span>
+              <input type="range" id="pos-sp-photow-${t.id}" min="120" max="520" value="440" step="5" oninput="onPosChange('${t.id}')">
+              <span class="pos-val" id="pv-sp-photow-${t.id}">440px</span>
+            </div>
+            <div class="pos-row">
+              <label>Photo Fade</label>
+              <input type="range" id="pos-sp-fade-${t.id}" min="40" max="100" value="90" step="1" oninput="onPosChange('${t.id}')">
+              <span class="pos-val" id="pv-sp-fade-${t.id}">90%</span>
             </div>
 
             <div style="margin:10px 0 2px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);grid-column:1/-1;">Panel Content</div>
@@ -3599,36 +3641,12 @@ function buildCards() {
                        style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;" />
                 <span style="font-size:12px;color:var(--text2);">Where the personal best was set</span>
               </label>
+              ${SP_DETAIL_ROWS.map(([field, label]) => `
               <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                <input type="checkbox" id="pos-sp-age-${t.id}" onchange="onPosChange('${t.id}')"
+                <input type="checkbox" id="pos-sp-${field}-${t.id}" onchange="onPosChange('${t.id}')"
                        style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;" />
-                <span style="font-size:12px;color:var(--text2);">Age</span>
-              </label>
-              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                <input type="checkbox" id="pos-sp-home-${t.id}" onchange="onPosChange('${t.id}')"
-                       style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;" />
-                <span style="font-size:12px;color:var(--text2);">Hometown</span>
-              </label>
-              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                <input type="checkbox" id="pos-sp-club2-${t.id}" onchange="onPosChange('${t.id}')"
-                       style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;" />
-                <span style="font-size:12px;color:var(--text2);">Home club</span>
-              </label>
-              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                <input type="checkbox" id="pos-sp-coach-${t.id}" onchange="onPosChange('${t.id}')"
-                       style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;" />
-                <span style="font-size:12px;color:var(--text2);">Coach</span>
-              </label>
-              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                <input type="checkbox" id="pos-sp-choreo-${t.id}" onchange="onPosChange('${t.id}')"
-                       style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;" />
-                <span style="font-size:12px;color:var(--text2);">Choreographer</span>
-              </label>
-              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                <input type="checkbox" id="pos-sp-height-${t.id}" onchange="onPosChange('${t.id}')"
-                       style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;" />
-                <span style="font-size:12px;color:var(--text2);">Height</span>
-              </label>
+                <span style="font-size:12px;color:var(--text2);">${label}</span>
+              </label>`).join('')}
               <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
                 <input type="checkbox" id="pos-sp-bio-${t.id}" onchange="onPosChange('${t.id}')"
                        style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;" />
