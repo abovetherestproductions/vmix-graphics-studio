@@ -233,7 +233,20 @@
       "rounded": false,
       "radius": 20,
       "ltFlagGap": 20,
-      "ltFlagHeight": 68
+      "ltFlagHeight": 68,
+      "spDetailSize": 19,
+      "spBioSize": 16,
+      "spPhotoWidth": 200,
+      "spShowAge": false,
+      "spShowHometown": false,
+      "spShowClub": false,
+      "spShowCoach": false,
+      "spShowChoreographer": false,
+      "spShowHeight": false,
+      "spShowBio": false,
+      "spShowPbEvent": false,
+      "spShowSeasonBest": true,
+      "spShowPersonalBest": true
     },
     "elements": {
       "x": 0,

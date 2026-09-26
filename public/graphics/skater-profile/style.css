@@ -15,26 +15,41 @@
               transform var(--anim-duration, 420ms) var(--anim-easing, cubic-bezier(0.22, 1, 0.36, 1));
 }
 
-/* Photo column (optional — hidden if no photoUrl) */
+/* Photo column (optional — hidden if no photoUrl).
+   One slot for a single skater, two stacked for a pairs or dance team.
+   Stacked rather than side by side because the column is tall and narrow:
+   splitting it vertically gives each portrait a portrait-shaped frame,
+   where splitting it horizontally would give each a 100px-wide sliver. */
 .sp-photo-wrap {
-  width: 200px;
+  width: var(--sp-photo-width, 200px);
   flex-shrink: 0;
   position: relative;
   overflow: hidden;
   border-radius: var(--panel-radius) 0 0 var(--panel-radius);
   background: rgba(30,30,36,0.95);
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
 }
 .sp-photo-wrap.no-photo {
   width: 0;
   border-radius: 0;
 }
+.sp-photo-slot {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+/* Only meaningful with two slots showing — a hairline so the portraits read
+   as two people rather than one odd crop. */
+.sp-photo-wrap.is-team .sp-photo-slot + .sp-photo-slot {
+  border-top: 2px solid var(--color-panel-bg, rgba(14,14,18,0.92));
+}
 .sp-photo {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: var(--sp-photo-position, center top);
 }
 .sp-photo-overlay {
   position: absolute;
@@ -169,6 +184,58 @@
   height: 1px;
   background: var(--color-row-border);
   margin: 18px 0;
+}
+
+/* ── Optional detail rows ──────────────────────────────────────────
+   Label over value, one per switched-on field. Sits between the divider
+   and the score tiles. */
+.sp-details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.sp-detail-label {
+  font-family: var(--font-display);
+  font-size: var(--sp-detail-label-size, 11px);
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: 2px;
+}
+.sp-detail-value {
+  font-family: var(--font-body);
+  font-size: var(--sp-detail-size, 19px);
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--color-text-primary);
+}
+
+/* Biography excerpt. Wraps and is capped in height — the source can run to
+   60 words, which is more than a lower-third-sized panel should ever show. */
+.sp-bio {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-row-border);
+  font-family: var(--font-body);
+  font-size: var(--sp-bio-size, 16px);
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--color-text-secondary);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--sp-bio-lines, 4);
+  overflow: hidden;
+}
+
+.sp-stat-sub {
+  font-family: var(--font-body);
+  font-size: var(--sp-stat-sub-size, 12px);
+  font-weight: 400;
+  color: var(--color-text-muted);
+  margin-top: 3px;
+  line-height: 1.2;
 }
 
 .sp-stats {

@@ -428,6 +428,25 @@ function createIsuDbService({ getConfig, readData, writeAndBroadcast, applyEvent
   }
 
   /**
+   * A per-athlete detail for the profile graphic, formatted for display.
+   *
+   * Teams have two of everything, so a value is shown once when both halves
+   * agree and attributed by first name when they differ - "Ava 18 ·
+   * Yohnatan 22" rather than a bare "18 / 22" that leaves the reader
+   * guessing which is which. Hometowns make that concrete: "Winnipeg/Toronto"
+   * is one skater's own answer, and a slash-joined pair would be unreadable.
+   */
+  function pairField(v1, v2, name1, name2) {
+    const a = str(v1), b = str(v2);
+    if (!b) return a;
+    if (!a) return b;
+    if (a === b) return a;
+    const first = full => str(full).split(/\s+/)[0] || '';
+    const f1 = first(name1), f2 = first(name2);
+    return (f1 && f2) ? `${f1} ${a} · ${f2} ${b}` : `${a} · ${b}`;
+  }
+
+  /**
    * Everything the name bar and the profile graphic need for one athlete.
    * Called when the operator picks somebody; server.js turns it into the two
    * payloads and writes them.
@@ -472,6 +491,23 @@ function createIsuDbService({ getConfig, readData, writeAndBroadcast, applyEvent
       personalBest:   str(entry.PBTotal),
       seasonBest:     str(entry.SBTotal),
       isTeam:         !!str(entry.Skater2Name),
+
+      // Optional profile details. Every one of these is off by default and
+      // switched on per-graphic by the operator, so a field being present
+      // here does not put it on air.
+      age:            pairField(entry.Skater1Age,      entry.Skater2Age,      entry.Skater1Name, entry.Skater2Name),
+      hometown:       pairField(entry.Skater1Hometown, entry.Skater2Hometown, entry.Skater1Name, entry.Skater2Name),
+      skaterClub:     pairField(entry.Skater1Club,     entry.Skater2Club,     entry.Skater1Name, entry.Skater2Name),
+      height:         pairField(
+                        entry.Skater1HeightCM ? `${str(entry.Skater1HeightCM)} cm` : '',
+                        entry.Skater2HeightCM ? `${str(entry.Skater2HeightCM)} cm` : '',
+                        entry.Skater1Name, entry.Skater2Name),
+      choreographer:  str(entry.Choreographer),
+      personalBestEvent: str(entry.PBTotalEvent),
+      // At most 60 words from the ISU biography. Long enough to need an
+      // editorial eye before it goes on air, which is why it is off by
+      // default like the rest.
+      bio:            str(entry.BioExcerpt),
     };
   }
 

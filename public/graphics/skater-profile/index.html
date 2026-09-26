@@ -15,10 +15,18 @@
   <div id="stage" class="stage">
     <div id="graphic-root" class="skater-profile hidden">
 
-      <!-- Left: photo -->
+      <!-- Left: photo. Pairs and dance teams are two people in one entry, so
+           the column holds two portraits stacked when a second one is
+           supplied and behaves exactly as before when it is not. -->
       <div id="sp-photo-wrap" class="sp-photo-wrap">
-        <img id="sp-photo" class="sp-photo" src="" alt="" />
-        <div class="sp-photo-overlay"></div>
+        <div class="sp-photo-slot">
+          <img id="sp-photo" class="sp-photo" src="" alt="" />
+          <div class="sp-photo-overlay"></div>
+        </div>
+        <div id="sp-photo-slot-2" class="sp-photo-slot" hidden>
+          <img id="sp-photo-2" class="sp-photo" src="" alt="" />
+          <div class="sp-photo-overlay"></div>
+        </div>
       </div>
 
       <!-- Right: info panel -->
@@ -40,6 +48,36 @@
 
           <div class="sp-divider"></div>
 
+          <!-- Optional detail rows. Each is switched on per-graphic by the
+               operator and hidden when it has nothing to say, so the panel
+               never shows an empty label. -->
+          <div id="sp-details" class="sp-details" hidden>
+            <div class="sp-detail" data-field="age" hidden>
+              <div class="sp-detail-label">AGE</div>
+              <div class="sp-detail-value"></div>
+            </div>
+            <div class="sp-detail" data-field="hometown" hidden>
+              <div class="sp-detail-label">HOMETOWN</div>
+              <div class="sp-detail-value"></div>
+            </div>
+            <div class="sp-detail" data-field="skaterClub" hidden>
+              <div class="sp-detail-label">CLUB</div>
+              <div class="sp-detail-value"></div>
+            </div>
+            <div class="sp-detail" data-field="coach" hidden>
+              <div class="sp-detail-label">COACH</div>
+              <div class="sp-detail-value"></div>
+            </div>
+            <div class="sp-detail" data-field="choreographer" hidden>
+              <div class="sp-detail-label">CHOREOGRAPHER</div>
+              <div class="sp-detail-value"></div>
+            </div>
+            <div class="sp-detail" data-field="height" hidden>
+              <div class="sp-detail-label">HEIGHT</div>
+              <div class="sp-detail-value"></div>
+            </div>
+          </div>
+
           <div class="sp-stats">
             <div class="sp-stat" id="stat-sb">
               <div class="sp-stat-label">SEASON BEST</div>
@@ -48,8 +86,11 @@
             <div class="sp-stat" id="stat-pb">
               <div class="sp-stat-label">PERSONAL BEST</div>
               <div id="sp-pb" class="sp-stat-value">—</div>
+              <div id="sp-pb-event" class="sp-stat-sub" hidden></div>
             </div>
           </div>
+
+          <div id="sp-bio" class="sp-bio" hidden></div>
         </div>
 
         <div class="sp-flag-bar">

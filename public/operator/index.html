@@ -782,11 +782,12 @@ const TEMPLATES = [
   { id: 'standings',       label: 'Rank 6 (corner)'                   },
   { id: 'rankings',        label: 'Final Rankings',   hasPages: true, hasRowsPerPage: true },
   { id: 'officials',       label: 'Officials'                          },
+  { id: 'skater-profile',  label: 'Skater Profile'                     },
   { id: 'messages',        label: 'Messages Bar'                       },
 ];
 // Retired from the operator UI (server support stays dormant):
-//   skater-profile — being redesigned; clock + time-of-day — controlled from
-//   the dedicated Clocks page (/operator/clocks.html).
+//   clock + time-of-day — controlled from the dedicated Clocks page
+//   (/operator/clocks.html).
 
 // Natural panel widths for each template — used as default for width slider
 const NATURAL_WIDTHS = {
@@ -1646,6 +1647,23 @@ function setPosUI(id, pos) {
     sv(`pos-sp-name-${id}`, p.spNameSize ?? 44);  st(`pv-sp-name-${id}`, `${p.spNameSize ?? 44}px`);
     sv(`pos-sp-club-${id}`, p.spClubSize ?? 18);  st(`pv-sp-club-${id}`, `${p.spClubSize ?? 18}px`);
     sv(`pos-sp-stat-${id}`, p.spStatSize ?? 32);  st(`pv-sp-stat-${id}`, `${p.spStatSize ?? 32}px`);
+    sv(`pos-sp-detail-${id}`, p.spDetailSize ?? 19); st(`pv-sp-detail-${id}`, `${p.spDetailSize ?? 19}px`);
+    sv(`pos-sp-photow-${id}`, p.spPhotoWidth ?? 200); st(`pv-sp-photow-${id}`, `${p.spPhotoWidth ?? 200}px`);
+    // Details are opt-in, the two score tiles opt-out. Declared here rather
+    // than shared with the manual-skater block above, whose copies are scoped
+    // to that branch.
+    const setCkOff = (cid, val) => { const el = g(cid); if (el) el.checked = val === true; };
+    const setCkOn  = (cid, val) => { const el = g(cid); if (el) el.checked = val !== false; };
+    setCkOff(`pos-sp-age-${id}`,     p.spShowAge);
+    setCkOff(`pos-sp-home-${id}`,    p.spShowHometown);
+    setCkOff(`pos-sp-club2-${id}`,   p.spShowClub);
+    setCkOff(`pos-sp-coach-${id}`,   p.spShowCoach);
+    setCkOff(`pos-sp-choreo-${id}`,  p.spShowChoreographer);
+    setCkOff(`pos-sp-height-${id}`,  p.spShowHeight);
+    setCkOff(`pos-sp-bio-${id}`,     p.spShowBio);
+    setCkOff(`pos-sp-pbevent-${id}`, p.spShowPbEvent);
+    setCkOn(`pos-sp-sb-${id}`,       p.spShowSeasonBest);
+    setCkOn(`pos-sp-pb-${id}`,       p.spShowPersonalBest);
   }
   // Elements font sizes — set dedicated card inputs
 	  if (id === 'elements') {
@@ -1814,6 +1832,18 @@ function readPos(id) {
     spNameSize:     id === 'skater-profile' ? Number(g(`pos-sp-name-${id}`)?.value ?? 44) : undefined,
     spClubSize:     id === 'skater-profile' ? Number(g(`pos-sp-club-${id}`)?.value ?? 18) : undefined,
     spStatSize:     id === 'skater-profile' ? Number(g(`pos-sp-stat-${id}`)?.value ?? 32) : undefined,
+    spDetailSize:   id === 'skater-profile' ? Number(g(`pos-sp-detail-${id}`)?.value ?? 19) : undefined,
+    spPhotoWidth:   id === 'skater-profile' ? Number(g(`pos-sp-photow-${id}`)?.value ?? 200) : undefined,
+    spShowAge:           id === 'skater-profile' ? !!g(`pos-sp-age-${id}`)?.checked     : undefined,
+    spShowHometown:      id === 'skater-profile' ? !!g(`pos-sp-home-${id}`)?.checked    : undefined,
+    spShowClub:          id === 'skater-profile' ? !!g(`pos-sp-club2-${id}`)?.checked   : undefined,
+    spShowCoach:         id === 'skater-profile' ? !!g(`pos-sp-coach-${id}`)?.checked   : undefined,
+    spShowChoreographer: id === 'skater-profile' ? !!g(`pos-sp-choreo-${id}`)?.checked  : undefined,
+    spShowHeight:        id === 'skater-profile' ? !!g(`pos-sp-height-${id}`)?.checked  : undefined,
+    spShowBio:           id === 'skater-profile' ? !!g(`pos-sp-bio-${id}`)?.checked     : undefined,
+    spShowPbEvent:       id === 'skater-profile' ? !!g(`pos-sp-pbevent-${id}`)?.checked : undefined,
+    spShowSeasonBest:    id === 'skater-profile' ? !!g(`pos-sp-sb-${id}`)?.checked      : undefined,
+    spShowPersonalBest:  id === 'skater-profile' ? !!g(`pos-sp-pb-${id}`)?.checked      : undefined,
     ofRoleAlign:  id === 'officials' ? (g(`pos-role-left-${id}`)?.dataset.active === 'true' ? 'left' : 'right') : undefined,
     // Elements font sizes — read from the dedicated card inputs so they survive position slider saves
 	    elSkaterSize: id === 'elements' ? (Number(g('el-skater-size')?.value)  || 18) : undefined,
@@ -1990,6 +2020,8 @@ function onPosChange(id) {
     st(`pv-sp-name-${id}`, `${p.spNameSize}px`);
     st(`pv-sp-club-${id}`, `${p.spClubSize}px`);
     st(`pv-sp-stat-${id}`, `${p.spStatSize}px`);
+    st(`pv-sp-detail-${id}`, `${p.spDetailSize}px`);
+    st(`pv-sp-photow-${id}`, `${p.spPhotoWidth}px`);
   }
   st(`pv-as-${id}`, `${p.animSpeed}ms`);
   if (LOGO_TEMPLATES.includes(id)) {
@@ -2109,11 +2141,14 @@ async function resetPos(id) {
   const ofDefaults   = id === 'officials'   ? { ofRoleAlign:'right' } : {};
   const msgDefaults  = id === 'messages'    ? { msgLine1Size:40, msgLine2Size:20 } : {};
   const msExtrasDefaults = id === 'manual-skater' ? { msExtrasEnabled:true, msShowCoaches:false, msShowQuote:false, msShowMusic:false, msShowCategory:true, msQuoteSecs:4, msCoachSecs:4, msShowScoreToFirst:false, msFirstDelaySecs:3, msFirstHoldSecs:4 } : {};
+  // Skater profile: details off, the two score tiles on — the panel as it
+  // was before any of the optional rows existed.
+  const spDefaults = id === 'skater-profile' ? { spNameSize:44, spClubSize:18, spStatSize:32, spDetailSize:19, spBioSize:16, spPhotoWidth:200, spShowAge:false, spShowHometown:false, spShowClub:false, spShowCoach:false, spShowChoreographer:false, spShowHeight:false, spShowBio:false, spShowPbEvent:false, spShowSeasonBest:true, spShowPersonalBest:true } : {};
   const defaults = { x:0, y:0, scale:1, width: NATURAL_WIDTHS[id]||880, height:0,
                      zoom:100, rowPad:0, rounded:true, radius:20, ltFlagHeight:68,
                      animPreset:'default', animSpeed:420, animEasing:'smooth',
                      caps: {},
-                     ...logoDefaults, ...colDefaults, ...flagDefaults, ...ltDefaults, ...infoDefaults, ...scDefaults, ...elDefaults, ...ofDefaults, ...msgDefaults, ...msExtrasDefaults };
+                     ...logoDefaults, ...colDefaults, ...flagDefaults, ...ltDefaults, ...infoDefaults, ...scDefaults, ...elDefaults, ...ofDefaults, ...msgDefaults, ...msExtrasDefaults, ...spDefaults };
   setPosUI(id, defaults);
   await savePositionObj(id, defaults);
   toast(`↺ ${id} reset`);
@@ -3532,6 +3567,73 @@ function buildCards() {
               <label>Stat Value</label>
               <input type="range" id="pos-sp-stat-${t.id}" min="14" max="56" value="32" step="1" oninput="onPosChange('${t.id}')">
               <span class="pos-val" id="pv-sp-stat-${t.id}">32px</span>
+            </div>
+            <div class="pos-row">
+              <label>Detail Text</label>
+              <input type="range" id="pos-sp-detail-${t.id}" min="11" max="32" value="19" step="1" oninput="onPosChange('${t.id}')">
+              <span class="pos-val" id="pv-sp-detail-${t.id}">19px</span>
+            </div>
+            <div class="pos-row">
+              <label>Photo Width</label>
+              <input type="range" id="pos-sp-photow-${t.id}" min="120" max="360" value="200" step="5" oninput="onPosChange('${t.id}')">
+              <span class="pos-val" id="pv-sp-photow-${t.id}">200px</span>
+            </div>
+
+            <div style="margin:10px 0 2px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);grid-column:1/-1;">Panel Content</div>
+            <div style="grid-column:1/-1;font-size:11px;color:var(--text2);background:rgba(255,255,255,0.04);border-radius:6px;padding:7px 10px;line-height:1.5;margin-bottom:6px;">
+              ℹ️ A row appears only when it is switched on <strong>and</strong> the feed has something for it, so an empty label never airs. Pairs and dance teams show both skaters' values, attributed by first name when they differ. The second portrait appears on its own whenever one is supplied.
+            </div>
+            <div style="grid-column:1/-1;display:flex;flex-direction:column;gap:8px;margin-bottom:4px;">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" id="pos-sp-sb-${t.id}" onchange="onPosChange('${t.id}')"
+                       style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;" />
+                <span style="font-size:12px;color:var(--text2);">Season best</span>
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" id="pos-sp-pb-${t.id}" onchange="onPosChange('${t.id}')"
+                       style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;" />
+                <span style="font-size:12px;color:var(--text2);">Personal best</span>
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" id="pos-sp-pbevent-${t.id}" onchange="onPosChange('${t.id}')"
+                       style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;" />
+                <span style="font-size:12px;color:var(--text2);">Where the personal best was set</span>
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" id="pos-sp-age-${t.id}" onchange="onPosChange('${t.id}')"
+                       style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;" />
+                <span style="font-size:12px;color:var(--text2);">Age</span>
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" id="pos-sp-home-${t.id}" onchange="onPosChange('${t.id}')"
+                       style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;" />
+                <span style="font-size:12px;color:var(--text2);">Hometown</span>
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" id="pos-sp-club2-${t.id}" onchange="onPosChange('${t.id}')"
+                       style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;" />
+                <span style="font-size:12px;color:var(--text2);">Home club</span>
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" id="pos-sp-coach-${t.id}" onchange="onPosChange('${t.id}')"
+                       style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;" />
+                <span style="font-size:12px;color:var(--text2);">Coach</span>
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" id="pos-sp-choreo-${t.id}" onchange="onPosChange('${t.id}')"
+                       style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;" />
+                <span style="font-size:12px;color:var(--text2);">Choreographer</span>
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" id="pos-sp-height-${t.id}" onchange="onPosChange('${t.id}')"
+                       style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;" />
+                <span style="font-size:12px;color:var(--text2);">Height</span>
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" id="pos-sp-bio-${t.id}" onchange="onPosChange('${t.id}')"
+                       style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;" />
+                <span style="font-size:12px;color:var(--text2);">Biography excerpt (up to 60 words — check it before air)</span>
+              </label>
             </div>
             ` : ''}
             <!-- Animation controls -->

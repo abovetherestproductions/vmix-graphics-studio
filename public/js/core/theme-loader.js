@@ -351,6 +351,10 @@
         root.style.setProperty('--sp-name-size', `${pos.spNameSize ?? 44}px`);
         root.style.setProperty('--sp-club-size', `${pos.spClubSize ?? 18}px`);
         root.style.setProperty('--sp-stat-size', `${pos.spStatSize ?? 32}px`);
+        root.style.setProperty('--sp-detail-size', `${pos.spDetailSize ?? 19}px`);
+        root.style.setProperty('--sp-bio-size', `${pos.spBioSize ?? 16}px`);
+        // Wider photo column for two stacked portraits than for one.
+        root.style.setProperty('--sp-photo-width', `${pos.spPhotoWidth ?? 200}px`);
       }
 
       // Header text overrides + title-source selector — exposed globally so
@@ -401,6 +405,20 @@
         msShowScoreToFirst: pos.msShowScoreToFirst === true,
         msFirstDelayMs: (Number(pos.msFirstDelaySecs) || 3) * 1000,
         msFirstHoldMs:  (Number(pos.msFirstHoldSecs)  || 4) * 1000,
+
+        // Skater profile: which optional rows are on air. Details default
+        // OFF and the two score tiles default ON, so a profile with nothing
+        // configured renders as it always has.
+        spShowAge:           pos.spShowAge           === true,
+        spShowHometown:      pos.spShowHometown      === true,
+        spShowClub:          pos.spShowClub          === true,
+        spShowCoach:         pos.spShowCoach         === true,
+        spShowChoreographer: pos.spShowChoreographer === true,
+        spShowHeight:        pos.spShowHeight        === true,
+        spShowBio:           pos.spShowBio           === true,
+        spShowPbEvent:       pos.spShowPbEvent       === true,
+        spShowSeasonBest:    pos.spShowSeasonBest    !== false,
+        spShowPersonalBest:  pos.spShowPersonalBest  !== false,
       };
 
     }
