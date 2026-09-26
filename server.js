@@ -936,6 +936,7 @@ const isuDbService = createIsuDbService({
   getConfig: readConfig,
   readData,
   writeAndBroadcast,
+  applyEventInfoPatch,
   logger: actionLogger,
 });
 
@@ -3831,6 +3832,11 @@ app.post('/api/isu/select', async (req, res) => {
       segmentName:    d.segmentName,
       segmentNameFr:  d.segmentNameFr,
       groupNumber:    d.groupNumber,
+      // Not rendered by the bar. The recording state machine reads the start
+      // order off this payload whenever there is no scoring data to derive
+      // from - which is always true in this mode, because we blank scoring on
+      // connect. Without it every practice file loses its start number.
+      startOrder:     d.startNumber,
       coaches:        d.coaches,
       quote:          '',
       musicTitle:     d.musicTitle,
@@ -3874,6 +3880,9 @@ app.post('/api/isu/select', async (req, res) => {
     // Recording metadata. The sorter reads this snapshot when the operator
     // hits record, so picking a skater is all that is needed for the file to
     // land in the right folder under the right name.
+    // Category and segment are not set here: the poll loop patches them into
+    // event config from the published board, which is the path the sorter
+    // actually derives its folder from.
     stateService.setCurrentSkater({
       startOrder: d.startNumber,
       skaterName: d.name,

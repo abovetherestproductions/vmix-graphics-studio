@@ -59,7 +59,39 @@ const CATEGORY_FR = {
   'Ice Dance': 'Danse sur glace',
 };
 
-function createIsuDbService({ getConfig, readData, writeAndBroadcast, logger }) {
+/**
+ * What goes on air as the header.
+ *
+ * The desk's boards are per segment because they are built from the
+ * competition start order, but a practice session is not a segment: skaters
+ * run whichever program they feel like, so "Short Program" over a practice
+ * would be wrong as often as right. The session is named for the discipline
+ * instead, and the segment becomes simply "Practice".
+ *
+ * That also gives the recording sorter a sane folder - "Men Practice" rather
+ * than "Men Short" - since it builds the folder from category plus segment.
+ *
+ * If this mode is ever pointed at a real competition segment, this is the one
+ * place to undo: pass the board's own segment through instead.
+ */
+const PRACTICE_TITLE = {
+  'Men':       { en: "Men's Practice",     fr: 'Entraînement hommes' },
+  'Women':     { en: "Women's Practice",   fr: 'Entraînement femmes' },
+  'Pairs':     { en: 'Pairs Practice',     fr: 'Entraînement couples' },
+  'Ice Dance': { en: 'Ice Dance Practice', fr: 'Entraînement danse sur glace' },
+};
+const PRACTICE_SEGMENT_EN = 'Practice';
+const PRACTICE_SEGMENT_FR = 'Entraînement';
+
+function practiceTitle(category, lang) {
+  const named = PRACTICE_TITLE[String(category || '').trim()];
+  if (named) return lang === 'fr' ? named.fr : named.en;
+  const cat = String(category || '').trim();
+  if (!cat) return lang === 'fr' ? PRACTICE_SEGMENT_FR : PRACTICE_SEGMENT_EN;
+  return lang === 'fr' ? `${PRACTICE_SEGMENT_FR} ${cat.toLowerCase()}` : `${cat} Practice`;
+}
+
+function createIsuDbService({ getConfig, readData, writeAndBroadcast, applyEventInfoPatch, logger }) {
 
   let pollTimer      = null;
   let pollGeneration = 0;          // invalidates in-flight polls after stop()
@@ -246,26 +278,42 @@ function createIsuDbService({ getConfig, readData, writeAndBroadcast, logger }) 
       rowsByGroup.get(g).slice().sort(bySortOrder).forEach(r => allRows.push(toStartingOrderRow(r)));
     }
 
-    // Category and segment come off the feed rows themselves - the desk owns
-    // which board is published, so the rows are the authority on what it is.
+    // The category comes off the feed rows themselves - the desk owns which
+    // board is published, so the rows are the authority on what it is. The
+    // board's segment is deliberately NOT aired; see PRACTICE_TITLE.
     const first   = feedRows[0] || {};
-    const segName = str(first.Segment);
     const catName = str(first.Category);
     const lang    = getConfig().language === 'fr' ? 'fr' : 'en';
-    const segFr   = newApi.tr(segName);
-    const catFr   = categoryFr(catName);
+    const titleEn = practiceTitle(catName, 'en');
+    const titleFr = practiceTitle(catName, 'fr');
 
     return {
       meta:    { template: 'starting-order', revision: Date.now(), updatedAt: new Date().toISOString() },
       control: existingControl ? { ...existingControl } : { visible: false, state: 'hidden' },
       data: {
-        title:          lang === 'fr' ? segFr : segName,
-        titleEn:        segName,
-        titleFr:        segFr,
-        segmentName:    segName,
-        segmentNameFr:  segFr,
-        categoryName:   catName,
-        categoryNameFr: catFr,
+        title:          lang === 'fr' ? titleFr : titleEn,
+        titleEn,
+        titleFr,
+        // The session name goes on air as the CATEGORY, with no segment
+        // beside it. That is not a trick: for a practice, "Men's Practice"
+        // is the whole answer to "what is this", and the header's automatic
+        // mode composes its title from category plus segment. Leaving the
+        // segment blank makes it render the session name alone, correctly
+        // for all four disciplines in both languages, with no change to the
+        // shared header code. (Passing "Men" here would not work - the
+        // header cleans bare discipline words out of category names, so
+        // Men, Women and Pairs would vanish and leave a naked "Practice",
+        // while Ice Dance survived. That inconsistency is what this avoids.)
+        categoryName:   titleEn,
+        categoryNameFr: titleFr,
+        segmentName:    '',
+        segmentNameFr:  '',
+        // Not aired. The discipline on its own, and the board the desk
+        // actually published - the operator page shows the latter so you can
+        // confirm you are on the right one, and pollOnce() uses the former
+        // for the recording folder.
+        discipline:     catName,
+        boardSegment:   str(first.Segment),
         subtitle:       '',
         groupNumber:    targetGroup,
         groupCount:     availableGroups.length,
@@ -298,6 +346,24 @@ function createIsuDbService({ getConfig, readData, writeAndBroadcast, logger }) 
       existing?.data?.groupNumber,
     );
     writeAndBroadcast('starting-order', payload);
+
+    // Push the board's category and segment into event config, the same way
+    // the Skate Canada path does. This is what the graphics headers read, and
+    // what the recording sorter derives its folder from - without it a
+    // practice session would record into a folder named after whatever event
+    // ran here last. Doing it from the poll loop means republishing a
+    // different board on the desk moves everything with it.
+    if (typeof applyEventInfoPatch === 'function' && payload.data.discipline) {
+      // Deliberately the discipline and "Practice" as separate pieces, not
+      // the aired title: the sorter joins them into the folder name, giving
+      // "Men Practice" rather than "Men's Practice" with its apostrophe.
+      applyEventInfoPatch({
+        categoryName:   payload.data.discipline,
+        categoryNameFr: categoryFr(payload.data.discipline),
+        segmentName:    PRACTICE_SEGMENT_EN,
+        segmentNameFr:  PRACTICE_SEGMENT_FR,
+      });
+    }
 
     // Warm the image cache for everyone on the board so a selection later is
     // instant. Fire-and-forget by design.
@@ -343,16 +409,21 @@ function createIsuDbService({ getConfig, readData, writeAndBroadcast, logger }) 
   }
 
   /**
-   * Which music to show depends on the segment currently published. Short
-   * program and rhythm dance share one field in the database; free skate and
-   * free dance share the other.
+   * Program music for the name bar's slide-down card.
    *
-   * Matched against the segment name directly rather than through a shared
-   * segment-code helper: this reads plainly, and it does not inherit whatever
-   * that helper decides "Free Dance" is.
+   * Blank during practice, on purpose. The database holds a short and a free
+   * title per athlete, and in a practice session there is no way to know
+   * which one a skater is about to run - they choose. Naming the wrong piece
+   * on air is worse than naming none, and the card falls back to the category
+   * line when this is empty.
+   *
+   * If a real segment is ever aired through this mode, the pairing is: short
+   * program and rhythm dance read ShortMusic, free skate and free dance read
+   * FreeMusic.
    */
   function musicForSegment(entry, segmentName) {
-    const isShort = /\b(short|rhythm)\b/i.test(segmentName || '');
+    if (!segmentName || segmentName === PRACTICE_SEGMENT_EN) return '';
+    const isShort = /\b(short|rhythm)\b/i.test(segmentName);
     return isShort ? str(entry.ShortMusic) : str(entry.FreeMusic);
   }
 
@@ -372,8 +443,10 @@ function createIsuDbService({ getConfig, readData, writeAndBroadcast, logger }) 
     const boardRow  = board.find(r => str(r.entryId) === str(entryId)) || null;
     const boardData = readData('starting-order')?.data || {};
 
-    const segmentName = str(boardData.segmentName);
-    const categoryName = str(entry.Category) || str(boardData.categoryName);
+    // The bar's detail card reads the same as the start-order header: the
+    // session name, no segment beside it.
+    const discipline   = str(entry.Category) || str(boardData.discipline);
+    const categoryName = practiceTitle(discipline, 'en');
 
     return {
       entryId:        str(entry.EntryID),
@@ -382,13 +455,14 @@ function createIsuDbService({ getConfig, readData, writeAndBroadcast, logger }) 
       section:        str(entry.CountryCode),
       flagUrl:        flagUrlFor(entry.CountryCode),
       categoryName,
-      categoryNameFr: categoryFr(categoryName),
-      segmentName,
-      segmentNameFr:  newApi.tr(segmentName),
+      categoryNameFr: practiceTitle(discipline, 'fr'),
+      segmentName:    '',
+      segmentNameFr:  '',
+      discipline,
       groupNumber:    boardRow?.warmUpGroup ?? null,
       startNumber:    boardRow?.position ?? null,
       coaches:        str(entry.Coach),
-      musicTitle:     musicForSegment(entry, segmentName),
+      musicTitle:     musicForSegment(entry, ''),
       // Teams carry a second athlete; the profile graphic uses the presence of
       // photoUrl2 to decide between a one- and two-portrait layout.
       photoUrl:       localPortraitUrl(entry.Skater1PortraitAsset),

@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ISU Event</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #1a1a1e;
+    --surface:   #24242a;
+    --surface2:  #2c2c34;
+    --border:    rgba(255,255,255,0.08);
+    --text:      #f0f0f2;
+    --text2:     #8888a0;
+    --accent:    #5b8af5;
+    --green:     #81c784;
+    --green-bg:  rgba(76,175,80,0.12);
+    --green-bdr: rgba(76,175,80,0.30);
+    --red:       #ef5350;
+    --red-bg:    rgba(244,67,54,0.10);
+    --orange:    #ffb74d;
+    --orange-bg: rgba(255,152,0,0.10);
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 13px;
+    line-height: 1.4;
+    overflow: hidden;
+  }
+
+  #app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+  /* ── Connection bar ─────────────────────────────────────────────── */
+  #connect-bar {
+    flex-shrink: 0;
+    padding: 8px 10px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .field { flex: 1 1 220px; min-width: 0; }
+  .sel-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--text2); margin-bottom: 3px;
+  }
+  input[type=text] {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text); padding: 6px 8px; font-size: 12px;
+    font-family: inherit;
+  }
+  input[type=text]:focus { outline: none; border-color: var(--accent); }
+
+  button {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text); padding: 6px 12px;
+    font-size: 12px; font-family: inherit; cursor: pointer; flex: 0 0 auto;
+    transition: background 120ms, border-color 120ms;
+  }
+  button:hover:not(:disabled) { background: rgba(91,138,245,0.14); border-color: rgba(91,138,245,0.35); }
+  button:disabled { opacity: 0.45; cursor: default; }
+  button.primary { background: rgba(91,138,245,0.22); border-color: rgba(91,138,245,0.55); }
+  button.primary:hover:not(:disabled) { background: rgba(91,138,245,0.34); }
+
+  /* ── Status strip ───────────────────────────────────────────────── */
+  #status {
+    flex-shrink: 0; padding: 7px 10px; font-size: 12px;
+    border-bottom: 1px solid var(--border); background: var(--surface2);
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  #status.ok   { background: var(--green-bg);  border-bottom-color: var(--green-bdr); }
+  #status.warn { background: var(--orange-bg); }
+  #status.err  { background: var(--red-bg); }
+  #status .muted { color: var(--text2); }
+  .pill {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 999px; background: rgba(255,255,255,0.07); color: var(--text2);
+  }
+  .pill.live { background: rgba(76,175,80,0.22); color: var(--green); }
+
+  /* ── Roster ─────────────────────────────────────────────────────── */
+  #list-head {
+    flex-shrink: 0; display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px; border-bottom: 1px solid var(--border);
+  }
+  #list-head h2 { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text2); }
+  #roster-area { flex: 1; overflow-y: auto; padding: 8px 10px; }
+
+  .group-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--text2); margin: 10px 0 5px; padding-left: 2px;
+  }
+  .group-label:first-child { margin-top: 0; }
+
+  .skater-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 8px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface2); margin-bottom: 4px; cursor: pointer;
+    transition: background 120ms, border-color 120ms; user-select: none;
+  }
+  .skater-row:hover  { background: rgba(91,138,245,0.10); border-color: rgba(91,138,245,0.30); }
+  .skater-row:active { background: rgba(91,138,245,0.20); }
+  .skater-row.selected {
+    background: rgba(91,138,245,0.28); border-color: rgba(91,138,245,0.80);
+    border-left: 3px solid var(--accent); box-shadow: 0 0 0 1px rgba(91,138,245,0.35);
+  }
+  .skater-row.selected .skater-pos { color: var(--accent); }
+  .skater-row.flash {
+    background: rgba(129,199,132,0.20) !important;
+    border-color: rgba(129,199,132,0.50) !important; transition: none;
+  }
+  .skater-pos {
+    width: 22px; text-align: center; font-size: 14px; font-weight: 700;
+    color: #fff; flex-shrink: 0;
+  }
+  .skater-flag {
+    width: 28px; height: 19px; object-fit: cover; border-radius: 3px;
+    flex-shrink: 0; background: rgba(255,255,255,0.05);
+  }
+  .skater-main { flex: 1; min-width: 0; }
+  .skater-name {
+    font-size: 13px; font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .skater-sub { font-size: 11px; color: var(--text2); }
+  .tag {
+    font-size: 9px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.07);
+    color: var(--text2); flex-shrink: 0;
+  }
+
+  .empty { padding: 28px 12px; text-align: center; color: var(--text2); font-size: 12px; }
+  .empty strong { color: var(--text); display: block; margin-bottom: 4px; font-size: 13px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="connect-bar">
+    <div class="field">
+      <div class="sel-label">Profile database address</div>
+      <input type="text" id="base-url" value="http://127.0.0.1:8766" spellcheck="false" autocomplete="off">
+    </div>
+    <button id="btn-connect" class="primary">Connect</button>
+    <button id="btn-refresh" disabled>Refresh</button>
+  </div>
+
+  <div id="status"><span class="muted">Not connected.</span></div>
+
+  <div id="list-head">
+    <h2 id="list-title">Start order</h2>
+    <span style="flex:1"></span>
+    <button id="btn-toggle-list" disabled>Show full roster</button>
+  </div>
+
+  <div id="roster-area">
+    <div class="empty">
+      <strong>Not connected</strong>
+      Enter the address of the profile database and press Connect.
+    </div>
+  </div>
+
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const el = id => document.getElementById(id);
+  const baseUrlInput = el('base-url');
+  const statusEl     = el('status');
+  const areaEl       = el('roster-area');
+  const btnConnect   = el('btn-connect');
+  const btnRefresh   = el('btn-refresh');
+  const btnToggle    = el('btn-toggle-list');
+  const listTitle    = el('list-title');
+
+  const state = {
+    connected:       false,
+    showFullRoster:  false,
+    board:           null,   // { category, segment, rows, groups }
+    boardRows:       [],     // from starting-order.json (our own payload)
+    roster:          [],     // all 42 entries
+    selectedEntryId: null,
+  };
+
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
+    c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+
+  // ── Status line ───────────────────────────────────────────────────
+
+  function setStatus(kind, html) {
+    statusEl.className = kind || '';
+    statusEl.innerHTML = html;
+  }
+
+  function renderConnectedStatus(s) {
+    const board = s.board
+      ? `<span class="pill live">On air feed</span> <strong>${esc(s.board.category)}</strong> &middot; ${esc(s.board.segment)}
+         <span class="muted">&middot; ${s.board.rows} entries in ${s.board.groups} group${s.board.groups === 1 ? '' : 's'}</span>`
+      : `<span class="pill">No board</span> <span class="muted">The desk has not published a start order yet.</span>`;
+    setStatus('ok',
+      `${board} <span style="flex:1"></span>
+       <span class="muted">${s.entries} entries &middot; ${s.athletes} athletes</span>`);
+  }
+
+  // ── Data ──────────────────────────────────────────────────────────
+
+  async function api(path, opts) {
+    const res  = await fetch(path, opts);
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok || body.ok === false) throw new Error(body.error || `HTTP ${res.status}`);
+    return body;
+  }
+
+  async function loadBoard() {
+    // The board we show is our own starting-order payload, so this page and
+    // the graphic can never disagree about who is on it.
+    try {
+      const r = await fetch('/data/starting-order.json?_=' + Date.now());
+      const p = await r.json();
+      state.boardRows = p?.data?.allRows || [];
+    } catch { state.boardRows = []; }
+  }
+
+  async function loadRoster() {
+    try {
+      const r = await api('/api/isu/roster');
+      state.roster = r.entries || [];
+    } catch { state.roster = []; }
+  }
+
+  async function connect() {
+    btnConnect.disabled = true;
+    setStatus('', '<span class="muted">Connecting…</span>');
+    const baseUrl = baseUrlInput.value.trim();
+
+    try {
+      // Test the address before switching the app into this mode, so a typo
+      // fails on its own rather than leaving us pointed at nothing.
+      await api('/api/isu/status?baseUrl=' + encodeURIComponent(baseUrl));
+    } catch (err) {
+      setStatus('err', `<strong>Could not reach that address.</strong> <span class="muted">${esc(err.message)}</span>`);
+      btnConnect.disabled = false;
+      return;
+    }
+
+    try {
+      const s = await api('/api/isu/connect', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ baseUrl }),
+      });
+      state.connected = true;
+      renderConnectedStatus(s);
+      btnRefresh.disabled = false;
+      btnToggle.disabled  = false;
+      state.selectedEntryId = s.selectedEntryId || null;
+      await Promise.all([loadBoard(), loadRoster()]);
+      render();
+    } catch (err) {
+      setStatus('err', `<strong>Connect failed.</strong> <span class="muted">${esc(err.message)}</span>`);
+    } finally {
+      btnConnect.disabled = false;
+    }
+  }
+
+  async function refresh() {
+    btnRefresh.disabled = true;
+    try {
+      await api('/api/isu/refresh', { method: 'POST' });
+      const s = await api('/api/isu/status');
+      renderConnectedStatus(s);
+      await Promise.all([loadBoard(), loadRoster()]);
+      render();
+    } catch (err) {
+      setStatus('warn', `<strong>Refresh failed.</strong> <span class="muted">${esc(err.message)}</span>`);
+    } finally {
+      btnRefresh.disabled = false;
+    }
+  }
+
+  // ── Push ──────────────────────────────────────────────────────────
+
+  async function select(entryId, rowEl) {
+    if (rowEl) {
+      rowEl.classList.add('flash');
+      setTimeout(() => rowEl.classList.remove('flash'), 220);
+    }
+    try {
+      await api('/api/isu/select', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ entryId }),
+      });
+      markSelected(entryId);
+    } catch (err) {
+      setStatus('err', `<strong>Could not push that skater.</strong> <span class="muted">${esc(err.message)}</span>`);
+    }
+  }
+
+  function markSelected(entryId) {
+    state.selectedEntryId = entryId;
+    document.querySelectorAll('.skater-row.selected').forEach(r => r.classList.remove('selected'));
+    const row = document.querySelector(`.skater-row[data-entry-id="${CSS.escape(entryId)}"]`);
+    if (row) { row.classList.add('selected'); row.scrollIntoView({ block: 'nearest' }); }
+  }
+
+  // ── Render ────────────────────────────────────────────────────────
+
+  function rowHtml({ entryId, position, name, sub, flagUrl, tag }) {
+    const sel = entryId === state.selectedEntryId ? ' selected' : '';
+    return `
+      <div class="skater-row${sel}" data-entry-id="${esc(entryId)}">
+        <div class="skater-pos">${position != null ? position : ''}</div>
+        ${flagUrl ? `<img class="skater-flag" src="${esc(flagUrl)}" alt="">` : '<div class="skater-flag"></div>'}
+        <div class="skater-main">
+          <div class="skater-name">${esc(name)}</div>
+          <div class="skater-sub">${esc(sub)}</div>
+        </div>
+        ${tag ? `<span class="tag">${esc(tag)}</span>` : ''}
+      </div>`;
+  }
+
+  function render() {
+    listTitle.textContent = state.showFullRoster ? 'Full roster' : 'Start order';
+    btnToggle.textContent = state.showFullRoster ? 'Show start order' : 'Show full roster';
+
+    if (!state.connected) return;
+
+    if (state.showFullRoster) {
+      if (!state.roster.length) {
+        areaEl.innerHTML = '<div class="empty"><strong>No entries</strong>The database returned an empty roster.</div>';
+        return;
+      }
+      const byCategory = new Map();
+      for (const e of state.roster) {
+        if (!byCategory.has(e.category)) byCategory.set(e.category, []);
+        byCategory.get(e.category).push(e);
+      }
+      areaEl.innerHTML = [...byCategory.entries()].map(([cat, entries]) => `
+        <div class="group-label">${esc(cat)} &middot; ${entries.length}</div>
+        ${entries.map(e => rowHtml({
+          entryId:  e.id,
+          position: null,
+          name:     e.name,
+          sub:      e.country,
+          flagUrl:  e.code ? `/assets/flags/${encodeURIComponent(e.code)}.png` : '',
+          tag:      e.isTeam ? 'Team' : '',
+        })).join('')}
+      `).join('');
+      return;
+    }
+
+    if (!state.boardRows.length) {
+      areaEl.innerHTML = `<div class="empty">
+        <strong>No start order published</strong>
+        Publish a board on the profile desk with &ldquo;Use order for graphics&rdquo;,
+        then press Refresh. The full roster is still available above.
+      </div>`;
+      return;
+    }
+
+    const groups = [...new Set(state.boardRows.map(r => r.warmUpGroup))].sort((a, b) => a - b);
+    areaEl.innerHTML = groups.map(g => {
+      const rows = state.boardRows.filter(r => r.warmUpGroup === g);
+      return `
+        <div class="group-label">Warm-up group ${g} &middot; ${rows.length}</div>
+        ${rows.map(r => rowHtml({
+          entryId:  r.entryId,
+          position: r.position,
+          name:     r.name,
+          sub:      r.club,
+          flagUrl:  r.flagUrl,
+          tag:      '',
+        })).join('')}`;
+    }).join('');
+  }
+
+  // ── Events ────────────────────────────────────────────────────────
+
+  btnConnect.addEventListener('click', connect);
+  btnRefresh.addEventListener('click', refresh);
+  btnToggle.addEventListener('click', () => { state.showFullRoster = !state.showFullRoster; render(); });
+  baseUrlInput.addEventListener('keydown', e => { if (e.key === 'Enter') connect(); });
+
+  areaEl.addEventListener('click', e => {
+    const row = e.target.closest('.skater-row');
+    if (row) select(row.dataset.entryId, row);
+  });
+
+  // Selection can also happen elsewhere (another panel, a deck button), so
+  // follow the server rather than assuming this page is the only one.
+  function connectWs() {
+    let ws;
+    try { ws = new WebSocket(`ws://${location.host}`); } catch { return; }
+    ws.onmessage = evt => {
+      let msg;
+      try { msg = JSON.parse(evt.data); } catch { return; }
+      if (msg.type === 'isu-selection' && msg.entryId) markSelected(msg.entryId);
+      // A republished board arrives as a normal template update.
+      if (msg.type === 'update' && msg.template === 'starting-order' && state.connected) {
+        state.boardRows = msg.payload?.data?.allRows || [];
+        if (!state.showFullRoster) render();
+      }
+    };
+    ws.onclose = () => setTimeout(connectWs, 2000);
+  }
+  connectWs();
+
+  // If the app is already in ISU mode, pick up where it left off rather than
+  // making the operator press Connect again after a page reload.
+  (async () => {
+    try {
+      const cfg = await (await fetch('/api/config')).json();
+      const isu = cfg?.dataSource?.isuDb;
+      if (isu?.baseUrl) baseUrlInput.value = isu.baseUrl;
+      if (cfg?.dataSource?.mode !== 'isu-db') return;
+
+      const s = await api('/api/isu/status');
+      state.connected = true;
+      state.selectedEntryId = s.selectedEntryId || null;
+      renderConnectedStatus(s);
+      btnRefresh.disabled = false;
+      btnToggle.disabled  = false;
+      await Promise.all([loadBoard(), loadRoster()]);
+      render();
+    } catch {
+      setStatus('warn', '<span class="muted">In ISU mode, but the database is not answering. Check it is running, then press Connect.</span>');
+    }
+  })();
+})();
+</script>
+</body>
+</html>
