@@ -80,6 +80,32 @@ function createScApiService({
   // doesn't carry. Prior segments are final, so a 5-minute cache is plenty.
   let priorScores = { key: null, bySkater: new Map(), fetchedAt: 0 };
 
+  // The category's own segment list, for working out whether the standings on
+  // screen are interim or final (see standingsHeading in the normalizer).
+  let segmentList = { categoryId: null, segments: [], fetchedAt: 0 };
+
+  async function getCategorySegments(categoryId) {
+    const FRESH_MS = 5 * 60 * 1000;
+    const RETRY_MS = 15 * 1000;
+    const c = segmentList;
+    if (c.categoryId === categoryId && Date.now() - c.fetchedAt < FRESH_MS) return c.segments;
+    try {
+      const segments = await fetchSegments(categoryId);
+      segmentList = { categoryId, segments, fetchedAt: Date.now() };
+      return segments;
+    } catch (err) {
+      console.warn('[sc-api] category segment list error:', err.message);
+      // Keep serving the last good list for this category rather than
+      // dropping to "unknown", and back off so a failing API is not asked
+      // again on every two-second poll. For a different category there is
+      // nothing to serve - the heading then names the segment rather than
+      // claiming it is final.
+      const stale = c.categoryId === categoryId ? c.segments : [];
+      segmentList = { categoryId, segments: stale, fetchedAt: Date.now() - FRESH_MS + RETRY_MS };
+      return stale;
+    }
+  }
+
   async function getPriorSegmentScores(categoryId, currentSegmentId) {
     const key = `${categoryId}|${currentSegmentId}`;
     const FRESH_MS = 5 * 60 * 1000;
@@ -272,6 +298,7 @@ function createScApiService({
     lastElementsReadyId = null;
     scoringHold         = null;
     priorScores         = { key: null, bySkater: new Map(), fetchedAt: 0 };
+    segmentList         = { categoryId: null, segments: [], fetchedAt: 0 };
   }
 
   // ── Main poll ─────────────────────────────────────────────────────────────
@@ -331,8 +358,11 @@ function createScApiService({
       const existingRk  = readData('rankings');
       const rpp         = rankingsCache.rowsPerPage || existingRk?.data?.rowsPerPage || 6;
       const currentPage = existingRk?.data?.page || 1;
+      const categorySegments = categoryId ? await getCategorySegments(categoryId) : [];
+      if (myGen !== pollGeneration) return;
       const rkPayload   = newApi.normalizeRankings(
-        entries, categoryDto, segmentDto, lang, rpp, currentPage, existingRk?.control, priorBySkater
+        entries, categoryDto, segmentDto, lang, rpp, currentPage, existingRk?.control, priorBySkater,
+        categorySegments, segmentId
       );
       writeAndBroadcast('rankings', rkPayload, { force });
       // Keep shared cache in sync so page controls work

@@ -9,6 +9,23 @@ const TEMPLATE_LABELS = {
   'skater-profile': { en: 'Skater Profile',    fr: 'Profil du patineur' },
 };
 
+/**
+ * The "natural" broadcast label for a template, for the Fixed header option.
+ *
+ * A payload can supply its own (headerLabel / headerLabelFr) when the right
+ * wording depends on the data - the rankings graphic says "Short Program
+ * Standings" part-way through a two-segment category and "Final Standings"
+ * at the end. Where a payload sends none, which is every other graphic and
+ * every data source that cannot tell, the template's static label applies
+ * exactly as before.
+ */
+function fixedLabel(template, data, pick) {
+  const own = pick(data?.headerLabel, data?.headerLabelFr);
+  if (own) return own;
+  const tl = TEMPLATE_LABELS[template] || {};
+  return pick(tl.en, tl.fr);
+}
+
 window.GraphicsUtils = {
   clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
@@ -291,8 +308,8 @@ window.GraphicsUtils = {
         //   rankings   → "Final Rankings" / "Classement final"
         //   standings  → "Rankings" / "Classement"
         //   start-order → "Starting Order" / "Ordre de départ"
-        const tl = TEMPLATE_LABELS[template] || {};
-        out = pick(tl.en, tl.fr) || fallback;
+        // (or the payload's own label where the data decides the wording)
+        out = fixedLabel(template, data, pick) || fallback;
         break;
       }
       case 'auto':
@@ -371,9 +388,9 @@ window.GraphicsUtils = {
       case 'fixed': {
         // Template's natural broadcast label, language-aware. Same map the
         // title resolver uses, so subtitles can show e.g. "Final Standings"
-        // beneath the live category title.
-        const tl = TEMPLATE_LABELS[template] || {};
-        out = pick(tl.en, tl.fr) || fallback;
+        // beneath the live category title. The rankings graphic's payload
+        // supplies its own, so this line follows the segment being shown.
+        out = fixedLabel(template, data, pick) || fallback;
         break;
       }
       case 'custom':

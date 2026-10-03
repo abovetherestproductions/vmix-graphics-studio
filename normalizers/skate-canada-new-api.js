@@ -598,7 +598,76 @@ function normalizeLowerThird(entry, categoryDto, segmentDto, existingControl) {
  * Segment leaderboard (full rankings graphic).
  * Sorted by segmentRank.
  */
-function normalizeRankings(entries, categoryDto, segmentDto, lang, rowsPerPage, currentPage, existingControl, priorBySkater) {
+/**
+ * French for "<segment> standings", with the article the segment name needs:
+ * "Classement du programme court" but "Classement de la danse libre".
+ * Anything that is neither falls back to a form with no grammar to get wrong.
+ */
+function frenchStandings(segNameFr) {
+  const name = safeStr(segNameFr);
+  if (!name) return 'Classement';
+  const lower = name.toLowerCase();
+  if (/^programme\b/.test(lower)) return `Classement du ${lower}`;
+  if (/^danse\b/.test(lower))     return `Classement de la ${lower}`;
+  return `Classement – ${name}`;
+}
+
+/**
+ * The line under the category on the rankings graphic.
+ *
+ * "Final Standings" is only true once the category has nothing left to skate.
+ * After the short program of a two-part event the same graphic is showing
+ * interim results, so it reads "Short Program Standings" instead; after the
+ * free program, or in a category with only one segment, it reads "Final
+ * Standings".
+ *
+ * Order comes from performanceOrder on the category's own segment list, which
+ * is present, unique and 1..N on every multi-segment category in two real
+ * events (44 of them). The list's array order cannot be used - the API
+ * returns it arbitrarily - and neither can start time, which two categories
+ * lack. The single-segment endpoint reports performanceOrder 0, so it is not
+ * read from the segment DTO either; the current segment is found in the list
+ * by id.
+ *
+ * "Final" is only claimed when it is positively known. If the list is missing
+ * or the current segment is not in it, or the ordering is ambiguous, the
+ * heading names the segment instead: "Free Program Standings" is merely less
+ * informative when it turns out to be final, while "Final Standings" over
+ * interim results is simply wrong.
+ *
+ * Returns { en, fr }, or null when there is not even a segment name to use,
+ * in which case the graphic falls back to its fixed template label.
+ */
+function standingsHeading(segmentDto, segmentId, categorySegments) {
+  const name   = safeStr(segmentDto?.segmentName);
+  const nameFr = safeStr(segmentDto?.segmentFrenchName) || tr(name);
+  if (!name) return null;
+
+  const segs = Array.isArray(categorySegments) ? categorySegments : [];
+  const id   = safeStr(segmentId || segmentDto?.segmentId);
+  const me   = id ? segs.find(sg => safeStr(sg.segmentId) === id) : null;
+
+  let isFinal = false;
+  if (me) {
+    if (segs.length === 1) {
+      isFinal = true;
+    } else {
+      const orders = segs.map(sg => Number(sg.performanceOrder));
+      if (orders.every(Number.isFinite)) {
+        const last = Math.max(...orders);
+        // A tie for last is ambiguous, so it is not claimed as final.
+        isFinal = Number(me.performanceOrder) === last
+               && orders.filter(o => o === last).length === 1;
+      }
+    }
+  }
+
+  return isFinal
+    ? { en: 'Final Standings',   fr: 'Classement final' }
+    : { en: `${name} Standings`, fr: frenchStandings(nameFr) };
+}
+
+function normalizeRankings(entries, categoryDto, segmentDto, lang, rowsPerPage, currentPage, existingControl, priorBySkater, categorySegments, segmentId) {
   const segName   = safeStr(segmentDto?.segmentName);
   const segNameFr = safeStr(segmentDto?.segmentFrenchName) || tr(segName);
   const catName   = catEn(categoryDto);
@@ -633,6 +702,7 @@ function normalizeRankings(entries, categoryDto, segmentDto, lang, rowsPerPage, 
   const pageCount = Math.max(1, Math.ceil(allRows.length / rpp));
   const safePage  = Math.min(Math.max(1, currentPage || 1), pageCount);
   const start     = (safePage - 1) * rpp;
+  const heading   = standingsHeading(segmentDto, segmentId, categorySegments);
 
   return {
     meta:    nowMeta('rankings'),
@@ -646,6 +716,9 @@ function normalizeRankings(entries, categoryDto, segmentDto, lang, rowsPerPage, 
       segmentName:    segName,
       segmentNameFr:  segNameFr,
       subtitle:       '',
+      // What the graphic's fixed second line should say - see
+      // standingsHeading(). Absent leaves the template's own label.
+      ...(heading ? { headerLabel: heading.en, headerLabelFr: heading.fr } : {}),
       page:           safePage,
       pageCount,
       rowsPerPage:    rpp,
@@ -930,6 +1003,7 @@ module.exports = {
   normalizeScoring,
   normalizeLowerThird,
   normalizeRankings,
+  standingsHeading,
   normalizeStandings,
   normalizeOfficials,
   normalizeElements,
