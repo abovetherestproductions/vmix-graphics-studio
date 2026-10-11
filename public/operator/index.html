@@ -1692,6 +1692,7 @@ function setPosUI(id, pos) {
     setCkOn(`pos-sp-header-${id}`,   p.spShowHeader);
     setProfileHeaderUI(p.spShowHeader !== false);
     { const lay = g(`pos-sp-layout-${id}`); if (lay) lay.value = p.spLayout === 'compact' ? 'compact' : 'portraits'; }
+    { const ha = g(`pos-sp-hdralign-${id}`); if (ha) ha.value = ['left', 'center', 'right'].includes(p.spHeaderAlign) ? p.spHeaderAlign : 'right'; }
     setProfileLayoutUI(p.spLayout === 'compact' ? 'compact' : 'portraits');
   }
   // Elements font sizes — set dedicated card inputs
@@ -1865,6 +1866,7 @@ function readPos(id) {
     spPhotoSize:    id === 'skater-profile' ? Number(g(`pos-sp-photosz-${id}`)?.value ?? 150) : undefined,
     spPortraitHeight: id === 'skater-profile' ? Number(g(`pos-sp-portraith-${id}`)?.value ?? 300) : undefined,
     spLayout:       id === 'skater-profile' ? (g(`pos-sp-layout-${id}`)?.value === 'compact' ? 'compact' : 'portraits') : undefined,
+    spHeaderAlign:  id === 'skater-profile' ? (['left', 'center', 'right'].includes(g(`pos-sp-hdralign-${id}`)?.value) ? g(`pos-sp-hdralign-${id}`).value : 'right') : undefined,
     spShowHeader:   id === 'skater-profile' ? !!g(`pos-sp-header-${id}`)?.checked : undefined,
     spInsetY:       id === 'skater-profile' ? Number(g(`pos-sp-inset-${id}`)?.value ?? 20) : undefined,
     spEventSize:    id === 'skater-profile' ? Number(g(`pos-sp-event-${id}`)?.value ?? 19) : undefined,
@@ -2181,7 +2183,7 @@ async function resetPos(id) {
   const msExtrasDefaults = id === 'manual-skater' ? { msExtrasEnabled:true, msShowCoaches:false, msShowQuote:false, msShowMusic:false, msShowCategory:true, msQuoteSecs:4, msCoachSecs:4, msShowScoreToFirst:false, msFirstDelaySecs:3, msFirstHoldSecs:4 } : {};
   // Skater profile: details off, the two score tiles on — the panel as it
   // was before any of the optional rows existed.
-  const spDefaults = id === 'skater-profile' ? { spNameSize:44, spClubSize:18, spStatSize:32, spDetailSize:19, spBioSize:16, spLayout:'portraits', spPortraitHeight:300, spPhotoSize:150, spShowHeader:true, spInsetY:20, spEventSize:19, spSubtitleSize:14, spShowBio:false, spShowPbEvent:false, spShowSeasonBest:true, spShowPersonalBest:true, ...Object.fromEntries(SP_DETAIL_ROWS.map(([f]) => [spCfgKey(f), false])) } : {};
+  const spDefaults = id === 'skater-profile' ? { spNameSize:44, spClubSize:18, spStatSize:32, spDetailSize:19, spBioSize:16, spLayout:'portraits', spHeaderAlign:'right', spPortraitHeight:300, spPhotoSize:150, spShowHeader:true, spInsetY:20, spEventSize:19, spSubtitleSize:14, spShowBio:false, spShowPbEvent:false, spShowSeasonBest:true, spShowPersonalBest:true, ...Object.fromEntries(SP_DETAIL_ROWS.map(([f]) => [spCfgKey(f), false])) } : {};
   const defaults = { x:0, y:0, scale:1, width: NATURAL_WIDTHS[id]||880, height:0,
                      zoom:100, rowPad:0, rounded:true, radius:20, ltFlagHeight:68,
                      animPreset:'default', animSpeed:420, animEasing:'smooth',
@@ -3649,6 +3651,15 @@ function buildCards() {
               <label>Header Line 2</label>
               <input type="range" id="pos-sp-sub-${t.id}" min="10" max="36" value="14" step="1" oninput="onPosChange('${t.id}')">
               <span class="pos-val" id="pv-sp-sub-${t.id}">14px</span>
+            </div>
+            <div class="pos-row">
+              <label>Header Text</label>
+              <select id="pos-sp-hdralign-${t.id}" onchange="onPosChange('${t.id}')"
+                      style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;grid-column:2/4;width:100%;">
+                <option value="right">Right (logo left, text right)</option>
+                <option value="left">Left (text beside the logo)</option>
+                <option value="center">Centre (across the bar)</option>
+              </select>
             </div>
             <div class="pos-row">
               <label>Skater Name</label>

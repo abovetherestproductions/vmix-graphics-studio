@@ -89,6 +89,32 @@
 .sp-header-text {
   position: relative; z-index: 1;
   min-width: 0;
+  text-align: right;
+  /* Pushes the text to the right edge whether or not there is a logo. Space
+     between alone puts a lone item at the left, so the text of a bar with its
+     logo switched off landed on the wrong side. */
+  margin-left: auto;
+}
+
+/* Header text alignment, set by the operator. Right is the original: logo at
+   the left edge, text at the right. Left puts the text beside the logo.
+   Centre centres it across the whole bar, with the logo held at the left edge
+   and the text kept clear of it by symmetric padding (none if there is no
+   logo). */
+.skater-profile.hdr-left .sp-header { justify-content: flex-start; gap: 16px; }
+.skater-profile.hdr-left .sp-header-text { text-align: left; margin-left: 0; }
+.skater-profile.hdr-center .sp-header { justify-content: center; }
+.skater-profile.hdr-center .sp-header-text {
+  flex: 1;
+  text-align: center;
+  padding: 0 calc(var(--logo-height, 48px) * 1.3 + 28px);
+}
+.skater-profile.hdr-center.hdr-nologo .sp-header-text { padding: 0; }
+.skater-profile.hdr-center .sp-logo-wrap {
+  position: absolute;
+  left: 24px;
+  top: 50%;
+  translate: 0 -50%;
 }
 
 .sp-event {

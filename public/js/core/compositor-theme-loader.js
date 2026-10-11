@@ -277,6 +277,7 @@
           Object.entries(pos).filter(([key]) => key.startsWith('spShow'))
         ),
         spLayout: pos.spLayout === 'compact' ? 'compact' : 'portraits',
+        spHeaderAlign: ['left', 'center', 'right'].includes(pos.spHeaderAlign) ? pos.spHeaderAlign : 'right',
       };
 
       // Apply title override for custom/event sources

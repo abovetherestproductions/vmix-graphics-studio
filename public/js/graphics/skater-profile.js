@@ -69,6 +69,7 @@
       // for when the supplied portraits are too weak to lead with.
       layout:       o.spLayout === 'compact' ? 'compact' : 'portraits',
       header:       o.spShowHeader       !== false,
+      headerAlign:  ['left', 'center', 'right'].includes(o.spHeaderAlign) ? o.spHeaderAlign : 'right',
       bio:          o.spShowBio          === true,
       pbEvent:      o.spShowPbEvent      === true,
       seasonBest:   o.spShowSeasonBest   !== false,
@@ -221,6 +222,10 @@
       { ...data, title: data.event, titleEn: data.event },
       data.event || ''
     );
+    // The title gives way before it is cut off: shrunk to fit its space, down
+    // to 70% of the size set in the panel, then wrapped. It matters most when
+    // the text is centred beside a logo, which leaves it the least room.
+    if (window.GraphicsUtils.fitTitleOneLine) window.GraphicsUtils.fitTitleOneLine(eventEl);
     // Second line. Defaults to the category, which on this graphic is the
     // discipline — "Men", "Ice Dance". Empty collapses the line rather than
     // leaving a gap under the title.
@@ -253,6 +258,11 @@
     // Header off: the whole bar goes and the body starts at the top of the
     // card, so everything beneath it moves up.
     root.classList.toggle('no-header', !show.header);
+    // Header text alignment, plus whether there is a logo for centred text to
+    // keep clear of (the loader hides the logo wrapper when it is switched off).
+    ['left', 'center', 'right'].forEach(a => root.classList.toggle('hdr-' + a, show.headerAlign === a));
+    const logoWrap = document.querySelector('.sp-logo-wrap');
+    root.classList.toggle('hdr-nologo', !logoWrap || getComputedStyle(logoWrap).display === 'none');
     root.classList.toggle('layout-portraits', show.layout === 'portraits');
     root.classList.toggle('layout-compact',   show.layout === 'compact');
 

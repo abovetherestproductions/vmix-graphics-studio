@@ -71,7 +71,7 @@ window.GraphicsCapsTargets = {
     { key:'name',     label:'Skater Name',  selector:'.sp-name',     defaultUpper:true,  isName:true },
     { key:'club',     label:'Club',         selector:'.sp-club',     defaultUpper:false },
     { key:'event',    label:'Event/Header', selector:'.sp-event',    defaultUpper:true  },
-    { key:'section',  label:'Section',      selector:'.sp-section',  defaultUpper:false },
+    { key:'subtitle', label:'Header Line 2', selector:'.sp-subtitle', defaultUpper:true  },
   ],
 };
 
