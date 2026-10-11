@@ -15,21 +15,7 @@
   <div id="stage" class="stage">
     <div id="graphic-root" class="skater-profile hidden">
 
-      <!-- Left: photo. Pairs and dance teams are two people in one entry, so
-           the column holds two portraits stacked when a second one is
-           supplied and behaves exactly as before when it is not. -->
-      <div id="sp-photo-wrap" class="sp-photo-wrap">
-        <div class="sp-photo-slot">
-          <img id="sp-photo" class="sp-photo" src="" alt="" />
-          <div class="sp-photo-overlay"></div>
-        </div>
-        <div id="sp-photo-slot-2" class="sp-photo-slot" hidden>
-          <img id="sp-photo-2" class="sp-photo" src="" alt="" />
-          <div class="sp-photo-overlay"></div>
-        </div>
-      </div>
-
-      <!-- Right: info panel -->
+      <!-- The card. Portraits sit in the name row, not beside it. -->
       <div class="sp-info-panel">
 
         <div class="sp-header">
@@ -44,11 +30,29 @@
         </div>
 
         <div class="sp-body">
-          <div class="sp-name-row">
-            <img id="sp-flag" class="sp-flag" src="" alt="" style="display:none" />
-            <div id="sp-name" class="sp-name">Skater Name</div>
+          <div id="sp-name-row" class="sp-name-row">
+            <!-- Profile-sized portraits, one per skater. A team stacks two,
+                 each level with its own name. A portrait that is missing or
+                 will not load becomes an initials tile rather than a broken
+                 image or a gap, so the rows stay lined up. -->
+            <div id="sp-photo-wrap" class="sp-photos" hidden>
+              <div id="sp-photo-slot-1" class="sp-photo-slot">
+                <img id="sp-photo" class="sp-photo" src="" alt="" />
+                <div id="sp-initials-1" class="sp-initials"></div>
+              </div>
+              <div id="sp-photo-slot-2" class="sp-photo-slot" hidden>
+                <img id="sp-photo-2" class="sp-photo" src="" alt="" />
+                <div id="sp-initials-2" class="sp-initials"></div>
+              </div>
+            </div>
+            <div class="sp-ident">
+              <div class="sp-ident-top">
+                <img id="sp-flag" class="sp-flag" src="" alt="" style="display:none" />
+                <div id="sp-name" class="sp-name">Skater Name</div>
+              </div>
+              <div id="sp-club" class="sp-club">Club Name</div>
+            </div>
           </div>
-          <div id="sp-club" class="sp-club">Club Name</div>
 
           <div class="sp-divider"></div>
 

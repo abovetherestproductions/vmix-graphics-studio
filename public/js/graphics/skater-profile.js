@@ -1,9 +1,13 @@
 (function () {
   const root       = document.getElementById('graphic-root');
+  const nameRowEl  = document.getElementById('sp-name-row');
   const photoWrap  = document.getElementById('sp-photo-wrap');
+  const photoSlot  = document.getElementById('sp-photo-slot-1');
   const photoEl    = document.getElementById('sp-photo');
+  const initials1  = document.getElementById('sp-initials-1');
   const photo2Slot = document.getElementById('sp-photo-slot-2');
   const photo2El   = document.getElementById('sp-photo-2');
+  const initials2  = document.getElementById('sp-initials-2');
   const detailsEl  = document.getElementById('sp-details');
   const bioEl      = document.getElementById('sp-bio');
   const pbEventEl  = document.getElementById('sp-pb-event');
@@ -46,6 +50,7 @@
       // Detail rows are opt-in and named by their data-field, so a new row
       // needs nothing here beyond its markup and its switch.
       row: field => o['spShow' + field.charAt(0).toUpperCase() + field.slice(1)] === true,
+      header:       o.spShowHeader       !== false,
       bio:          o.spShowBio          === true,
       pbEvent:      o.spShowPbEvent      === true,
       seasonBest:   o.spShowSeasonBest   !== false,
@@ -53,6 +58,76 @@
     };
   }
 
+
+  // ── Portraits ────────────────────────────────────────────────────────────
+
+  /** "Romain LE GAC" -> "RL". The ISU writes surnames in capitals, so the
+   *  surname is the first all-caps word after the given name. */
+  function initialsOf(full) {
+    const parts = String(full || '').trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return '';
+    const sur = parts.find((w, i) => i > 0 && w === w.toUpperCase() && /[A-ZÀ-Ý]/.test(w))
+             || (parts.length > 1 ? parts[parts.length - 1] : '');
+    return (parts[0][0] + (sur ? sur[0] : '')).toUpperCase();
+  }
+
+  function setPortrait(slot, img, initialsEl, url, name) {
+    initialsEl.textContent = initialsOf(name);
+    if (!url) {
+      slot.classList.add('is-empty');
+      img.removeAttribute('src');
+      return;
+    }
+    // Retry an image that failed earlier: the first selection of a skater can
+    // beat the server's portrait download, and the next render should pick it
+    // up instead of staying on initials for the rest of the session.
+    const retry = slot.classList.contains('is-empty');
+    slot.classList.remove('is-empty');
+    if (retry || img.getAttribute('src') !== url) img.src = url;
+  }
+
+  // A portrait that fails to load becomes initials rather than a broken-image
+  // icon. Wired once; render() only ever sets the source.
+  [[photoSlot, photoEl], [photo2Slot, photo2El]].forEach(([slot, img]) => {
+    img.addEventListener('error', () => { if (img.getAttribute('src')) slot.classList.add('is-empty'); });
+    img.addEventListener('load',  () => slot.classList.remove('is-empty'));
+  });
+
+  // ── Name fitting ─────────────────────────────────────────────────────────
+
+  /**
+   * Shrink the name until every line fits on one line, down to half size.
+   *
+   * The portrait takes width from the name, so a long surname that used to
+   * fit comfortably can now overflow. Ellipsising a name on a graphic whose
+   * whole job is introducing the athlete is the worst outcome, so the size
+   * gives way first. fitTitleOneLine in utils.js is not used because it wraps
+   * to a second line at its floor and cannot see text clipped inside child
+   * lines, which is exactly how a team's names are built.
+   */
+  function fitName() {
+    const lines = nameEl.classList.contains('is-team')
+      ? [...nameEl.querySelectorAll('.sp-name-line')]
+      : [nameEl];
+    nameEl.style.fontSize = '';
+    const base = parseFloat(getComputedStyle(nameEl).fontSize) || 44;
+    const overflows = () => lines.some(el => el.scrollWidth > el.clientWidth + 1);
+    if (!overflows()) return;
+    let lo = Math.max(14, Math.floor(base * 0.5)), hi = base;
+    while (lo < hi) {
+      const mid = Math.floor((lo + hi + 1) / 2);
+      nameEl.style.fontSize = `${mid}px`;
+      if (overflows()) hi = mid - 1; else lo = mid;
+    }
+    nameEl.style.fontSize = `${lo}px`;
+  }
+
+  function scheduleNameFit() {
+    // Two frames for layout to settle, and again once the display font is in:
+    // measuring against a fallback font gives the wrong answer.
+    requestAnimationFrame(() => requestAnimationFrame(fitName));
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitName);
+  }
 
   function render(payload) {
     lastPayload = payload;
@@ -75,6 +150,7 @@
     // existing behaviour, including the shrink-to-initials fallback.
     const twoNames = !!(data.skater1Name && data.skater2Name);
     nameEl.classList.toggle('is-team', twoNames);
+    nameEl.style.fontSize = '';   // drop last render's fitted size
     nameEl.textContent = '';
     delete nameEl.dataset.initialsInput; // clear the initials memo either way
     if (twoNames) {
@@ -92,6 +168,10 @@
     pbEl.textContent       = fmt(data.personalBest);
 
     const show = shown();
+
+    // Header off: the whole bar goes and the body starts at the top of the
+    // card, so everything beneath it moves up.
+    root.classList.toggle('no-header', !show.header);
 
     // Score tiles. Hiding both collapses the row rather than leaving a gap.
     statSbEl.hidden = !show.seasonBest;
@@ -137,23 +217,19 @@
     bioEl.hidden = !bio;
     bioEl.textContent = bio || '';
 
-    if (data.photoUrl) {
-      photoEl.src = data.photoUrl;
-      photoWrap.classList.remove('no-photo');
-      photoWrap.style.display = '';
-    } else {
-      photoWrap.classList.add('no-photo');
-      photoWrap.style.display = 'none';
-    }
-
-    // Two portraits for a pairs or dance team. Driven by the second photo
-    // actually being there rather than by an isTeam flag, so a team whose
-    // partner portrait never made it into the cache degrades to the single
-    // layout instead of showing an empty frame.
-    const hasSecond = !!data.photoUrl2 && !!data.photoUrl;
-    photo2Slot.hidden = !hasSecond;
-    photoWrap.classList.toggle('is-team', hasSecond);
-    if (hasSecond) photo2El.src = data.photoUrl2;
+    // Portraits sit in the name row. A team shows one per skater whenever
+    // either exists, so the rows stay level with the names, and the one that
+    // is missing becomes an initials tile. A single skater shows theirs or
+    // nothing - the flag and name simply start further left.
+    const url1 = (data.photoUrl  || '').trim();
+    const url2 = (data.photoUrl2 || '').trim();
+    const hasPhotos = twoNames ? !!(url1 || url2) : !!url1;
+    photoWrap.hidden = !hasPhotos;
+    nameRowEl.classList.toggle('is-team', twoNames);
+    nameRowEl.classList.toggle('has-photos', hasPhotos);
+    setPortrait(photoSlot, photoEl, initials1, url1, data.skater1Name || data.name);
+    photo2Slot.hidden = !twoNames;
+    if (twoNames) setPortrait(photo2Slot, photo2El, initials2, url2, data.skater2Name);
     else photo2El.removeAttribute('src');
 
     if (data.flagUrl) {
@@ -163,6 +239,8 @@
     } else {
       flagEl.style.display = 'none';
     }
+
+    scheduleNameFit();
   }
 
   function animateIn(payload) {

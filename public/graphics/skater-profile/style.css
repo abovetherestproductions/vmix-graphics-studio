@@ -1,4 +1,4 @@
-/* ── Skater Profile — left-side panel with optional photo ── */
+/* ── Skater Profile — one card, portraits in the name row ── */
 .skater-profile {
   position: absolute;
   left: var(--safe-left, 70px);
@@ -8,7 +8,9 @@
      is what lets the detail rows stay at a readable size. */
   top: var(--sp-inset-y, 20px);
   bottom: var(--sp-inset-y, 20px);
-  width: 680px;
+  /* The card is the whole graphic now, so this is the card's width. The
+     operator's Width control sets it inline; this is only the fallback. */
+  width: 520px;
   pointer-events: none;
   display: flex;
   flex-direction: row;
@@ -19,58 +21,13 @@
               transform var(--anim-duration, 420ms) var(--anim-easing, cubic-bezier(0.22, 1, 0.36, 1));
 }
 
-/* Photo column (optional — hidden if no photoUrl).
-   One slot for a single skater, two stacked for a pairs or dance team.
-   Stacked rather than side by side because the column is tall and narrow:
-   splitting it vertically gives each portrait a portrait-shaped frame,
-   where splitting it horizontally would give each a 100px-wide sliver. */
-.sp-photo-wrap {
-  width: var(--sp-photo-width, 560px);
-  flex-shrink: 0;
-  position: relative;
-  overflow: hidden;
-  border-radius: var(--panel-radius) 0 0 var(--panel-radius);
-  background: rgba(30,30,36,0.95);
-  display: flex;
-  flex-direction: column;
-}
-.sp-photo-wrap.no-photo {
-  width: 0;
-  border-radius: 0;
-}
-.sp-photo-slot {
-  position: relative;
-  flex: 1 1 0;
-  min-height: 0;
-  overflow: hidden;
-}
-/* Only meaningful with two slots showing — a hairline so the portraits read
-   as two people rather than one odd crop. */
-.sp-photo-wrap.is-team .sp-photo-slot + .sp-photo-slot {
-  border-top: 2px solid var(--color-panel-bg, rgba(14,14,18,0.92));
-}
-.sp-photo {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: var(--sp-photo-position, center top);
-}
-/* The blend from portrait into panel.
-   The athlete is not meant to be dimmed at all: the photo stays completely
-   untouched out to --sp-fade-start, and only the strip beyond it dissolves
-   into the panel colour, which is there to kill the hard vertical seam
-   rather than to shade anybody. Push the start further right for a harder
-   edge, further left for a longer dissolve. */
-.sp-photo-overlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    to right,
-    transparent 0%,
-    transparent var(--sp-fade-start, 90%),
-    var(--color-panel-bg, rgba(14, 14, 18, 0.92)) 100%
-  );
-}
+/* The attribute selector below matters more than it looks. Browsers hide
+   [hidden] elements with a default style that any author rule setting
+   `display` quietly beats, and this sheet sets display on the bio, the
+   details block, the portraits and the header. Without this they stay on
+   screen as empty boxes - which is what the biography was doing, leaving a
+   stray rule and a gap under every profile that had it switched off. */
+.skater-profile [hidden] { display: none !important; }
 
 /* Info panel */
 .sp-info-panel {
@@ -83,11 +40,9 @@
   overflow: hidden;
   box-shadow: var(--panel-shadow);
 }
-.sp-photo-wrap:not(.no-photo) + .sp-info-panel {
-  border-radius: 0 var(--panel-radius) var(--panel-radius) 0;
-}
-
-/* Header */
+/* Header. Taken out entirely by the operator's Show Header switch, in which
+   case the body simply starts at the top of the card. */
+.skater-profile.no-header .sp-header { display: none; }
 .sp-header {
   position: relative;
   overflow: hidden;
@@ -188,14 +143,87 @@
   flex-direction: column;
 }
 
-/* Flag sits with the name rather than in a bar at the foot of the panel:
-   at an international event the country belongs next to who they are. */
+/* The identity row: portrait(s), flag, name.
+   --sp-ph is the height of one portrait. A single skater gets the full size
+   set by the operator; on a team each of the two gets a fraction of it, so a
+   stacked pair takes roughly the height of one large portrait rather than
+   twice it. */
 .sp-name-row {
+  --sp-ph: var(--sp-photo-size, 150px);
+  --sp-photo-gap: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-flag-gap, 14px);
+  min-width: 0;
+}
+
+/* Flag, name and country form one column beside the portraits, so the
+   country sits under the name instead of dropping beneath the photo. A
+   single skater's column centres on their portrait; a team's starts at the
+   top so each name lines up with its own portrait. */
+.sp-ident {
+  flex: 1;
+  min-width: 0;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.sp-name-row.is-team .sp-ident { justify-content: flex-start; }
+.sp-ident-top {
   display: flex;
   align-items: center;
   gap: var(--sp-flag-gap, 14px);
   min-width: 0;
 }
+.sp-name-row.is-team {
+  --sp-ph: calc(var(--sp-photo-size, 150px) * var(--sp-photo-team-scale, 0.62));
+}
+
+/* Portraits. A 4:5 frame because ISU headshots are overwhelmingly 4:5 or
+   square - 14 of 57 are exactly 0.80, most of the rest sit between 0.75 and
+   1.0 - so cover-fit loses very little. Anchored to the top so the face is
+   what survives a crop. At this size even the three thumbnails the ISU
+   supplies at ~100px across are close to native resolution, where a
+   full-height column stretched them about tenfold. */
+.sp-photos {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-photo-gap);
+  flex: none;
+}
+.sp-photo-slot {
+  position: relative;
+  flex: none;
+  width: calc(var(--sp-ph) * 0.8);
+  height: var(--sp-ph);
+  border-radius: var(--sp-photo-radius, 12px);
+  overflow: hidden;
+  background: rgba(30,30,36,0.95);
+}
+.sp-photo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: var(--sp-photo-position, center top);
+}
+/* Initials stand in for a portrait that is missing or failed to load. */
+.sp-initials {
+  display: none;
+  position: absolute;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: calc(var(--sp-ph) * 0.34);
+  letter-spacing: 1px;
+  color: var(--color-text-muted, rgba(255,255,255,0.45));
+  background: rgba(255,255,255,0.05);
+}
+.sp-photo-slot.is-empty .sp-photo    { display: none; }
+.sp-photo-slot.is-empty .sp-initials { display: flex; }
 
 .sp-name {
   flex: 1;
@@ -211,12 +239,10 @@
   text-overflow: ellipsis;
 }
 
-/* Pairs and dance: one skater per line, both in full.
-   A team name on a single line has to shrink to initials to fit —
-   "A. KEMP / Y. ELIZAROV" — which is a poor trade on a graphic whose whole
-   job is introducing the athletes. Two lines carry both names whole, at a
-   fraction of the single-name size so the pair of them occupies about the
-   same height as one. */
+/* Pairs and dance: one skater per line, both in full, each level with their
+   own portrait. A team name on a single line has to shrink to initials to
+   fit - "A. KEMP / Y. ELIZAROV" - which is a poor trade on a graphic whose
+   whole job is introducing the athletes. */
 .sp-name.is-team {
   font-size: calc(var(--sp-name-size, 44px) * var(--sp-name-team-scale, 0.72));
   line-height: 1.12;
@@ -227,6 +253,19 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* With portraits showing, each name line takes the height of a portrait and
+   centres on it (line-height does the centring), and the gap between lines
+   matches the gap between portraits, so every name sits level with its own
+   skater. Without portraits the lines just stack normally. */
+.sp-name-row.has-photos.is-team .sp-name {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-photo-gap);
+}
+.sp-name-row.has-photos.is-team .sp-name-line {
+  height: var(--sp-ph);
+  line-height: var(--sp-ph);
 }
 
 .sp-club {
