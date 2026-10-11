@@ -330,29 +330,21 @@
   font-weight: 500;
   line-height: 1.25;
   color: var(--color-text-primary);
-  /* Capped because the source can be genuinely enormous — one real ice dance
-     entry lists nine coaches, which unclamped would push the scores and the
-     biography off the bottom of the panel. */
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: var(--sp-detail-lines, 2);
-  overflow: hidden;
+  /* No line limit. Whatever was entered is shown in full and wraps as far as
+     it needs to - an ellipsis on a coach list or a hobby is text the viewer
+     cannot read. What gives way when an entry is very long is the portraits'
+     height (see fitPortraitHeight in the script), and only as a last resort the
+     foot of the card. A single unbroken string, a URL say, breaks rather than
+     overflows. */
+  display: block;
+  overflow-wrap: anywhere;
 }
 
-/* Two answers, one per skater — stacked like the two names above them.
-   Each may wrap to two lines before it is cut, so a long hobby list is not
-   lost, with a hanging indent so a wrapped line still reads as belonging to
-   the skater named at the start of it. A row is therefore at most four lines
-   however talkative the source is. */
-.sp-detail-value.is-stacked {
-  display: block;
-  -webkit-line-clamp: none;
-}
+/* Two answers, one per skater, each wrapping on its own with a hanging indent
+   so a wrapped line still reads as belonging to the skater named at the start
+   of it. */
 .sp-detail-line {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: var(--sp-stack-lines, 2);
-  overflow: hidden;
+  display: block;
   padding-left: 1.1em;
   text-indent: -1.1em;
 }
@@ -368,10 +360,9 @@
   font-weight: 400;
   line-height: 1.4;
   color: var(--color-text-secondary);
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: var(--sp-bio-lines, 4);
-  overflow: hidden;
+  /* Shown in full, like every other value. The source caps it at 60 words. */
+  display: block;
+  overflow-wrap: anywhere;
 }
 
 .sp-stat-sub {
@@ -422,6 +413,141 @@
   object-fit: contain;
   border-radius: 4px;
 }
+
+/* ── Portraits-first layout ────────────────────────────────────────────────
+   The faces lead. Portraits run to the card's edges, a team's side by side
+   with each name on a plate beneath, a single skater's on the left with the
+   name on a plate beside it. A band under them carries the flag and country.
+   The two cases use the same portrait size - half the card - so a single
+   skater is never enlarged beyond what a team already shows, which matters
+   because the ISU supplies some of these at barely 100px across.
+
+   The identity block is hidden unless this layout is chosen, so the Compact
+   layout above is untouched by anything here. */
+.sp-c { display: none; }
+.skater-profile.layout-portraits .sp-c { display: block; }
+.skater-profile.layout-portraits .sp-name-row,
+.skater-profile.layout-portraits .sp-divider-id,
+.skater-profile.layout-portraits .sp-divider-tight { display: none; }
+
+/* This layout is as tall as its content rather than stretching top to
+   bottom - a card that stops where its information stops does not leave a
+   dead quarter at the foot. The inset still holds it off the edges. */
+.skater-profile.layout-portraits {
+  bottom: auto;
+  max-height: calc(100% - var(--sp-inset-y, 20px) * 2);
+}
+.skater-profile.layout-portraits .sp-body { padding-top: 20px; }
+
+/* With the divider gone, the scores need their own breathing room, and the
+   labels need to be readable at broadcast distance: 11px is a print size, so
+   this layout sets them to 14px. */
+.skater-profile.layout-portraits { --sp-detail-label-size: 14px; }
+.skater-profile.layout-portraits .sp-stat-label { font-size: 14px; }
+.skater-profile.layout-portraits .sp-stats { margin-bottom: 22px; }
+.skater-profile.layout-portraits .sp-details { gap: 8px; }
+
+.sp-c-people { display: grid; gap: 2px; }
+.sp-c.is-team   .sp-c-people { grid-template-columns: 1fr 1fr; }
+.sp-c.is-single .sp-c-people { grid-template-columns: 1fr; }
+
+.sp-c-person { display: flex; flex-direction: column; min-width: 0; }
+.sp-c.is-single .sp-c-person { flex-direction: row; }
+
+.sp-c-photo {
+  position: relative;
+  flex: none;
+  height: var(--sp-c-photo-h-fit, var(--sp-c-photo-h, 300px));
+  overflow: hidden;
+  background: rgba(30, 30, 36, 0.95);
+}
+.sp-c.is-single .sp-c-photo { width: 50%; }
+.sp-c.no-photos .sp-c-photo { display: none; }
+.sp-c-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: var(--sp-photo-position, center top);
+}
+.sp-c-photo .sp-initials { font-size: calc(var(--sp-c-photo-h-fit, var(--sp-c-photo-h, 300px)) * 0.28); }
+.sp-c-photo.is-empty .sp-c-img   { display: none; }
+.sp-c-photo.is-empty .sp-initials { display: flex; }
+
+/* Name plate. A tint rather than a colour, so it sits correctly over whatever
+   the card is over. */
+.sp-c-plate {
+  min-width: 0;
+  padding: 14px 18px 16px;
+  background: rgba(255, 255, 255, 0.05);
+}
+.sp-c.is-single .sp-c-plate {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 18px 22px;
+}
+.sp-c-first {
+  font-family: var(--font-body);
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sp-c.is-single .sp-c-first { font-size: 22px; }
+.sp-c-last {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: calc(var(--sp-name-size, 44px) * var(--sp-name-team-scale, 0.72));
+  line-height: 1.05;
+  text-transform: uppercase;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sp-c.is-single .sp-c-last { font-size: var(--sp-name-size, 44px); }
+
+/* Flag and country. With the header on, the discipline is already in it, so
+   the band shows it only when the header has been switched off. */
+.sp-c-band {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 24px;
+  background: linear-gradient(105deg, var(--color-header-start) 0%, var(--color-header-end) 100%);
+}
+.sp-c-flag {
+  display: none;
+  flex: none;
+  height: calc(var(--sp-flag-h, 36px) * 0.62);
+  width: auto;
+  object-fit: contain;
+  border-radius: 3px;
+}
+.sp-c-flag.is-on { display: block; }
+.sp-c-country {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #ffffff;
+}
+.sp-c-disc {
+  display: none;
+  margin-left: auto;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.85);
+}
+.skater-profile.no-header .sp-c-disc { display: inline; }
 
 /* ── Animation states ─────────────────────────────── */
 .skater-profile.visible {

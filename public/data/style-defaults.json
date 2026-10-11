@@ -241,6 +241,8 @@
       "spEventSize": 19,
       "spSubtitleSize": 14,
       "spInsetY": 20,
+      "spLayout": "portraits",
+      "spPortraitHeight": 300,
       "spPhotoSize": 150,
       "spShowHeader": true,
       "spShowAge": false,

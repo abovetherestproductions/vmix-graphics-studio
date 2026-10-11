@@ -1675,6 +1675,7 @@ function setPosUI(id, pos) {
     sv(`pos-sp-stat-${id}`, p.spStatSize ?? 32);  st(`pv-sp-stat-${id}`, `${p.spStatSize ?? 32}px`);
     sv(`pos-sp-detail-${id}`, p.spDetailSize ?? 19); st(`pv-sp-detail-${id}`, `${p.spDetailSize ?? 19}px`);
     sv(`pos-sp-photosz-${id}`, p.spPhotoSize ?? 150); st(`pv-sp-photosz-${id}`, `${p.spPhotoSize ?? 150}px`);
+    sv(`pos-sp-portraith-${id}`, p.spPortraitHeight ?? 300); st(`pv-sp-portraith-${id}`, `${p.spPortraitHeight ?? 300}px`);
     sv(`pos-sp-inset-${id}`, p.spInsetY ?? 20); st(`pv-sp-inset-${id}`, `${p.spInsetY ?? 20}px`);
     sv(`pos-sp-event-${id}`, p.spEventSize ?? 19); st(`pv-sp-event-${id}`, `${p.spEventSize ?? 19}px`);
     sv(`pos-sp-sub-${id}`, p.spSubtitleSize ?? 14); st(`pv-sp-sub-${id}`, `${p.spSubtitleSize ?? 14}px`);
@@ -1690,6 +1691,8 @@ function setPosUI(id, pos) {
     setCkOn(`pos-sp-pb-${id}`,       p.spShowPersonalBest);
     setCkOn(`pos-sp-header-${id}`,   p.spShowHeader);
     setProfileHeaderUI(p.spShowHeader !== false);
+    { const lay = g(`pos-sp-layout-${id}`); if (lay) lay.value = p.spLayout === 'compact' ? 'compact' : 'portraits'; }
+    setProfileLayoutUI(p.spLayout === 'compact' ? 'compact' : 'portraits');
   }
   // Elements font sizes — set dedicated card inputs
 	  if (id === 'elements') {
@@ -1860,6 +1863,8 @@ function readPos(id) {
     spStatSize:     id === 'skater-profile' ? Number(g(`pos-sp-stat-${id}`)?.value ?? 32) : undefined,
     spDetailSize:   id === 'skater-profile' ? Number(g(`pos-sp-detail-${id}`)?.value ?? 19) : undefined,
     spPhotoSize:    id === 'skater-profile' ? Number(g(`pos-sp-photosz-${id}`)?.value ?? 150) : undefined,
+    spPortraitHeight: id === 'skater-profile' ? Number(g(`pos-sp-portraith-${id}`)?.value ?? 300) : undefined,
+    spLayout:       id === 'skater-profile' ? (g(`pos-sp-layout-${id}`)?.value === 'compact' ? 'compact' : 'portraits') : undefined,
     spShowHeader:   id === 'skater-profile' ? !!g(`pos-sp-header-${id}`)?.checked : undefined,
     spInsetY:       id === 'skater-profile' ? Number(g(`pos-sp-inset-${id}`)?.value ?? 20) : undefined,
     spEventSize:    id === 'skater-profile' ? Number(g(`pos-sp-event-${id}`)?.value ?? 19) : undefined,
@@ -2049,7 +2054,9 @@ function onPosChange(id) {
     st(`pv-sp-stat-${id}`, `${p.spStatSize}px`);
     st(`pv-sp-detail-${id}`, `${p.spDetailSize}px`);
     st(`pv-sp-photosz-${id}`, `${p.spPhotoSize}px`);
+    st(`pv-sp-portraith-${id}`, `${p.spPortraitHeight}px`);
     setProfileHeaderUI(p.spShowHeader !== false);
+    setProfileLayoutUI(p.spLayout);
     st(`pv-sp-inset-${id}`, `${p.spInsetY}px`);
     st(`pv-sp-event-${id}`, `${p.spEventSize}px`);
     st(`pv-sp-sub-${id}`, `${p.spSubtitleSize}px`);
@@ -2174,7 +2181,7 @@ async function resetPos(id) {
   const msExtrasDefaults = id === 'manual-skater' ? { msExtrasEnabled:true, msShowCoaches:false, msShowQuote:false, msShowMusic:false, msShowCategory:true, msQuoteSecs:4, msCoachSecs:4, msShowScoreToFirst:false, msFirstDelaySecs:3, msFirstHoldSecs:4 } : {};
   // Skater profile: details off, the two score tiles on — the panel as it
   // was before any of the optional rows existed.
-  const spDefaults = id === 'skater-profile' ? { spNameSize:44, spClubSize:18, spStatSize:32, spDetailSize:19, spBioSize:16, spPhotoSize:150, spShowHeader:true, spInsetY:20, spEventSize:19, spSubtitleSize:14, spShowBio:false, spShowPbEvent:false, spShowSeasonBest:true, spShowPersonalBest:true, ...Object.fromEntries(SP_DETAIL_ROWS.map(([f]) => [spCfgKey(f), false])) } : {};
+  const spDefaults = id === 'skater-profile' ? { spNameSize:44, spClubSize:18, spStatSize:32, spDetailSize:19, spBioSize:16, spLayout:'portraits', spPortraitHeight:300, spPhotoSize:150, spShowHeader:true, spInsetY:20, spEventSize:19, spSubtitleSize:14, spShowBio:false, spShowPbEvent:false, spShowSeasonBest:true, spShowPersonalBest:true, ...Object.fromEntries(SP_DETAIL_ROWS.map(([f]) => [spCfgKey(f), false])) } : {};
   const defaults = { x:0, y:0, scale:1, width: NATURAL_WIDTHS[id]||880, height:0,
                      zoom:100, rowPad:0, rounded:true, radius:20, ltFlagHeight:68,
                      animPreset:'default', animSpeed:420, animEasing:'smooth',
@@ -2488,6 +2495,22 @@ async function setElementsDisplayMode(mode) {
 // two dozen sliders. This puts it where an operator is actually looking while
 // on air, and goes through that same checkbox so the saved setting, the live
 // preview and the two controls cannot disagree.
+// Layout: portraits first (default) or compact. Same route as the header
+// switch - through the Layout tab's own control, so nothing can disagree.
+function setProfileLayoutUI(mode) {
+  const compact = mode === 'compact';
+  document.getElementById('sp-layout-portraits')?.classList.toggle('lang-active', !compact);
+  document.getElementById('sp-layout-compact')?.classList.toggle('lang-active', compact);
+}
+function setProfileLayout(mode) {
+  const sel = document.getElementById('pos-sp-layout-skater-profile');
+  if (!sel) return;
+  sel.value = mode === 'compact' ? 'compact' : 'portraits';
+  onPosChange('skater-profile');
+  setProfileLayoutUI(sel.value);
+  toast(`Profile layout: ${sel.value === 'compact' ? 'compact' : 'portraits first'}`);
+}
+
 function setProfileHeaderUI(on) {
   document.getElementById('sp-header-on')?.classList.toggle('lang-active', !!on);
   document.getElementById('sp-header-off')?.classList.toggle('lang-active', !on);
@@ -2596,6 +2619,11 @@ function buildCards() {
           <div class="lang-toggle" id="sp-header-toggle">
             <button id="sp-header-on"  class="lang-btn lang-active" onclick="setProfileHeader(true)">On</button>
             <button id="sp-header-off" class="lang-btn"             onclick="setProfileHeader(false)">Off</button>
+          </div>
+          <span style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);margin-left:14px;">Layout</span>
+          <div class="lang-toggle" id="sp-layout-toggle">
+            <button id="sp-layout-portraits" class="lang-btn lang-active" onclick="setProfileLayout('portraits')">Portraits</button>
+            <button id="sp-layout-compact"   class="lang-btn"             onclick="setProfileLayout('compact')">Compact</button>
           </div>
         </div>
         ` : ''}
@@ -3643,7 +3671,20 @@ function buildCards() {
               <span class="pos-val" id="pv-sp-detail-${t.id}">19px</span>
             </div>
             <div class="pos-row">
-              <label>Photo Size</label>
+              <label>Layout</label>
+              <select id="pos-sp-layout-${t.id}" onchange="onPosChange('${t.id}')"
+                      style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;grid-column:2/4;width:100%;">
+                <option value="portraits">Portraits first</option>
+                <option value="compact">Compact (small portraits beside the name)</option>
+              </select>
+            </div>
+            <div class="pos-row">
+              <label>Portrait Height</label>
+              <input type="range" id="pos-sp-portraith-${t.id}" min="160" max="520" value="300" step="5" oninput="onPosChange('${t.id}')">
+              <span class="pos-val" id="pv-sp-portraith-${t.id}">300px</span>
+            </div>
+            <div class="pos-row">
+              <label>Photo Size (Compact)</label>
               <input type="range" id="pos-sp-photosz-${t.id}" min="60" max="300" value="150" step="5" oninput="onPosChange('${t.id}')">
               <span class="pos-val" id="pv-sp-photosz-${t.id}">150px</span>
             </div>

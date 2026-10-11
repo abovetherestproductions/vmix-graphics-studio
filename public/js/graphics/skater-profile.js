@@ -22,6 +22,20 @@
   const flagEl     = document.getElementById('sp-flag');
   const capFlagEl  = document.getElementById('sp-flag-cap');
 
+  // Portraits-first layout (see the Portraits section of the stylesheet).
+  const cEl        = document.getElementById('sp-c');
+  const cFlagEl    = document.getElementById('sp-c-flag');
+  const cCountryEl = document.getElementById('sp-c-country');
+  const cDiscEl    = document.getElementById('sp-c-disc');
+  const cPeople    = [1, 2].map(n => ({
+    person: document.getElementById('sp-c-p' + n),
+    photo:  document.getElementById('sp-c-photo-' + n),
+    img:    document.getElementById('sp-c-img-' + n),
+    ini:    document.getElementById('sp-c-ini-' + n),
+    first:  document.getElementById('sp-c-first-' + n),
+    last:   document.getElementById('sp-c-last-' + n),
+  }));
+
   let currentRevision = null;
   let currentVisible  = false;
   let busy            = false;
@@ -51,6 +65,9 @@
       // Detail rows are opt-in and named by their data-field, so a new row
       // needs nothing here beyond its markup and its switch.
       row: field => o['spShow' + field.charAt(0).toUpperCase() + field.slice(1)] === true,
+      // Portraits first is the default; Compact is the earlier layout, kept
+      // for when the supplied portraits are too weak to lead with.
+      layout:       o.spLayout === 'compact' ? 'compact' : 'portraits',
       header:       o.spShowHeader       !== false,
       bio:          o.spShowBio          === true,
       pbEvent:      o.spShowPbEvent      === true,
@@ -72,6 +89,17 @@
     return (parts[0][0] + (sur ? sur[0] : '')).toUpperCase();
   }
 
+  /** "Romain LE GAC" -> { given: "Romain", surname: "LE GAC" }. The surname
+   *  starts at the first all-caps word after the given name; with no such
+   *  word, the last word is taken as the surname. */
+  function splitName(full) {
+    const parts = String(full || '').trim().split(/\s+/).filter(Boolean);
+    if (parts.length < 2) return { given: '', surname: parts[0] || '' };
+    const i = parts.findIndex((w, k) => k > 0 && w === w.toUpperCase() && /[A-ZÀ-Ý]/.test(w));
+    const at = i > 0 ? i : parts.length - 1;
+    return { given: parts.slice(0, at).join(' '), surname: parts.slice(at).join(' ') };
+  }
+
   function setPortrait(slot, img, initialsEl, url, name) {
     initialsEl.textContent = initialsOf(name);
     if (!url) {
@@ -89,7 +117,7 @@
 
   // A portrait that fails to load becomes initials rather than a broken-image
   // icon. Wired once; render() only ever sets the source.
-  [[photoSlot, photoEl], [photo2Slot, photo2El]].forEach(([slot, img]) => {
+  [[photoSlot, photoEl], [photo2Slot, photo2El], ...cPeople.map(c => [c.photo, c.img])].forEach(([slot, img]) => {
     img.addEventListener('error', () => { if (img.getAttribute('src')) slot.classList.add('is-empty'); });
     img.addEventListener('load',  () => slot.classList.remove('is-empty'));
   });
@@ -123,11 +151,63 @@
     nameEl.style.fontSize = `${lo}px`;
   }
 
+  /**
+   * Portraits-first: shrink each surname to fit its plate, down to 55%. On a
+   * team both end up at the smaller of the two sizes, so one long surname does
+   * not leave its partner looking mismatched.
+   */
+  function fitCNames() {
+    const shown = cPeople.filter(c => !c.person.hidden);
+    const sizes = shown.map(c => {
+      c.last.style.fontSize = '';
+      const base = parseFloat(getComputedStyle(c.last).fontSize) || 32;
+      const overflows = () => c.last.scrollWidth > c.last.clientWidth + 1;
+      if (!overflows()) return base;
+      let lo = Math.max(14, Math.floor(base * 0.55)), hi = base;
+      while (lo < hi) {
+        const mid = Math.floor((lo + hi + 1) / 2);
+        c.last.style.fontSize = `${mid}px`;
+        if (overflows()) hi = mid - 1; else lo = mid;
+      }
+      return lo;
+    });
+    const common = Math.min(...sizes);
+    shown.forEach(c => { c.last.style.fontSize = `${common}px`; });
+  }
+
+  /**
+   * Portraits-first only. Values wrap as far as they need to, so a very long
+   * entry makes the card taller than the screen allows. Before anything is cut
+   * off, the portraits give up height, ten pixels at a time, down to a floor
+   * at which a face is still a face. Only entries that would otherwise be cut
+   * ever shrink them, so an ordinary card keeps the portrait height set in the
+   * operator panel. Past the floor the foot of the card clips, as before.
+   */
+  const PORTRAIT_FLOOR = 170;
+  function fitPortraitHeight() {
+    root.style.removeProperty('--sp-c-photo-h-fit');
+    if (!root.classList.contains('layout-portraits')) return;
+    const body = document.querySelector('.sp-body');
+    if (!body || body.scrollHeight <= body.clientHeight) return;
+    const first = cPeople.find(c => !c.person.hidden && c.photo.offsetHeight);
+    if (!first) return;                      // no portraits showing, nothing to give back
+    let h = Math.floor(first.photo.offsetHeight);
+    while (h > PORTRAIT_FLOOR && body.scrollHeight > body.clientHeight) {
+      h = Math.max(PORTRAIT_FLOOR, h - 10);
+      root.style.setProperty('--sp-c-photo-h-fit', `${h}px`);
+    }
+  }
+
+  function fitNames() {
+    if (root.classList.contains('layout-portraits')) fitCNames(); else fitName();
+    fitPortraitHeight();
+  }
+
   function scheduleNameFit() {
     // Two frames for layout to settle, and again once the display font is in:
     // measuring against a fallback font gives the wrong answer.
-    requestAnimationFrame(() => requestAnimationFrame(fitName));
-    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitName);
+    requestAnimationFrame(() => requestAnimationFrame(fitNames));
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitNames);
   }
 
   function render(payload) {
@@ -173,6 +253,8 @@
     // Header off: the whole bar goes and the body starts at the top of the
     // card, so everything beneath it moves up.
     root.classList.toggle('no-header', !show.header);
+    root.classList.toggle('layout-portraits', show.layout === 'portraits');
+    root.classList.toggle('layout-compact',   show.layout === 'compact');
 
     // Score tiles. Hiding both collapses the row rather than leaving a gap.
     statSbEl.hidden = !show.seasonBest;
@@ -232,6 +314,32 @@
     photo2Slot.hidden = !twoNames;
     if (twoNames) setPortrait(photo2Slot, photo2El, initials2, url2, data.skater2Name);
     else photo2El.removeAttribute('src');
+
+    // Portraits-first block, built from the same data. A team is two people
+    // side by side; a single skater is one person with the name beside them.
+    const cNames = twoNames ? [data.skater1Name, data.skater2Name] : [data.skater1Name || data.name];
+    const cUrls  = twoNames ? [url1, url2] : [url1];
+    cEl.classList.toggle('is-team', twoNames);
+    cEl.classList.toggle('is-single', !twoNames);
+    cEl.classList.toggle('no-photos', !cUrls.some(Boolean));
+    cPeople.forEach((c, i) => {
+      const present = i < cNames.length;
+      c.person.hidden = !present;
+      if (!present) { c.img.removeAttribute('src'); return; }
+      const { given, surname } = splitName(cNames[i]);
+      c.first.textContent = given;
+      c.first.hidden = !given;
+      c.last.textContent = surname;
+      c.last.style.fontSize = '';          // drop last render's fitted size
+      setPortrait(c.photo, c.img, c.ini, cUrls[i], cNames[i]);
+    });
+    cCountryEl.textContent = data.club || '';
+    cDiscEl.textContent = subtitleEl.textContent;
+    cFlagEl.classList.toggle('is-on', !!data.flagUrl);
+    if (data.flagUrl) {
+      window.GraphicsUtils.wireFlagFallback(cFlagEl, cFlagEl);
+      cFlagEl.src = data.flagUrl;
+    }
 
     if (data.flagUrl) {
       window.GraphicsUtils.wireFlagFallback(flagEl, flagEl);
