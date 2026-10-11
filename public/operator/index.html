@@ -1689,6 +1689,7 @@ function setPosUI(id, pos) {
     setCkOn(`pos-sp-sb-${id}`,       p.spShowSeasonBest);
     setCkOn(`pos-sp-pb-${id}`,       p.spShowPersonalBest);
     setCkOn(`pos-sp-header-${id}`,   p.spShowHeader);
+    setProfileHeaderUI(p.spShowHeader !== false);
   }
   // Elements font sizes — set dedicated card inputs
 	  if (id === 'elements') {
@@ -2048,6 +2049,7 @@ function onPosChange(id) {
     st(`pv-sp-stat-${id}`, `${p.spStatSize}px`);
     st(`pv-sp-detail-${id}`, `${p.spDetailSize}px`);
     st(`pv-sp-photosz-${id}`, `${p.spPhotoSize}px`);
+    setProfileHeaderUI(p.spShowHeader !== false);
     st(`pv-sp-inset-${id}`, `${p.spInsetY}px`);
     st(`pv-sp-event-${id}`, `${p.spEventSize}px`);
     st(`pv-sp-sub-${id}`, `${p.spSubtitleSize}px`);
@@ -2481,6 +2483,24 @@ async function setElementsDisplayMode(mode) {
   } catch(e) { toast(`Error: ${e.message}`, 'err'); }
 }
 
+// ── Skater Profile: header bar on/off, from the Live tab ────────────────
+// The real switch is the checkbox on the Layout tab, 1,300px down a card of
+// two dozen sliders. This puts it where an operator is actually looking while
+// on air, and goes through that same checkbox so the saved setting, the live
+// preview and the two controls cannot disagree.
+function setProfileHeaderUI(on) {
+  document.getElementById('sp-header-on')?.classList.toggle('lang-active', !!on);
+  document.getElementById('sp-header-off')?.classList.toggle('lang-active', !on);
+}
+function setProfileHeader(on) {
+  const cb = document.getElementById('pos-sp-header-skater-profile');
+  if (!cb) return;
+  cb.checked = !!on;
+  onPosChange('skater-profile');
+  setProfileHeaderUI(on);
+  toast(`Profile header ${on ? 'on' : 'off'}`);
+}
+
 function setElLayoutUI(mode) {
   document.getElementById('el-layout-list')?.classList.toggle('lang-active', mode !== 'single');
   document.getElementById('el-layout-single')?.classList.toggle('lang-active', mode === 'single');
@@ -2569,6 +2589,16 @@ function buildCards() {
           <button class="btn btn-update" onclick="updateTemplate('${t.id}')">↑ Push Data</button>
           ${refreshEndpointFor(t.id) ? `<button class="btn" style="background:#2c4a6b;color:#fff;" onclick="refreshFromAPI('${t.id}')" title="Force fresh fetch from Skate Canada API">↻ Refresh API</button>` : ''}
         </div>
+
+        ${t.id === 'skater-profile' ? `
+        <div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);">Header</span>
+          <div class="lang-toggle" id="sp-header-toggle">
+            <button id="sp-header-on"  class="lang-btn lang-active" onclick="setProfileHeader(true)">On</button>
+            <button id="sp-header-off" class="lang-btn"             onclick="setProfileHeader(false)">Off</button>
+          </div>
+        </div>
+        ` : ''}
 
         ${t.id === 'elements' ? `
         <div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
