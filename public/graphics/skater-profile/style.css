@@ -273,8 +273,31 @@
   font-size: var(--sp-club-size, 18px);
   font-weight: 400;
   color: var(--color-text-secondary);
-  margin-top: 8px;
 }
+
+.sp-club-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  min-width: 0;
+}
+/* Team caption flag. Hidden unless the team layout switches it on, and
+   smaller than the name flag because it is a caption, not a headline. */
+.sp-flag-cap {
+  display: none;
+  height: calc(var(--sp-flag-h, 36px) * 0.62);
+  width: auto;
+  flex: none;
+  object-fit: contain;
+  border-radius: 3px;
+}
+.sp-flag-cap.is-on { display: block; }
+
+/* A team's flag is not beside a name - there are two, a row apart - so the
+   headline flag steps aside and the names sit tight against the portraits.
+   The flag reappears once, in the caption beneath them. */
+.sp-name-row.is-team #sp-flag { display: none; }
 
 .sp-divider {
   height: 1px;
@@ -317,17 +340,21 @@
 }
 
 /* Two answers, one per skater — stacked like the two names above them.
-   Each gets a single line so a row stays two lines tall no matter how
-   talkative the source is about somebody's hobbies. */
+   Each may wrap to two lines before it is cut, so a long hobby list is not
+   lost, with a hanging indent so a wrapped line still reads as belonging to
+   the skater named at the start of it. A row is therefore at most four lines
+   however talkative the source is. */
 .sp-detail-value.is-stacked {
   display: block;
   -webkit-line-clamp: none;
 }
 .sp-detail-line {
-  display: block;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--sp-stack-lines, 2);
   overflow: hidden;
-  text-overflow: ellipsis;
+  padding-left: 1.1em;
+  text-indent: -1.1em;
 }
 
 /* Biography excerpt. Wraps and is capped in height — the source can run to

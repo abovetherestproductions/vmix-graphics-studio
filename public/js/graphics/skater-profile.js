@@ -20,6 +20,7 @@
   const sbEl       = document.getElementById('sp-sb');
   const pbEl       = document.getElementById('sp-pb');
   const flagEl     = document.getElementById('sp-flag');
+  const capFlagEl  = document.getElementById('sp-flag-cap');
 
   let currentRevision = null;
   let currentVisible  = false;
@@ -238,6 +239,15 @@
       flagEl.style.display = '';
     } else {
       flagEl.style.display = 'none';
+    }
+
+    // A team's flag lives in the caption under the pair instead (see the
+    // stylesheet); a single skater's stays beside their name.
+    const capFlag = twoNames && !!data.flagUrl;
+    capFlagEl.classList.toggle('is-on', capFlag);
+    if (capFlag) {
+      window.GraphicsUtils.wireFlagFallback(capFlagEl, capFlagEl);
+      capFlagEl.src = data.flagUrl;
     }
 
     scheduleNameFit();
