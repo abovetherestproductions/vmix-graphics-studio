@@ -356,6 +356,8 @@
         // Wider photo column for two stacked portraits than for one.
         root.style.setProperty('--sp-photo-size', `${pos.spPhotoSize ?? 150}px`);
         root.style.setProperty('--sp-c-photo-h', `${pos.spPortraitHeight ?? 300}px`);
+        root.style.setProperty('--sp-c-photo-min', `${pos.spPortraitMin ?? 230}px`);
+        root.style.setProperty('--sp-band-size', `${pos.spBandSize ?? 17}px`);
         root.style.setProperty('--sp-inset-y', `${pos.spInsetY ?? 20}px`);
         root.style.setProperty('--sp-event-size', `${pos.spEventSize ?? 19}px`);
         root.style.setProperty('--sp-subtitle-size', `${pos.spSubtitleSize ?? 14}px`);

@@ -440,6 +440,8 @@
         graphicRoot.style.setProperty('--sp-bio-size', `${pos.spBioSize ?? 16}px`);
         graphicRoot.style.setProperty('--sp-photo-size', `${pos.spPhotoSize ?? 150}px`);
         graphicRoot.style.setProperty('--sp-c-photo-h', `${pos.spPortraitHeight ?? 300}px`);
+        graphicRoot.style.setProperty('--sp-c-photo-min', `${pos.spPortraitMin ?? 230}px`);
+        graphicRoot.style.setProperty('--sp-band-size', `${pos.spBandSize ?? 17}px`);
         graphicRoot.style.setProperty('--sp-inset-y', `${pos.spInsetY ?? 20}px`);
         graphicRoot.style.setProperty('--sp-event-size', `${pos.spEventSize ?? 19}px`);
         graphicRoot.style.setProperty('--sp-subtitle-size', `${pos.spSubtitleSize ?? 14}px`);

@@ -184,7 +184,38 @@
    * ever shrink them, so an ordinary card keeps the portrait height set in the
    * operator panel. Past the floor the foot of the card clips, as before.
    */
-  const PORTRAIT_FLOOR = 170;
+  // The smallest the portraits will go, from the operator's Portrait Minimum.
+  // 230 because that is where every team member in the roster still has their
+  // whole face: below it, chins start to go. Lower it to fit more text, raise
+  // it to protect faces.
+  function portraitFloor() {
+    const v = parseFloat(getComputedStyle(root).getPropertyValue('--sp-c-photo-min'));
+    return Number.isFinite(v) && v > 0 ? v : 230;
+  }
+
+  /**
+   * Music, capped at two lines and ended at a whole piece. A program's music
+   * is a list - "Title by Artist / Title by Artist / ..." - and cutting it
+   * mid-title with an ellipsis reads badly, so pieces are dropped from the end
+   * until it fits, with a "..." to say there is more. A single piece that is
+   * itself too long falls back to the stylesheet's two-line clamp.
+   */
+  function trimMusic() {
+    document.querySelectorAll('.sp-detail[data-field$="Music"]:not([hidden]) .sp-detail-value').forEach(el => {
+      const full = el.dataset.full;
+      if (!full) return;
+      el.textContent = full;
+      const tooTall = () => el.scrollHeight > el.clientHeight + 1;
+      if (!tooTall()) return;
+      const pieces = full.split(/\s+\/\s+/);
+      for (let n = pieces.length - 1; n >= 1; n--) {
+        el.textContent = pieces.slice(0, n).join(' / ') + ' …';
+        if (!tooTall()) return;
+      }
+      el.textContent = pieces[0];
+    });
+  }
+
   function fitPortraitHeight() {
     root.style.removeProperty('--sp-c-photo-h-fit');
     if (!root.classList.contains('layout-portraits')) return;
@@ -193,14 +224,16 @@
     const first = cPeople.find(c => !c.person.hidden && c.photo.offsetHeight);
     if (!first) return;                      // no portraits showing, nothing to give back
     let h = Math.floor(first.photo.offsetHeight);
-    while (h > PORTRAIT_FLOOR && body.scrollHeight > body.clientHeight) {
-      h = Math.max(PORTRAIT_FLOOR, h - 10);
+    const floor = portraitFloor();
+    while (h > floor && body.scrollHeight > body.clientHeight) {
+      h = Math.max(floor, h - 10);
       root.style.setProperty('--sp-c-photo-h-fit', `${h}px`);
     }
   }
 
   function fitNames() {
     if (root.classList.contains('layout-portraits')) fitCNames(); else fitName();
+    trimMusic();               // before the portraits, so they give up as little as possible
     fitPortraitHeight();
   }
 
@@ -300,6 +333,7 @@
           }
         } else {
           valueEl.textContent = lines[0];
+          valueEl.dataset.full = lines[0];
         }
         anyDetail = true;
       }
