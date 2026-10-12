@@ -358,6 +358,14 @@
         root.style.setProperty('--sp-c-photo-h', `${pos.spPortraitHeight ?? 300}px`);
         root.style.setProperty('--sp-c-photo-min', `${pos.spPortraitMin ?? 230}px`);
         root.style.setProperty('--sp-band-size', `${pos.spBandSize ?? 17}px`);
+        // Band height: 0 means automatic, so the variables are removed rather than set.
+        if (Number(pos.spBandHeight) > 0) {
+          root.style.setProperty('--sp-band-h', `${Number(pos.spBandHeight)}px`);
+          root.style.setProperty('--sp-band-pad-y', '0px');
+        } else {
+          root.style.removeProperty('--sp-band-h');
+          root.style.removeProperty('--sp-band-pad-y');
+        }
         root.style.setProperty('--sp-inset-y', `${pos.spInsetY ?? 20}px`);
         root.style.setProperty('--sp-event-size', `${pos.spEventSize ?? 19}px`);
         root.style.setProperty('--sp-subtitle-size', `${pos.spSubtitleSize ?? 14}px`);

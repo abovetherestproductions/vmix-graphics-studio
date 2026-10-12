@@ -246,6 +246,7 @@
       "spPortraitHeight": 300,
       "spPortraitMin": 230,
       "spBandSize": 17,
+      "spBandHeight": 0,
       "spPhotoSize": 150,
       "spShowHeader": true,
       "spShowAge": false,

@@ -563,7 +563,13 @@
   display: flex;
   align-items: center;
   gap: calc(var(--b) * 0.6);
-  padding: calc(var(--b) * 0.7) 24px;
+  /* Height follows the content (size plus padding) unless the operator sets a
+     Band Height, in which case it is exactly that and the content sits centred
+     in it, so the band can be made thicker or thinner without touching the
+     size of the flag and country name. */
+  box-sizing: border-box;
+  height: var(--sp-band-h, auto);
+  padding: var(--sp-band-pad-y, calc(var(--b) * 0.7)) 24px;
   background: linear-gradient(105deg, var(--color-header-start) 0%, var(--color-header-end) 100%);
 }
 .sp-c-flag {
