@@ -8,6 +8,7 @@
     ['Final Rankings', '/graphics/rankings/'],
     ['Messages', '/graphics/messages/'],
     ['Skater Name Bar', '/graphics/manual-skater/'],
+    ['Skater Profile', '/graphics/skater-profile/'],
     ['Interview', '/graphics/interview/'],
   ];
 
