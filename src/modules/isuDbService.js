@@ -182,7 +182,11 @@ function createIsuDbService({ getConfig, readData, writeAndBroadcast, applyEvent
         flagSet = new Set();
       }
     }
-    return flagSet.has(code) ? `${FLAG_URL_BASE}/${code}.png` : '';
+    if (flagSet.has(code)) return `${FLAG_URL_BASE}/${code}.png`;
+    // The ISU names its neutral-athlete flag "ain1", so the data may say AIN1;
+    // a trailing digit falls back to the plain code (AIN1 -> AIN).
+    const plain = code.replace(/\d+$/, '');
+    return plain !== code && flagSet.has(plain) ? `${FLAG_URL_BASE}/${plain}.png` : '';
   }
 
   /**
