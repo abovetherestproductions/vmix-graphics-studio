@@ -150,6 +150,9 @@ function flagUrl(flagFile) {
 }
 
 function safeStr(v) { return v != null ? String(v).trim() : ''; }
+
+// headerLabel / headerLabelFr for a rankings payload, or nothing at all.
+function headingFields(h) { return h ? { headerLabel: h.en, headerLabelFr: h.fr } : {}; }
 function safeNum(v) {
   const n = parseFloat(v);
   return isNaN(n) ? null : n;
@@ -387,6 +390,42 @@ function buildRankingRow(e) {
 }
 
 /**
+ * The line under the category on the rankings graphic, for the data sources
+ * that cannot see the category's segment list (the live feed and the CSV
+ * folder). The newer API path decides from the list itself - see
+ * standingsHeading in skate-canada-new-api.js.
+ *
+ * Here the segment's own name has to do. A free program or free dance is
+ * always a category's last segment, so it reads "Final Standings"; anything
+ * else (Short Program, Rhythm Dance, Pattern Dance...) reads "<segment>
+ * Standings", because the category is not finished. A short-program-only
+ * category therefore says "Short Program Standings" when it is in fact
+ * complete - merely less informative, where "Final Standings" over interim
+ * results would be wrong.
+ *
+ * A category name at the front of the segment name ("Senior Women - Short
+ * Program") is dropped first. Returns { en, fr }, or null with no segment
+ * name, leaving the graphic's own fixed label.
+ */
+function standingsHeadingFromName(segmentEn, segmentFr, categoryEn) {
+  let name = safeStr(segmentEn);
+  const cat = safeStr(categoryEn);
+  if (name && cat && name.toLowerCase().startsWith(cat.toLowerCase())) {
+    name = name.slice(cat.length).replace(/^[\s\-\u2013\u2014:|]+/, '');
+  }
+  if (!name) return null;
+  if (/\b(free|libre)\b/i.test(name)) {
+    return { en: 'Final Standings', fr: 'Classement final' };
+  }
+  const nameFr = safeStr(segmentFr) || safeStr(tr(name, 'fr')) || name;
+  const lower  = nameFr.toLowerCase();
+  const fr = /^programme\b/.test(lower) ? `Classement du ${lower}`
+           : /^danse\b/.test(lower)     ? `Classement de la ${lower}`
+           : `Classement \u2013 ${nameFr}`;
+  return { en: `${name} Standings`, fr };
+}
+
+/**
  * Normalizes ranking.php into a FULL leaderboard payload used by the
  * large center-panel "rankings" template.
  *
@@ -453,6 +492,7 @@ function normalizeRankings(raw, rowsPerPage = 8, page = 1, lang = 'en') {
       segmentName:     segmentNameEn,
       segmentNameFr:   segmentNameFr,
       subtitle:    '',
+      ...headingFields(standingsHeadingFromName(segmentNameEn, segmentNameFr, catNameEn)),
       page:        safePage,
       pageCount,
       rowsPerPage,
@@ -760,6 +800,8 @@ function normalizeEventInfo(raw) {
 }
 
 module.exports = {
+  standingsHeadingFromName,
+  headingFields,
   normalizeStartingOrder,
   normalizeScoring,
   normalizeRankings,

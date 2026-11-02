@@ -408,6 +408,7 @@ function csvToRankings(filePath, options = {}) {
       segmentName: context.segmentName || '',
       segmentNameFr: context.segmentNameFr || '',
       subtitle: '',
+      ...sc.headingFields(sc.standingsHeadingFromName(context.segmentName, context.segmentNameFr, context.categoryName)),
       page: safePage,
       pageCount,
       rowsPerPage: rows.length,
