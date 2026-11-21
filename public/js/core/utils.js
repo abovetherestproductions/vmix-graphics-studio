@@ -4,7 +4,7 @@
 const TEMPLATE_LABELS = {
   'officials':      { en: 'Officials',         fr: 'Officiels' },
   'rankings':       { en: 'Final Standings',   fr: 'Classement final' },
-  'standings':      { en: 'Current Standings', fr: 'Classement actuel' },
+  'standings':      { en: 'Current Standings', fr: 'Classements actuels' },
   'starting-order': { en: 'Starting Order',    fr: 'Ordre de départ' },
   'skater-profile': { en: 'Skater Profile',    fr: 'Profil du patineur' },
 };
@@ -63,6 +63,8 @@ window.GraphicsUtils = {
       // Reset prior inline so we start from the CSS-defined base.
       el.style.fontSize  = '';
       el.style.whiteSpace = '';
+      const bilingual = el.classList.contains('hdr-bilingual');
+      if (bilingual) el.classList.remove('hdr-bi-stacked');
       const ow = el.offsetWidth;
       // Guard against measuring during animation — if the container is
       // suspiciously narrow, bail out and let the deferred re-run catch it.
@@ -72,23 +74,34 @@ window.GraphicsUtils = {
       if (el.scrollWidth <= ow + 2) return;
       const base = parseFloat(getComputedStyle(el).fontSize) || 36;
       // Conservative minimum (70% of configured size) — readable on air.
-      const min  = options.minSize ?? Math.max(14, Math.floor(base * 0.7));
-      let lo = min, hi = base;
-      while (lo < hi) {
-        const mid = Math.floor((lo + hi + 1) / 2);
-        el.style.fontSize = `${mid}px`;
-        if (el.scrollWidth <= el.offsetWidth + 2) lo = mid;
-        else hi = mid - 1;
+      // Never above the configured size, or a small subtitle would grow.
+      const min  = Math.min(base, options.minSize ?? Math.max(14, Math.floor(base * 0.7)));
+      // Largest size in [min, base] at which the text fits; true if it does.
+      const shrink = () => {
+        let lo = min, hi = base;
+        while (lo < hi) {
+          const mid = Math.floor((lo + hi + 1) / 2);
+          el.style.fontSize = `${mid}px`;
+          if (el.scrollWidth <= el.offsetWidth + 2) lo = mid;
+          else hi = mid - 1;
+        }
+        el.style.fontSize = `${lo}px`;
+        return el.scrollWidth <= el.offsetWidth + 2;
+      };
+      if (shrink()) return;
+      // A bilingual header that will not fit side by side even at the smallest
+      // size drops to one language per line, and each line is fitted on its own.
+      if (bilingual) {
+        el.classList.add('hdr-bi-stacked');
+        el.style.fontSize = '';
+        if (el.scrollWidth <= ow + 2 || shrink()) return;
       }
-      el.style.fontSize = `${lo}px`;
       // If we hit the floor and the text still overflows, let it wrap to
       // two lines instead of ellipsising — a wrapped FR title reads far
       // better on air than "NOVICE PATINAGE EN…". The CSS rule still has
       // white-space:nowrap as the default; this inline override only
       // applies when we genuinely can't fit on one line at min font size.
-      if (lo === min && el.scrollWidth > el.offsetWidth + 2) {
-        el.style.whiteSpace = 'normal';
-      }
+      el.style.whiteSpace = 'normal';
     };
     // First pass: as soon as layout has had two frames to settle.
     requestAnimationFrame(() => requestAnimationFrame(measureAndFit));
@@ -259,8 +272,8 @@ window.GraphicsUtils = {
    * @param {string} fallback  - fallback title if nothing resolves
    * @returns {string}
    */
-  resolveTitle(template, data, fallback = '') {
-    const lang = document.documentElement.lang || 'en';
+  resolveTitle(template, data, fallback = '', forceLang) {
+    const lang = forceLang || document.documentElement.lang || 'en';
     const isFr = lang === 'fr';
     const ovr  = (window.configHeaderOverrides || {})[template] || {};
     const src  = ovr.titleSource || 'auto';
@@ -363,8 +376,8 @@ window.GraphicsUtils = {
    * Back-compat: if subtitleSource is missing but a custom subtitle override
    * is set, treat that as 'custom' (matches the previous behavior).
    */
-  resolveSubtitle(template, data, fallback = '') {
-    const lang = document.documentElement.lang || 'en';
+  resolveSubtitle(template, data, fallback = '', forceLang) {
+    const lang = forceLang || document.documentElement.lang || 'en';
     const isFr = lang === 'fr';
     const ovr  = (window.configHeaderOverrides || {})[template] || {};
     const pick = (en, fr) => (isFr && fr) ? fr : (en || fr || '');
@@ -401,6 +414,75 @@ window.GraphicsUtils = {
         out = data?.subtitle || '';
     }
     return out || fallback;
+  },
+
+  /**
+   * Put English and French into a header element side by side - "Senior Women
+   * / Femmes seniors" - as two spans behind a divider. fitTitleOneLine() stacks
+   * them (one language per line) only when both cannot fit on one line.
+   *
+   * Idempotent: the same pair on the same element is left alone, so the theme
+   * loader's periodic pass and the graphic's own render can both call it
+   * without rebuilding the header. When either side is missing, or the two are
+   * the same text, the element gets plain text instead.
+   */
+  setBilingualText(el, en, fr) {
+    if (!el) return;
+    const a = String(en == null ? '' : en).trim();
+    const b = String(fr == null ? '' : fr).trim();
+    if (!a || !b || a.toLowerCase() === b.toLowerCase()) {
+      this.clearBilingual(el);
+      el.textContent = a || b;
+      return;
+    }
+    const key = `${a}\u0000${b}`;
+    if (el.dataset.biKey === key && el.querySelector(':scope > .hdr-bi-en')) return;
+    const span = (cls, text) => {
+      const s = document.createElement('span');
+      s.className = cls;
+      s.textContent = text;
+      return s;
+    };
+    el.replaceChildren(span('hdr-bi-en', a), span('hdr-bi-sep', '/'), span('hdr-bi-fr', b));
+    el.dataset.biKey = key;
+    el.classList.add('hdr-bilingual');
+    el.classList.remove('hdr-bi-stacked');
+  },
+
+  clearBilingual(el) {
+    if (!el) return;
+    delete el.dataset.biKey;
+    el.classList.remove('hdr-bilingual', 'hdr-bi-stacked');
+  },
+
+  /**
+   * Fill a graphic's title or subtitle element, following the graphic's
+   * language setting: 'follow' writes the broadcast language as it always has,
+   * 'both' writes English and French together.
+   *
+   * @param {HTMLElement} el
+   * @param {string} template   e.g. 'rankings'
+   * @param {'title'|'subtitle'} kind
+   * @param {Object} data       payload.data
+   * @param {string} fallback   used when nothing resolves
+   * @param {Function} [keep]   optional text filter; return '' to suppress
+   */
+  setHeaderText(el, template, kind, data, fallback = '', keep) {
+    if (!el) return;
+    const resolve = (lang) => (kind === 'title'
+      ? this.resolveTitle(template, data, fallback, lang)
+      : this.resolveSubtitle(template, data, fallback, lang));
+    const filter = (text) => (keep ? keep(text) : text);
+    const ovr = (window.configHeaderOverrides || {})[template] || {};
+    if (ovr.langMode !== 'both') {
+      this.clearBilingual(el);
+      el.textContent = filter(resolve());
+      return;
+    }
+    this.setBilingualText(el, filter(resolve('en')), filter(resolve('fr')));
+    // Titles are fitted by their graphic right after this call; subtitles are
+    // not, so do it here - a bilingual subtitle can be too wide for one line.
+    if (kind === 'subtitle') this.fitTitleOneLine(el);
   },
 
   /**

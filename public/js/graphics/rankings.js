@@ -79,9 +79,9 @@
 
   /** Update header text only (no animation — stays frozen during page changes) */
   function updateHeader(data) {
-    titleEl.textContent    = window.GraphicsUtils.resolveTitle('rankings', data, 'Final Rankings');
+    window.GraphicsUtils.setHeaderText(titleEl, 'rankings', 'title', data, 'Final Rankings');
     window.GraphicsUtils.fitTitle(titleEl);
-    subtitleEl.textContent = window.GraphicsUtils.resolveSubtitle('rankings', data, '');
+    window.GraphicsUtils.setHeaderText(subtitleEl, 'rankings', 'subtitle', data, '');
     window.GraphicsUtils.fitTitleOneLine(titleEl);
   }
 

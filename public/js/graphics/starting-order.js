@@ -84,17 +84,19 @@
     return rowEl;
   }
 
+  // The group subtitle is intentionally suppressed: strip any "Group N" / "Groupe N".
+  const hideGroupSubtitle = text => (/^(Group|Groupe)\s+\d+$/i.test((text || '').trim()) ? '' : text);
+
   function render(payload) {
     const rows = Array.isArray(payload?.data?.rows) ? payload.data.rows : [];
     const rowCount = getRowCount(payload);
 
     const data = payload?.data || {};
-    titleEl.textContent    = window.GraphicsUtils.resolveTitle('starting-order', data, 'Starting Order');
+    window.GraphicsUtils.setHeaderText(titleEl, 'starting-order', 'title', data, 'Starting Order');
     window.GraphicsUtils.fitTitle(titleEl);
     window.GraphicsUtils.fitTitleOneLine(titleEl);
     // Group subtitle is intentionally suppressed — strip any residual "Group N" / "Groupe N"
-    const rawSub = window.GraphicsUtils.resolveSubtitle('starting-order', data, '');
-    subtitleEl.textContent = /^(Group|Groupe)\s+\d+$/i.test((rawSub || '').trim()) ? '' : rawSub;
+    window.GraphicsUtils.setHeaderText(subtitleEl, 'starting-order', 'subtitle', data, '', hideGroupSubtitle);
 
     clearLayoutClasses();
     root.classList.add(getLayoutClass(rowCount));
@@ -193,8 +195,7 @@
    */
   async function animateGroupChange(payload) {
     const data = payload?.data || {};
-    const rawSub = window.GraphicsUtils.resolveSubtitle('starting-order', data, '');
-    subtitleEl.textContent = /^(Group|Groupe)\s+\d+$/i.test((rawSub || '').trim()) ? '' : rawSub;
+    window.GraphicsUtils.setHeaderText(subtitleEl, 'starting-order', 'subtitle', data, '', hideGroupSubtitle);
 
     // Reset rows, render the new group, then cascade them down.
     animateRowsOut(0);
@@ -264,11 +265,10 @@
     // Always re-resolve, even before any payload has arrived — this makes
     // titleSource='custom'/'event' immediately reflect dropdown changes.
     const data = lastPayload?.data || {};
-    titleEl.textContent    = window.GraphicsUtils.resolveTitle('starting-order', data, 'Starting Order');
+    window.GraphicsUtils.setHeaderText(titleEl, 'starting-order', 'title', data, 'Starting Order');
     window.GraphicsUtils.fitTitle(titleEl);
     window.GraphicsUtils.fitTitleOneLine(titleEl);
-    const rawSub2 = window.GraphicsUtils.resolveSubtitle('starting-order', data, '');
-    subtitleEl.textContent = /^(Group|Groupe)\s+\d+$/i.test((rawSub2 || '').trim()) ? '' : rawSub2;
+    window.GraphicsUtils.setHeaderText(subtitleEl, 'starting-order', 'subtitle', data, '', hideGroupSubtitle);
   });
 
   // JSON polling — fallback / initial load

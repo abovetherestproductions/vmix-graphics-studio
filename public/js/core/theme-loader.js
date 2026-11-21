@@ -673,15 +673,23 @@
     // Only force-override the title here for 'custom' or 'event' sources.
     // For 'auto' / 'category' / 'segment', the graphic JS handles it via
     // GraphicsUtils.resolveTitle() using live data.
+    // In Bilingual mode the same fields are written as English / French side
+    // by side. setBilingualText leaves an unchanged pair alone, so this
+    // periodic pass does not rebuild (or re-fit) the header every time.
+    const both = ovr.langMode === 'both' && window.GraphicsUtils?.setBilingualText;
+    const put = (el, en, fr) => {
+      if (both) window.GraphicsUtils.setBilingualText(el, en || fr, fr || en);
+      else      el.textContent = pick(en, fr);
+    };
     if (titleEl) {
       if (src === 'custom' && (ovr.title || ovr.titleFr)) {
-        titleEl.textContent = pick(ovr.title, ovr.titleFr);
+        put(titleEl, ovr.title, ovr.titleFr);
       } else if (src === 'event' && (ovr.eventName || ovr.eventNameFr)) {
-        titleEl.textContent = pick(ovr.eventName, ovr.eventNameFr);
+        put(titleEl, ovr.eventName, ovr.eventNameFr);
       }
     }
     if (subtitleEl && (ovr.subtitle || ovr.subtitleFr)) {
-      subtitleEl.textContent = pick(ovr.subtitle, ovr.subtitleFr);
+      put(subtitleEl, ovr.subtitle, ovr.subtitleFr);
     }
   }
 

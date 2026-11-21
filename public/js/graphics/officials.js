@@ -58,9 +58,9 @@
 
   function render(payload) {
     const data = payload.data || {};
-    titleEl.textContent    = window.GraphicsUtils.resolveTitle('officials', data, 'Officials');
+    window.GraphicsUtils.setHeaderText(titleEl, 'officials', 'title', data, 'Officials');
     window.GraphicsUtils.fitTitle(titleEl);
-    subtitleEl.textContent = window.GraphicsUtils.resolveSubtitle('officials', data, '');
+    window.GraphicsUtils.setHeaderText(subtitleEl, 'officials', 'subtitle', data, '');
     window.GraphicsUtils.fitTitleOneLine(titleEl);
 
     const rows = Array.isArray(data.rows)
@@ -187,9 +187,9 @@
       if (currentVisible) showRowsNow();
     } else {
       // No payload yet — still reflect dropdown changes on the header text.
-      titleEl.textContent    = window.GraphicsUtils.resolveTitle('officials', {}, 'Officials');
+      window.GraphicsUtils.setHeaderText(titleEl, 'officials', 'title', {}, 'Officials');
       window.GraphicsUtils.fitTitle(titleEl);
-      subtitleEl.textContent = window.GraphicsUtils.resolveSubtitle('officials', {}, '');
+      window.GraphicsUtils.setHeaderText(subtitleEl, 'officials', 'subtitle', {}, '');
       window.GraphicsUtils.fitTitleOneLine(titleEl);
     }
   });

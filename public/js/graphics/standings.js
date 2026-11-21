@@ -87,9 +87,9 @@
 
   function render(payload) {
     const data = payload.data || {};
-    titleEl.textContent    = window.GraphicsUtils.resolveTitle('standings', data, 'Rankings');
+    window.GraphicsUtils.setHeaderText(titleEl, 'standings', 'title', data, 'Rankings');
     window.GraphicsUtils.fitTitle(titleEl);
-    subtitleEl.textContent = window.GraphicsUtils.resolveSubtitle('standings', data, '');
+    window.GraphicsUtils.setHeaderText(subtitleEl, 'standings', 'subtitle', data, '');
     window.GraphicsUtils.fitTitleOneLine(titleEl);
 
     rowsEl.innerHTML = '';
@@ -206,9 +206,9 @@
   // Update title when language switches (rows don't have translatable content)
   window.addEventListener('graphics-config-updated', () => {
     const data = lastPayload?.data || {};
-    titleEl.textContent    = window.GraphicsUtils.resolveTitle('standings', data, 'Rankings');
+    window.GraphicsUtils.setHeaderText(titleEl, 'standings', 'title', data, 'Rankings');
     window.GraphicsUtils.fitTitle(titleEl);
-    subtitleEl.textContent = window.GraphicsUtils.resolveSubtitle('standings', data, '');
+    window.GraphicsUtils.setHeaderText(subtitleEl, 'standings', 'subtitle', data, '');
     window.GraphicsUtils.fitTitleOneLine(titleEl);
   });
 

@@ -62,3 +62,27 @@ html[lang="fr"] .of-subtitle,
 html[lang="fr"] .sp-subtitle {
   text-transform: uppercase;
 }
+
+/* ── Bilingual header text ───────────────────────────────────────────
+   GraphicsUtils.setBilingualText() puts English and French in two spans
+   behind a divider. They sit side by side; fitTitleOneLine() adds
+   .hdr-bi-stacked only when both will not fit on one line, which gives each
+   language its own line and drops the divider. */
+.hdr-bilingual .hdr-bi-sep {
+  margin: 0 0.4em;
+  opacity: 0.6;
+  font-weight: 700;
+}
+
+.hdr-bilingual.hdr-bi-stacked {
+  line-height: 1.12;
+}
+
+.hdr-bilingual.hdr-bi-stacked .hdr-bi-en,
+.hdr-bilingual.hdr-bi-stacked .hdr-bi-fr {
+  display: block;
+}
+
+.hdr-bilingual.hdr-bi-stacked .hdr-bi-sep {
+  display: none;
+}
