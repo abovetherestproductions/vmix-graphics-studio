@@ -55,7 +55,7 @@ const UNFED_TEMPLATES = ['scoring', 'rankings', 'standings', 'elements', 'offici
 const CATEGORY_FR = {
   'Men':       'Hommes',
   'Women':     'Femmes',
-  'Pairs':     'Couples',
+  'Pairs':     'Patinage en couple',
   'Ice Dance': 'Danse sur glace',
 };
 
@@ -75,20 +75,20 @@ const CATEGORY_FR = {
  * place to undo: pass the board's own segment through instead.
  */
 const PRACTICE_TITLE = {
-  'Men':       { en: "Men's Practice",     fr: 'Entraînement hommes' },
-  'Women':     { en: "Women's Practice",   fr: 'Entraînement femmes' },
-  'Pairs':     { en: 'Pairs Practice',     fr: 'Entraînement couples' },
-  'Ice Dance': { en: 'Ice Dance Practice', fr: 'Entraînement danse sur glace' },
+  'Men':       { en: "Men's Practice",     fr: 'Séance d’entraînement – Hommes' },
+  'Women':     { en: "Women's Practice",   fr: 'Séance d’entraînement – Femmes' },
+  'Pairs':     { en: 'Pairs Practice',     fr: 'Séance d’entraînement – Patinage en couple' },
+  'Ice Dance': { en: 'Ice Dance Practice', fr: 'Séance d’entraînement – Danse sur glace' },
 };
 const PRACTICE_SEGMENT_EN = 'Practice';
-const PRACTICE_SEGMENT_FR = 'Entraînement';
+const PRACTICE_SEGMENT_FR = 'Séance d’entraînement';
 
 function practiceTitle(category, lang) {
   const named = PRACTICE_TITLE[String(category || '').trim()];
   if (named) return lang === 'fr' ? named.fr : named.en;
   const cat = String(category || '').trim();
   if (!cat) return lang === 'fr' ? PRACTICE_SEGMENT_FR : PRACTICE_SEGMENT_EN;
-  return lang === 'fr' ? `${PRACTICE_SEGMENT_FR} ${cat.toLowerCase()}` : `${cat} Practice`;
+  return lang === 'fr' ? `${PRACTICE_SEGMENT_FR} – ${cat}` : `${cat} Practice`;
 }
 
 function createIsuDbService({ getConfig, readData, writeAndBroadcast, applyEventInfoPatch, logger }) {

@@ -34,7 +34,7 @@ const SEGMENT_FR = {
   'Pairs Free Program':      'Programme libre en couple',
   'Pairs Short':             'Programme court en couple',
   'Pairs Free':              'Programme libre en couple',
-  'Pattern Dance':           'Danse imposée',
+  'Pattern Dance':           'Danse sur tracé',
   'Interpretive':            'Programme d’interprétation',
   'Artistic':                'Artistique',
   'Creative':                'Créatif',
