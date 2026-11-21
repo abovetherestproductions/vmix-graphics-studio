@@ -212,6 +212,27 @@
         // Single bar background — empty string means "use CSS red gradient fallback"
         if (pos.ltBarBg) root.style.setProperty('--lt-bar-bg', pos.ltBarBg);
         else root.style.removeProperty('--lt-bar-bg');
+
+        // Interview: the keyline along the bottom of the bar. A custom colour
+        // drives the whole keyline gradient and the two faint rings; unset
+        // leaves the stylesheet's gold exactly as it was.
+        if (template === 'interview') {
+          const hex = /^#[0-9a-f]{6}$/i.test(pos.ivKeyline || '') ? pos.ivKeyline : '';
+          const props = ['--iv-keyline', '--iv-keyline-hi', '--iv-keyline-clear', '--iv-keyline-tail', '--iv-ring-1', '--iv-ring-2'];
+          if (hex) {
+            const n = parseInt(hex.slice(1), 16), r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+            const lift = c => Math.round(c + (255 - c) * 0.3);
+            root.style.setProperty('--iv-keyline',       hex);
+            root.style.setProperty('--iv-keyline-hi',    `rgb(${lift(r)},${lift(g)},${lift(b)})`);
+            root.style.setProperty('--iv-keyline-clear', `rgba(${r},${g},${b},0)`);
+            root.style.setProperty('--iv-keyline-tail',  `rgba(${r},${g},${b},0.25)`);
+            root.style.setProperty('--iv-ring-1',        `rgba(${lift(r)},${lift(g)},${lift(b)},0.10)`);
+            root.style.setProperty('--iv-ring-2',        `rgba(${lift(r)},${lift(g)},${lift(b)},0.07)`);
+          } else {
+            props.forEach(k => root.style.removeProperty(k));
+          }
+          root.style.setProperty('--iv-keyline-display', pos.ivKeylineShow === false ? 'none' : 'block');
+        }
         root.style.setProperty('--lt-line1-size',    `${pos.ltLine1Size  ?? 40}px`);
         root.style.setProperty('--lt-line2-size',    `${pos.ltLine2Size  ?? 20}px`);
         // Title (body) horizontal padding — controls how close the title sits

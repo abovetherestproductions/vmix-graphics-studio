@@ -11,6 +11,7 @@
 /* Gold keyline along the bottom edge of the bar */
 .interview::after {
   content: '';
+  display: var(--iv-keyline-display, block);
   position: absolute;
   left: var(--panel-radius);
   right: 0;
@@ -18,7 +19,7 @@
   height: 3px;
   z-index: 1;
   border-radius: 0 0 var(--panel-radius) var(--panel-radius);
-  background: linear-gradient(90deg, rgba(201,162,39,0.0) 0%, #c9a227 18%, #e7c65a 55%, rgba(201,162,39,0.25) 100%);
+  background: linear-gradient(90deg, var(--iv-keyline-clear, rgba(201,162,39,0.0)) 0%, var(--iv-keyline, #c9a227) 18%, var(--iv-keyline-hi, #e7c65a) 55%, var(--iv-keyline-tail, rgba(201,162,39,0.25)) 100%);
   pointer-events: none;
 }
 
@@ -33,10 +34,10 @@
 /* Decorative rings — repositioned like the manual-skater variant */
 .interview .lt-body::before {
   left: 60px;
-  border-color: rgba(231,198,90,0.10);
+  border-color: var(--iv-ring-1, rgba(231,198,90,0.10));
 }
 
 .interview .lt-body::after {
   right: 300px;
-  border-color: rgba(231,198,90,0.07);
+  border-color: var(--iv-ring-2, rgba(231,198,90,0.07));
 }

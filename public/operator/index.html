@@ -1556,6 +1556,12 @@ function setPosUI(id, pos) {
   if (id === 'interview') {
     sv('pos-l2src-interview', p.ltLine2Source || 'club');
     sv('pos-l2custom-interview', p.ltLine2Custom || '');
+    const customBar = !!p.ltBarBg;
+    const [ibc, iba] = customBar ? parseLtBg(p.ltBarBg) : ['#1d2130', 100];
+    { const ck = g(`pos-iv-bar-custom-${id}`); if (ck) ck.checked = customBar; }
+    sv(`pos-iv-bar-${id}`, ibc);  sv(`pos-iv-bar-a-${id}`, iba);  st(`pv-iv-bar-a-${id}`, `${iba}%`);
+    sv(`pos-iv-keyline-${id}`, p.ivKeyline || '#c9a227');
+    { const ks = g(`pos-iv-keyline-show-${id}`); if (ks) ks.checked = p.ivKeylineShow !== false; }
   }
   if (id === 'lower-third') {
     sv(`pos-fp-${id}`, p.ltFlagPad ?? 24);  st(`pv-fp-${id}`, `${p.ltFlagPad ?? 24}px`);
@@ -1821,11 +1827,16 @@ function readPos(id) {
     msFirstHoldSecs:    id === 'manual-skater' ? Number(g(`pos-ms-first-hold-${id}`)?.value  ?? 4) : undefined,
     ltLine2Source: id === 'interview' ? (g('pos-l2src-interview')?.value || 'club') : undefined,
     ltLine2Custom: id === 'interview' ? (g('pos-l2custom-interview')?.value || '') : undefined,
+    // Interview bar: a custom colour is stored as the same rgba string the
+    // lower third uses; empty keeps the built-in graphite. The keyline colour
+    // is only stored when it differs from the stylesheet's gold.
+    ivKeyline:     id === 'interview' ? ((g(`pos-iv-keyline-${id}`)?.value || '').toLowerCase() === '#c9a227' ? '' : (g(`pos-iv-keyline-${id}`)?.value || '')) : undefined,
+    ivKeylineShow: id === 'interview' ? (g(`pos-iv-keyline-show-${id}`)?.checked !== false) : undefined,
     ltFlagPad:    id === 'lower-third' ? Number(g(`pos-fp-${id}`)?.value ?? 24) : undefined,
     ltFlagX:      id === 'lower-third' ? Number(g(`pos-fx-${id}`)?.value ?? 0)  : undefined,
     ltFlagY:      id === 'lower-third' ? Number(g(`pos-fy-${id}`)?.value ?? 0)  : undefined,
     ltFlagWidth:  id === 'lower-third' ? Number(g(`pos-fw-${id}`)?.value ?? 0)  : undefined,
-    ltBarBg:        id === 'lower-third' ? (() => { const a = parseInt(g(`pos-bar-bg-a-${id}`)?.value ?? 0); return a > 0 ? buildLtBg(`pos-bar-bg-${id}`, `pos-bar-bg-a-${id}`) : ''; })() : undefined,
+    ltBarBg:        id === 'interview' ? (g(`pos-iv-bar-custom-${id}`)?.checked ? buildLtBg(`pos-iv-bar-${id}`, `pos-iv-bar-a-${id}`) : '') : id === 'lower-third' ? (() => { const a = parseInt(g(`pos-bar-bg-a-${id}`)?.value ?? 0); return a > 0 ? buildLtBg(`pos-bar-bg-${id}`, `pos-bar-bg-a-${id}`) : ''; })() : undefined,
     ltFlagOpacity:  id === 'lower-third' ? Number(g(`pos-lt-flag-opacity-${id}`)?.value ?? 100) : undefined,
     ltBodyPadL:   id === 'lower-third' ? Number(g(`pos-bpl-${id}`)?.value ?? 28) : undefined,
     ltBodyPadR:   id === 'lower-third' ? Number(g(`pos-bpr-${id}`)?.value ?? 32) : undefined,
@@ -2006,6 +2017,7 @@ function onPosChange(id) {
     st(`pv-bpl-${id}`, `${p.ltBodyPadL ?? 28}px`);
     st(`pv-bpr-${id}`, `${p.ltBodyPadR ?? 32}px`);
   }
+  if (id === 'interview') st(`pv-iv-bar-a-${id}`, `${g(`pos-iv-bar-a-${id}`)?.value ?? 100}%`);
   if (INFO_CARD_TEMPLATES.includes(id)) {
     st(`pv-lt-info-bg-a-${id}`, `${g(`pos-lt-info-bg-a-${id}`)?.value ?? 94}%`);
     st(`pv-lt-info-size-${id}`, `${p.ltInfoSize ?? 18}px`);
@@ -2210,6 +2222,7 @@ async function resetPos(id) {
   const scDefaults   = id === 'scoring'     ? { scScoreSize:28, scLabelSize:11, scTotalSize:36, scRevealDelayMs:3000, scHoldSecs:30, scFlagX:0, scFlagY:0, scPanelBg:'rgba(14,14,18,0.92)', scLogoBg:'rgba(0,0,0,0.18)', scRankBg:'rgba(0,0,0,0.28)' } : {};
 	  const elDefaults   = id === 'elements'    ? { elSkaterSize:18, elTotalSize:26, elLabelSize:9, elCodeSize:15, elValueSize:14, elTitleX:0, elTitleY:0, elAutoFit:false, elBodyDelay:2000, elHighestLabelSize:0, elHighestScoreSize:0, elHighestLabelColor:'#ffc848', elHighestScoreColor:'#ffc848' } : {};
   const ofDefaults   = id === 'officials'   ? { ofRoleAlign:'right' } : {};
+  const ivDefaults   = id === 'interview'   ? { ltBarBg:'', ivKeyline:'', ivKeylineShow:true } : {};
   const msgDefaults  = id === 'messages'    ? { msgLine1Size:40, msgLine2Size:20 } : {};
   const msExtrasDefaults = id === 'manual-skater' ? { msExtrasEnabled:true, msShowCoaches:false, msShowQuote:false, msShowMusic:false, msShowCategory:true, msQuoteSecs:4, msCoachSecs:4, msShowScoreToFirst:false, msFirstDelaySecs:3, msFirstHoldSecs:4 } : {};
   // Skater profile: details off, the two score tiles on — the panel as it
@@ -2219,7 +2232,7 @@ async function resetPos(id) {
                      zoom:100, rowPad:0, rounded:true, radius:20, ltFlagHeight:68,
                      animPreset:'default', animSpeed:420, animEasing:'smooth',
                      caps: {},
-                     ...(LANG_MODE_TEMPLATES.includes(id) ? { langMode:'follow' } : {}), ...logoDefaults, ...colDefaults, ...flagDefaults, ...ltDefaults, ...infoDefaults, ...scDefaults, ...elDefaults, ...ofDefaults, ...msgDefaults, ...msExtrasDefaults, ...spDefaults };
+                     ...(LANG_MODE_TEMPLATES.includes(id) ? { langMode:'follow' } : {}), ...logoDefaults, ...colDefaults, ...flagDefaults, ...ltDefaults, ...infoDefaults, ...scDefaults, ...elDefaults, ...ofDefaults, ...ivDefaults, ...msgDefaults, ...msExtrasDefaults, ...spDefaults };
   setPosUI(id, defaults);
   await savePositionObj(id, defaults);
   toast(`↺ ${id} reset`);
@@ -3039,6 +3052,34 @@ function buildCards() {
               <input type="text" id="pos-l2custom-interview" placeholder="Used when Source = Custom"
                      onchange="onPosChange('interview')"
                      style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;grid-column:2/4;width:100%;" />
+            </div>
+            <div style="margin:8px 0 2px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);grid-column:1/-1;">Bar Colour</div>
+            <div style="grid-column:1/-1;margin-bottom:4px;">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;" title="Off keeps the built-in graphite bar">
+                <input type="checkbox" id="pos-iv-bar-custom-${t.id}" onchange="onPosChange('${t.id}')"
+                       style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;" />
+                <span style="font-size:12px;color:var(--text2);">Use a custom bar colour (off = graphite)</span>
+              </label>
+            </div>
+            <div class="pos-row" style="grid-template-columns:auto auto 1fr;">
+              <label>Colour</label>
+              <input type="color" id="pos-iv-bar-${t.id}" value="#1d2130"
+                     oninput="onPosChange('${t.id}')"
+                     style="width:38px;height:32px;padding:2px 4px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--bg);">
+              <input type="range" id="pos-iv-bar-a-${t.id}" min="10" max="100" value="100" step="1"
+                     oninput="onPosChange('${t.id}')" title="Opacity">
+              <span class="pos-val" id="pv-iv-bar-a-${t.id}" style="grid-column:3/4;text-align:right;">100%</span>
+            </div>
+            <div class="pos-row" style="grid-template-columns:auto auto 1fr;">
+              <label>Keyline</label>
+              <input type="color" id="pos-iv-keyline-${t.id}" value="#c9a227"
+                     oninput="onPosChange('${t.id}')"
+                     style="width:38px;height:32px;padding:2px 4px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--bg);">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;justify-self:end;">
+                <input type="checkbox" id="pos-iv-keyline-show-${t.id}" checked onchange="onPosChange('${t.id}')"
+                       style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;" />
+                <span style="font-size:12px;color:var(--text2);">Show the line</span>
+              </label>
             </div>
             ` : ''}
             ${t.id === 'manual-skater' ? `
