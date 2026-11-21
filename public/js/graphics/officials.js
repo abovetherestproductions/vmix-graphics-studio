@@ -80,6 +80,19 @@
     });
   }
 
+  // Rows start invisible and only the entrance animation makes them visible,
+  // so a rebuild of an on-air graphic (a settings or language change) has to
+  // reveal them itself, at once, without replaying the cascade.
+  function showRowsNow() {
+    const rows = rowsEl.querySelectorAll('.of-row');
+    rows.forEach(row => {
+      row.style.transition = 'none';
+      row.classList.add('row-in');
+    });
+    void rowsEl.offsetHeight;
+    rows.forEach(row => { row.style.transition = ''; });
+  }
+
   function animateRowsOut() {
     // Reset to pre-cascade state. OUT is a single panel fade — no row-by-row exit.
     rowsEl.querySelectorAll('.of-row').forEach(row => {
@@ -171,6 +184,7 @@
   window.addEventListener('graphics-config-updated', () => {
     if (lastPayload) {
       render(lastPayload);
+      if (currentVisible) showRowsNow();
     } else {
       // No payload yet — still reflect dropdown changes on the header text.
       titleEl.textContent    = window.GraphicsUtils.resolveTitle('officials', {}, 'Officials');
