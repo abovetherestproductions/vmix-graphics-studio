@@ -161,15 +161,12 @@
   text-overflow: ellipsis;
 }
 
-/* Bilingual roles: "Referee / Arbitre" on one line, the French a touch
-   quieter. The panel and role column are widened for this in Bilingual mode. */
+/* Bilingual roles: "Referee / Arbitre" on one line. English and French are
+   deliberately identical in size, weight, colour and opacity - only the divider
+   between them is dimmed. */
 .of-role .of-role-sep {
   margin: 0 0.4em;
   opacity: 0.6;
-}
-
-.of-role .of-role-fr {
-  opacity: 0.82;
 }
 
 .of-name {
