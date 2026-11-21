@@ -17,6 +17,8 @@
 
 'use strict';
 
+const { frenchLevelStyle } = require('./french-style');
+
 // ── French / English translations ──────────────────────────────────────────
 
 const SEGMENT_FR = {
@@ -89,6 +91,10 @@ function isSparseFrCategory(s) {
  * convention is "Femmes Pré-novice".
  */
 function reorderFrCategory(s) {
+  return frenchLevelStyle(reorderFrCategoryOrder(s));
+}
+
+function reorderFrCategoryOrder(s) {
   if (!s) return s;
   // Multi-word discipline phrases come first so the longest match wins —
   // "Patinage en couple" before "Couples", "Danse sur glace" before "Danse".

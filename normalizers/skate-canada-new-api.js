@@ -1,5 +1,7 @@
 'use strict';
 
+const { frenchLevelStyle } = require('./french-style');
+
 /**
  * Skate Canada Public REST API normalizer.
  *
@@ -395,6 +397,10 @@ function catEn(categoryDto, opts) {
 // Best available French category from a CategoryDto.
 // Same discipline-appending logic as catEn, using French fields.
 function catFr(categoryDto, opts) {
+  return frenchLevelStyle(catFrAsSent(categoryDto, opts));
+}
+
+function catFrAsSent(categoryDto, opts) {
   const groupStyle = opts?.groupStyle;
   const name   = safeStr(
     categoryDto?.skatingcategorydefinitions?.nameFr ||
