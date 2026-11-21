@@ -418,7 +418,8 @@ window.GraphicsUtils = {
 
   /**
    * Put English and French into a header element side by side - "Senior Women
-   * / Femmes seniors" - as two spans behind a divider. fitTitleOneLine() stacks
+   * / Femmes seniors" - as two spans behind a divider (French first when the
+   * broadcast's bilingual order is set that way). fitTitleOneLine() stacks
    * them (one language per line) only when both cannot fit on one line.
    *
    * Idempotent: the same pair on the same element is left alone, so the theme
@@ -435,7 +436,8 @@ window.GraphicsUtils = {
       el.textContent = a || b;
       return;
     }
-    const key = `${a}\u0000${b}`;
+    const frFirst = window.bilingualOrder === 'fr';
+    const key = `${frFirst ? 'fr' : 'en'}\u0000${a}\u0000${b}`;
     if (el.dataset.biKey === key && el.querySelector(':scope > .hdr-bi-en')) return;
     const span = (cls, text) => {
       const s = document.createElement('span');
@@ -443,7 +445,9 @@ window.GraphicsUtils = {
       s.textContent = text;
       return s;
     };
-    el.replaceChildren(span('hdr-bi-en', a), span('hdr-bi-sep', '/'), span('hdr-bi-fr', b));
+    const first  = span('hdr-bi-en', a);
+    const second = span('hdr-bi-fr', b);
+    el.replaceChildren(...(frFirst ? [second, span('hdr-bi-sep', '/'), first] : [first, span('hdr-bi-sep', '/'), second]));
     el.dataset.biKey = key;
     el.classList.add('hdr-bilingual');
     el.classList.remove('hdr-bi-stacked');

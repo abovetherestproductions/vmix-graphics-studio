@@ -93,7 +93,9 @@
         s.textContent = text;
         return s;
       };
-      roleEl.append(span('of-role-en', en), span('of-role-sep', '/'), span('of-role-fr', fr));
+      const first  = span('of-role-en', en);
+      const second = span('of-role-fr', fr);
+      roleEl.append(...(window.bilingualOrder === 'fr' ? [second, span('of-role-sep', '/'), first] : [first, span('of-role-sep', '/'), second]));
     } else {
       roleEl.textContent = langText(row.role, row.roleFr) || '';
     }

@@ -47,6 +47,7 @@
       theme: config.theme || {},
       positions: template ? (config.positions || {})[template] || {} : {},
       language: config.language || 'en',
+      bilingualOrder: config.bilingualOrder === 'fr' ? 'fr' : 'en',
       elementsDisplayMode: config.elementsDisplayMode || 'code',
       elementsTotalLabel: config.elementsTotalLabel || '',
       elementsTotalLabelFr: config.elementsTotalLabelFr || '',
@@ -610,6 +611,11 @@
       window.elementsAutoFit       = !!logoPos.elAutoFit;
       window.elementsManualWidth   = Number(logoPos.width) || 420;
     }
+
+    // Which language leads when a graphic is in Bilingual mode: 'en' (English
+    // first, the default) or 'fr'. One broadcast-wide setting, read by every
+    // bilingual header, the officials roles and the name bar's card.
+    window.bilingualOrder = config.bilingualOrder === 'fr' ? 'fr' : 'en';
 
     // Global header title override — applies to Start Order, Rankings,
     // Rank 6 / Standings, and Officials. Empty string = no override.

@@ -191,6 +191,9 @@
     // 'both' puts English and French on the card together; anything else
     // follows the broadcast language exactly as before.
     const both = ovr.langMode === 'both';
+    // Which language leads in Bilingual mode (one setting for the whole broadcast).
+    const frFirst = window.bilingualOrder === 'fr';
+    const pair = (en, fr) => (frFirst ? `${fr} · ${en}` : `${en} · ${fr}`);
     // Independent operator toggles per card phase. Coaches/quote/music are
     // opt-IN — they need workbook data most events don't have, and when they
     // are on they replace the category card entirely. The category card is the
@@ -216,9 +219,9 @@
         // only the labels above them can be given in both.
         const segEn = data.segmentName || 'Program';
         const segFr = data.segmentNameFr || data.segmentName || 'Programme';
-        musicLabel = `${segEn} Music · Musique — ${segFr}`;
-        quoteLabel = "Skater's Quote · Citation";
-        coachLabel = coachCount > 1 ? 'Coaches · Entraîneurs' : 'Coach · Entraîneur';
+        musicLabel = pair(`${segEn} Music`, `Musique — ${segFr}`);
+        quoteLabel = pair("Skater's Quote", 'Citation');
+        coachLabel = coachCount > 1 ? pair('Coaches', 'Entraîneurs') : pair('Coach', 'Entraîneur');
       }
 
       // Phase chain: coaches → quote → music. Each phase holds for its
@@ -260,7 +263,7 @@
     const gEn = (window.globalDetailOverride   || '').trim();
     const gFr = (window.globalDetailOverrideFr || '').trim();
     const forced = override.trim()
-      || (both && gEn && gFr && gEn !== gFr ? `${gEn} / ${gFr}` : globalDetail.trim());
+      || (both && gEn && gFr && gEn !== gFr ? (frFirst ? `${gFr} / ${gEn}` : `${gEn} / ${gFr}`) : globalDetail.trim());
     if (forced) {
       setCardContent('', forced, false);
       return;
@@ -292,13 +295,13 @@
       return { category: split.category, segment, group: split.group };
     };
 
-    const first = detailFor(both ? 'en' : lang);
+    const first = detailFor(both ? (frFirst ? 'fr' : 'en') : lang);
     if (both) {
-      const fr = detailFor('fr');
+      const other = detailFor(frFirst ? 'en' : 'fr');
       const same = [first.category, first.segment, first.group].join('|').toLowerCase()
-                === [fr.category, fr.segment, fr.group].join('|').toLowerCase();
-      // Nothing to add when the event carries no French.
-      setDetailCard(first.category, first.segment, first.group, same ? null : fr);
+                === [other.category, other.segment, other.group].join('|').toLowerCase();
+      // Nothing to add when the event carries only one language.
+      setDetailCard(first.category, first.segment, first.group, same ? null : other);
       return;
     }
     setDetailCard(first.category, first.segment, first.group);

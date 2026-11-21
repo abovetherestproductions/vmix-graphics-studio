@@ -439,6 +439,10 @@
       <button id="lang-btn-en" class="lang-btn lang-active" onclick="setLanguage('en')">EN</button>
       <button id="lang-btn-fr" class="lang-btn"             onclick="setLanguage('fr')">FR</button>
     </div>
+    <div class="lang-toggle" style="margin:0;" title="Which language comes first on a graphic set to Bilingual">
+      <button id="bio-en" class="lang-btn lang-active" onclick="setBilingualOrder('en')">EN / FR</button>
+      <button id="bio-fr" class="lang-btn"             onclick="setBilingualOrder('fr')">FR / EN</button>
+    </div>
     <span id="live-poll-badge" class="live-poll-badge">POLLING OFF</span>
     <span id="version-label" title="Installed version — click TOOLS → System to update" style="font-size:10px;color:var(--text2);white-space:nowrap;cursor:pointer;" onclick="switchTab('tools')"></span>
     <div id="ws-dot" class="ws-dot" title="WebSocket status"></div>
@@ -1094,6 +1098,23 @@ function setLangUI(lang) {
   document.getElementById('lang-btn-fr').classList.toggle('lang-active', _currentLang === 'fr');
 }
 
+// Bilingual order: which language leads on graphics set to Bilingual. One
+// setting for the whole broadcast, saved like the language.
+function setBilingualOrderUI(order) {
+  document.getElementById('bio-en')?.classList.toggle('lang-active', order !== 'fr');
+  document.getElementById('bio-fr')?.classList.toggle('lang-active', order === 'fr');
+}
+async function setBilingualOrder(order) {
+  const o = order === 'fr' ? 'fr' : 'en';
+  setBilingualOrderUI(o);
+  try {
+    await api('POST', '/api/config', { bilingualOrder: o });
+    toast(`✓ Bilingual order → ${o === 'fr' ? 'French first' : 'English first'}`);
+  } catch (e) {
+    toast(`Error saving bilingual order: ${e.message}`);
+  }
+}
+
 // Language is read from config exactly once (first loadAllConfig). After that
 // only explicit operator clicks update the buttons — nothing background can override it.
 let _langInitialized = false;
@@ -1167,7 +1188,7 @@ async function loadAllConfig() {
     const configured = !!(cfg.dataSource?.scApi?.eventId);
     const frb = document.getElementById('first-run-banner');
     if (frb) frb.style.display = configured ? 'none' : '';
-    if (!_langInitialized) { setLangUI(cfg.language || 'en'); _langInitialized = true; }
+    if (!_langInitialized) { setLangUI(cfg.language || 'en'); setBilingualOrderUI(cfg.bilingualOrder === 'fr' ? 'fr' : 'en'); _langInitialized = true; }
     setElModeUI(cfg.elementsDisplayMode || 'code');
     setElLayoutUI(cfg.elementsLayoutMode || 'list');
     const elLabelEn = document.getElementById('el-total-label-en');
