@@ -11,6 +11,9 @@
   const infoCategoryEl = document.getElementById('lt-info-category');
   const infoSegmentEl = document.getElementById('lt-info-segment');
   const infoGroupEl = document.getElementById('lt-info-group');
+  const infoCategory2El = document.getElementById('lt-info-category2');
+  const infoSegment2El  = document.getElementById('lt-info-segment2');
+  const infoGroup2El    = document.getElementById('lt-info-group2');
   const firstCardEl = document.getElementById('lt-first-card');
   const firstLabelEl = document.getElementById('lt-first-label');
   const firstValueEl = document.getElementById('lt-first-value');
@@ -62,11 +65,14 @@
       infoLabelEl.textContent = label || '';
       infoLabelEl.classList.toggle('is-visible', !!(label && text));
     }
-    if (infoBodyEl) infoBodyEl.classList.remove('lt-info-inline');
+    if (infoBodyEl) infoBodyEl.classList.remove('lt-info-inline', 'lt-info-bilingual');
     infoCategoryEl.classList.toggle('lt-info-wrap', !!wrap);
     const hasInfo = setInfoLine(infoCategoryEl, text);
     setInfoLine(infoSegmentEl, '');
     setInfoLine(infoGroupEl, '');
+    setInfoLine(infoCategory2El, '');
+    setInfoLine(infoSegment2El, '');
+    setInfoLine(infoGroup2El, '');
     infoCardEl.classList.toggle('has-info', hasInfo);
     infoCardEl.setAttribute('aria-hidden', hasInfo ? 'false' : 'true');
     return hasInfo;
@@ -76,8 +82,11 @@
    * The category / segment / group card. Laid out on one line — there is
    * plenty of room under the bar — with CSS supplying the separators, so any
    * of the three can be absent without leaving a stray divider.
+   *
+   * `second`, when given, is the same three parts in the other language and
+   * goes on a row of its own underneath (Bilingual mode).
    */
-  function setDetailCard(category, segment, group) {
+  function setDetailCard(category, segment, group, second) {
     if (infoLabelEl) {
       infoLabelEl.textContent = '';
       infoLabelEl.classList.remove('is-visible');
@@ -87,6 +96,10 @@
     const a = setInfoLine(infoCategoryEl, category);
     const b = setInfoLine(infoSegmentEl, segment);
     const c = setInfoLine(infoGroupEl, group);
+    const a2 = setInfoLine(infoCategory2El, second?.category);
+    const b2 = setInfoLine(infoSegment2El,  second?.segment);
+    const c2 = setInfoLine(infoGroup2El,    second?.group);
+    if (infoBodyEl) infoBodyEl.classList.toggle('lt-info-bilingual', !!(a2 || b2 || c2));
     const hasInfo = a || b || c;
     infoCardEl.classList.toggle('has-info', hasInfo);
     infoCardEl.setAttribute('aria-hidden', hasInfo ? 'false' : 'true');
@@ -156,6 +169,9 @@
 
     const lang = document.documentElement.lang || 'en';
     const ovr = window.configHeaderOverrides?.['manual-skater'] || {};
+    // 'both' puts English and French on the card together; anything else
+    // follows the broadcast language exactly as before.
+    const both = ovr.langMode === 'both';
     // Independent operator toggles per card phase. Coaches/quote/music are
     // opt-IN — they need workbook data most events don't have, and when they
     // are on they replace the category card entirely. The category card is the
@@ -170,12 +186,21 @@
       const coachMs = Math.max(1000, Number(ovr.msCoachMs) || 4000);
       const quoteMs = Math.max(1000, Number(ovr.msQuoteMs) || 4000);
       const segName = (lang === 'fr' ? (data.segmentNameFr || data.segmentName) : data.segmentName) || (lang === 'fr' ? 'Programme' : 'Program');
-      const musicLabel = lang === 'fr' ? `Musique — ${segName}` : `${segName} Music`;
-      const quoteLabel = lang === 'fr' ? 'Citation' : "Skater's Quote";
       const coachCount = coaches.split(',').length;
-      const coachLabel = lang === 'fr'
+      let musicLabel = lang === 'fr' ? `Musique — ${segName}` : `${segName} Music`;
+      let quoteLabel = lang === 'fr' ? 'Citation' : "Skater's Quote";
+      let coachLabel = lang === 'fr'
         ? (coachCount > 1 ? 'Entraîneurs' : 'Entraîneur')
         : (coachCount > 1 ? 'Coaches' : 'Coach');
+      if (both) {
+        // The quote, coaches and music themselves are single-language data;
+        // only the labels above them can be given in both.
+        const segEn = data.segmentName || 'Program';
+        const segFr = data.segmentNameFr || data.segmentName || 'Programme';
+        musicLabel = `${segEn} Music · Musique — ${segFr}`;
+        quoteLabel = "Skater's Quote · Citation";
+        coachLabel = coachCount > 1 ? 'Coaches · Entraîneurs' : 'Coach · Entraîneur';
+      }
 
       // Phase chain: coaches → quote → music. Each phase holds for its
       // configured time then crossfades to the next; the last phase present
@@ -213,7 +238,10 @@
     const globalDetail = lang === 'fr'
       ? (window.globalDetailOverrideFr || window.globalDetailOverride || '')
       : (window.globalDetailOverride   || window.globalDetailOverrideFr || '');
-    const forced = override.trim() || globalDetail.trim();
+    const gEn = (window.globalDetailOverride   || '').trim();
+    const gFr = (window.globalDetailOverrideFr || '').trim();
+    const forced = override.trim()
+      || (both && gEn && gFr && gEn !== gFr ? `${gEn} / ${gFr}` : globalDetail.trim());
     if (forced) {
       setCardContent('', forced, false);
       return;
@@ -224,23 +252,37 @@
     // The API sends categoryName + segmentName; the workbook path sends
     // category. Read both, or the card stays empty on one of them — which is
     // what kept it from ever dropping down on an API-driven event.
-    const rawCat = String(
-      (lang === 'fr' ? (data.categoryNameFr || data.categoryName) : data.categoryName)
-      || data.category
-      || ''
-    ).trim();
-    // Strip redundant "Singles" for singles events. Pairs/Dance pass through.
-    const cleanedCat = window.GraphicsUtils.cleanCategoryName(rawCat) || rawCat;
-    const segment = String(
-      (lang === 'fr' ? (data.segmentNameFr || data.segmentName) : data.segmentName) || ''
-    ).trim();
-    // The category and segment sit side by side here, so the same qualifier
-    // echo that hit the header would read "Gold Short Women · Short Program".
-    const split = splitCategoryGroup(
-      window.GraphicsUtils.dropSegmentEcho(cleanedCat, segment), lang
-    );
+    //
+    // Built per language so Bilingual mode can ask for each side by side.
+    const detailFor = code => {
+      const rawCat = String(
+        (code === 'fr' ? (data.categoryNameFr || data.categoryName) : data.categoryName)
+        || data.category
+        || ''
+      ).trim();
+      // Strip redundant "Singles" for singles events. Pairs/Dance pass through.
+      const cleanedCat = window.GraphicsUtils.cleanCategoryName(rawCat) || rawCat;
+      const segment = String(
+        (code === 'fr' ? (data.segmentNameFr || data.segmentName) : data.segmentName) || ''
+      ).trim();
+      // The category and segment sit side by side here, so the same qualifier
+      // echo that hit the header would read "Gold Short Women · Short Program".
+      const split = splitCategoryGroup(
+        window.GraphicsUtils.dropSegmentEcho(cleanedCat, segment), code
+      );
+      return { category: split.category, segment, group: split.group };
+    };
 
-    setDetailCard(split.category, segment, split.group);
+    const first = detailFor(both ? 'en' : lang);
+    if (both) {
+      const fr = detailFor('fr');
+      const same = [first.category, first.segment, first.group].join('|').toLowerCase()
+                === [fr.category, fr.segment, fr.group].join('|').toLowerCase();
+      // Nothing to add when the event carries no French.
+      setDetailCard(first.category, first.segment, first.group, same ? null : fr);
+      return;
+    }
+    setDetailCard(first.category, first.segment, first.group);
   }
 
   function render(data = {}) {

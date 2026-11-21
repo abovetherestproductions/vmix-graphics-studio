@@ -262,6 +262,9 @@
         msShowQuote:    pos.msShowQuote === true,
         msShowMusic:    pos.msShowMusic === true,
         msShowCategory: pos.msShowCategory !== false,
+        // Which language(s) the name bar's card shows: 'follow' the
+        // broadcast language, or 'both' stacked.
+        langMode:       pos.langMode === 'both' ? 'both' : 'follow',
         msQuoteMs:      (Number(pos.msQuoteSecs) || 4) * 1000,
         msCoachMs:      (Number(pos.msCoachSecs) || 4) * 1000,
         msShowScoreToFirst: pos.msShowScoreToFirst === true,

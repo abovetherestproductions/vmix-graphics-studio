@@ -97,6 +97,23 @@
   opacity: 0.5;
 }
 
+/* Bilingual mode: the French row sits under the English one, laid out the
+   same way (the separator rule above works inside it, as its lines are
+   siblings of each other). Hidden unless the body is marked bilingual. */
+.manual-skater .lt-info-row2 {
+  display: none;
+}
+
+.manual-skater .lt-info-body.lt-info-bilingual .lt-info-row2 {
+  display: flex;
+  flex: 0 0 100%;
+  align-items: baseline;
+  flex-wrap: wrap;
+  column-gap: var(--lt-info-sep-gap, 9px);
+  row-gap: 1px;
+  margin-top: 3px;
+}
+
 /* Quote/music content wraps to multiple lines (capped) instead of the
    single-line ellipsis used by the category fallback text. */
 .manual-skater .lt-info-line.lt-info-wrap {

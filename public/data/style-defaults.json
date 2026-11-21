@@ -186,6 +186,7 @@
       "msShowQuote": false,
       "msShowMusic": false,
       "msShowCategory": true,
+      "langMode": "follow",
       "msShowScoreToFirst": false,
       "msFirstDelaySecs": 3,
       "msFirstHoldSecs": 4

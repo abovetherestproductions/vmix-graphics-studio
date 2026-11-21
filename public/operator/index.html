@@ -1523,6 +1523,8 @@ function setPosUI(id, pos) {
     setCkOff(`pos-ms-show-quote-${id}`,    p.msShowQuote);
     setCkOff(`pos-ms-show-music-${id}`,    p.msShowMusic);
     setCkOn (`pos-ms-show-category-${id}`, p.msShowCategory);
+    { const lm = g(`pos-lang-mode-${id}`); if (lm) lm.value = p.langMode === 'both' ? 'both' : 'follow'; }
+    setNameBarLangUI(p.langMode === 'both' ? 'both' : 'follow');
     sv(`pos-ms-quote-secs-${id}`, p.msQuoteSecs ?? 4);
     st(`pv-ms-quote-secs-${id}`, `${p.msQuoteSecs ?? 4}s`);
     sv(`pos-ms-coach-secs-${id}`, p.msCoachSecs ?? 4);
@@ -1793,6 +1795,7 @@ function readPos(id) {
     msShowQuote:     id === 'manual-skater' ? !!g(`pos-ms-show-quote-${id}`)?.checked : undefined,
     msShowMusic:     id === 'manual-skater' ? !!g(`pos-ms-show-music-${id}`)?.checked : undefined,
     msShowCategory:  id === 'manual-skater' ? (g(`pos-ms-show-category-${id}`)?.checked !== false) : undefined,
+    langMode:        id === 'manual-skater' ? (g(`pos-lang-mode-${id}`)?.value === 'both' ? 'both' : 'follow') : undefined,
     msQuoteSecs:     id === 'manual-skater' ? Number(g(`pos-ms-quote-secs-${id}`)?.value ?? 4) : undefined,
     msCoachSecs:     id === 'manual-skater' ? Number(g(`pos-ms-coach-secs-${id}`)?.value ?? 4) : undefined,
     msShowScoreToFirst: id === 'manual-skater' ? !!g(`pos-ms-show-first-${id}`)?.checked : undefined,
@@ -2050,6 +2053,7 @@ function onPosChange(id) {
 	    st(`pv-ms-coach-secs-${id}`, `${p.msCoachSecs}s`);
 	    st(`pv-ms-first-delay-${id}`, `${p.msFirstDelaySecs}s`);
 	    st(`pv-ms-first-hold-${id}`, `${p.msFirstHoldSecs}s`);
+	    setNameBarLangUI(p.langMode === 'both' ? 'both' : 'follow');
 	  }
 	  if (id === 'elements') {
 	    st(`pv-el-title-x-${id}`, `${p.elTitleX ?? 0}px`);
@@ -2189,7 +2193,7 @@ async function resetPos(id) {
 	  const elDefaults   = id === 'elements'    ? { elSkaterSize:18, elTotalSize:26, elLabelSize:9, elCodeSize:15, elValueSize:14, elTitleX:0, elTitleY:0, elAutoFit:false, elBodyDelay:2000, elHighestLabelSize:0, elHighestScoreSize:0, elHighestLabelColor:'#ffc848', elHighestScoreColor:'#ffc848' } : {};
   const ofDefaults   = id === 'officials'   ? { ofRoleAlign:'right' } : {};
   const msgDefaults  = id === 'messages'    ? { msgLine1Size:40, msgLine2Size:20 } : {};
-  const msExtrasDefaults = id === 'manual-skater' ? { msExtrasEnabled:true, msShowCoaches:false, msShowQuote:false, msShowMusic:false, msShowCategory:true, msQuoteSecs:4, msCoachSecs:4, msShowScoreToFirst:false, msFirstDelaySecs:3, msFirstHoldSecs:4 } : {};
+  const msExtrasDefaults = id === 'manual-skater' ? { msExtrasEnabled:true, msShowCoaches:false, msShowQuote:false, msShowMusic:false, msShowCategory:true, langMode:'follow', msQuoteSecs:4, msCoachSecs:4, msShowScoreToFirst:false, msFirstDelaySecs:3, msFirstHoldSecs:4 } : {};
   // Skater profile: details off, the two score tiles on — the panel as it
   // was before any of the optional rows existed.
   const spDefaults = id === 'skater-profile' ? { spNameSize:44, spClubSize:18, spStatSize:32, spDetailSize:19, spBioSize:16, spLayout:'portraits', spHeaderAlign:'right', spPortraitHeight:300, spPortraitMin:230, spBandSize:17, spBandHeight:0, rounded:true, radius:28, spPhotoSize:150, spShowHeader:true, spInsetY:20, spEventSize:19, spSubtitleSize:14, spShowBio:false, spShowPbEvent:false, spShowSeasonBest:true, spShowPersonalBest:true, ...Object.fromEntries(SP_DETAIL_ROWS.map(([f]) => [spCfgKey(f), false])) } : {};
@@ -2522,6 +2526,21 @@ function setProfileLayout(mode) {
   toast(`Profile layout: ${sel.value === 'compact' ? 'compact' : 'portraits first'}`);
 }
 
+// Skater name bar card language. The quick toggle on the Live card drives the
+// Layout tab's select, so nothing can disagree about the saved value.
+function setNameBarLangUI(mode) {
+  document.getElementById('ns-lang-follow')?.classList.toggle('lang-active', mode !== 'both');
+  document.getElementById('ns-lang-both')?.classList.toggle('lang-active', mode === 'both');
+}
+function setNameBarLang(mode) {
+  const sel = document.getElementById('pos-lang-mode-manual-skater');
+  if (!sel) return;
+  sel.value = mode === 'both' ? 'both' : 'follow';
+  onPosChange('manual-skater');
+  setNameBarLangUI(sel.value);
+  toast(`Name bar card: ${sel.value === 'both' ? 'bilingual' : 'follows the broadcast language'}`);
+}
+
 function setProfileHeaderUI(on) {
   document.getElementById('sp-header-on')?.classList.toggle('lang-active', !!on);
   document.getElementById('sp-header-off')?.classList.toggle('lang-active', !on);
@@ -2635,6 +2654,16 @@ function buildCards() {
           <div class="lang-toggle" id="sp-layout-toggle">
             <button id="sp-layout-portraits" class="lang-btn lang-active" onclick="setProfileLayout('portraits')">Portraits</button>
             <button id="sp-layout-compact"   class="lang-btn"             onclick="setProfileLayout('compact')">Compact</button>
+          </div>
+        </div>
+        ` : ''}
+
+        ${t.id === 'manual-skater' ? `
+        <div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);">Card language</span>
+          <div class="lang-toggle" id="ns-lang-toggle">
+            <button id="ns-lang-follow" class="lang-btn lang-active" onclick="setNameBarLang('follow')">Follow</button>
+            <button id="ns-lang-both"   class="lang-btn"             onclick="setNameBarLang('both')">Bilingual</button>
           </div>
         </div>
         ` : ''}
@@ -2994,6 +3023,15 @@ function buildCards() {
             </div>
             ` : ''}
             ${t.id === 'manual-skater' ? `
+            <div style="margin:8px 0 2px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);grid-column:1/-1;">Slide-Down Card Language</div>
+            <div class="pos-row" style="grid-template-columns:80px 1fr;">
+              <label title="Follow uses the English / Français switch. Bilingual shows both on the card, English first.">Language</label>
+              <select id="pos-lang-mode-${t.id}" onchange="onPosChange('${t.id}'); setNameBarLangUI(this.value)"
+                      style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:13px;grid-column:2/4;width:100%;">
+                <option value="follow">Follow the broadcast language</option>
+                <option value="both">Bilingual — English and French</option>
+              </select>
+            </div>
             <div style="margin:8px 0 2px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);grid-column:1/-1;">Slide-Down Card Content</div>
             <div style="grid-column:1/-1;display:flex;flex-direction:column;gap:8px;margin-bottom:4px;">
               <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
