@@ -19,26 +19,58 @@
     if (window.GraphicsConfig?.debug) console.log('[officials]', ...args);
   }
 
+  function isBilingual() {
+    return window.configHeaderOverrides?.officials?.langMode === 'both';
+  }
+
+  /**
+   * Bilingual roles are twice as long, and a few ("Assistant Technical
+   * Specialist / Spécialiste technique adjoint") can outgrow even the widened
+   * column. One shared size keeps the column uniform: shrink every role together
+   * until the longest fits, down to 70% of the configured size.
+   */
+  function fitRoles() {
+    const roles = [...rowsEl.querySelectorAll('.of-role')];
+    const run = () => {
+      roles.forEach(r => { r.style.fontSize = ''; });
+      if (!isBilingual() || !roles.length) return;
+      const overflows = () => roles.some(r => r.clientWidth && r.scrollWidth > r.clientWidth + 1);
+      const base = parseFloat(getComputedStyle(roles[0]).fontSize) || 14;
+      let size = base;
+      while (overflows() && size > base * 0.7) {
+        size -= 0.5;
+        roles.forEach(r => { r.style.fontSize = `${size}px`; });
+      }
+    };
+    requestAnimationFrame(() => requestAnimationFrame(run));
+    setTimeout(run, 900);
+  }
+
+  // The title shrinks to fit but never stacks here: on this panel the width is
+  // the fix, not a second line.
+  function fitHeader() {
+    window.GraphicsUtils.fitTitleOneLine(titleEl, { stack: false });
+  }
+
   function buildRow(row) {
     const el = document.createElement('div');
     el.className = 'of-row';
 
     const roleEl = document.createElement('div');
     roleEl.className = 'of-role';
-    // Bilingual: both roles, English over French. The role column is narrow,
-    // so they stack rather than sit side by side; a role with no French (or the
-    // same word in both) stays a single line.
+    // Bilingual: both roles on one line, "Referee / Arbitre". The panel and the
+    // role column are widened for this (see theme-loader); a role with no
+    // French, or the same word in both, stays plain.
     const en = String(row.role || '').trim();
     const fr = String(row.roleFr || '').trim();
-    const both = window.configHeaderOverrides?.officials?.langMode === 'both';
-    if (both && en && fr && en.toLowerCase() !== fr.toLowerCase()) {
-      const enEl = document.createElement('span');
-      enEl.className = 'of-role-en';
-      enEl.textContent = en;
-      const frEl = document.createElement('span');
-      frEl.className = 'of-role-fr';
-      frEl.textContent = fr;
-      roleEl.append(enEl, frEl);
+    if (isBilingual() && en && fr && en.toLowerCase() !== fr.toLowerCase()) {
+      const span = (cls, text) => {
+        const s = document.createElement('span');
+        s.className = cls;
+        s.textContent = text;
+        return s;
+      };
+      roleEl.append(span('of-role-en', en), span('of-role-sep', '/'), span('of-role-fr', fr));
     } else {
       roleEl.textContent = langText(row.role, row.roleFr) || '';
     }
@@ -77,7 +109,7 @@
     window.GraphicsUtils.setHeaderText(titleEl, 'officials', 'title', data, 'Officials');
     window.GraphicsUtils.fitTitle(titleEl);
     window.GraphicsUtils.setHeaderText(subtitleEl, 'officials', 'subtitle', data, '');
-    window.GraphicsUtils.fitTitleOneLine(titleEl);
+    fitHeader();
 
     const rows = Array.isArray(data.rows)
       ? [...data.rows].sort((a, b) => roleOrder(a.role) - roleOrder(b.role))
@@ -87,6 +119,7 @@
 
     rowsEl.innerHTML = '';
     rows.forEach(row => rowsEl.appendChild(buildRow(row)));
+    fitRoles();
   }
 
   function animateRowsIn(stagger = 60) {
@@ -206,7 +239,7 @@
       window.GraphicsUtils.setHeaderText(titleEl, 'officials', 'title', {}, 'Officials');
       window.GraphicsUtils.fitTitle(titleEl);
       window.GraphicsUtils.setHeaderText(subtitleEl, 'officials', 'subtitle', {}, '');
-      window.GraphicsUtils.fitTitleOneLine(titleEl);
+      fitHeader();
     }
   });
 

@@ -161,18 +161,15 @@
   text-overflow: ellipsis;
 }
 
-/* Bilingual roles: English over French, the French a step quieter. */
-.of-role .of-role-en,
-.of-role .of-role-fr {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
+/* Bilingual roles: "Referee / Arbitre" on one line, the French a touch
+   quieter. The panel and role column are widened for this in Bilingual mode. */
+.of-role .of-role-sep {
+  margin: 0 0.4em;
+  opacity: 0.6;
 }
 
 .of-role .of-role-fr {
-  font-size: 0.86em;
-  opacity: 0.78;
-  margin-top: 1px;
+  opacity: 0.82;
 }
 
 .of-name {

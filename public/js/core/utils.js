@@ -91,7 +91,7 @@ window.GraphicsUtils = {
       if (shrink()) return;
       // A bilingual header that will not fit side by side even at the smallest
       // size drops to one language per line, and each line is fitted on its own.
-      if (bilingual) {
+      if (bilingual && options.stack !== false) {
         el.classList.add('hdr-bi-stacked');
         el.style.fontSize = '';
         if (el.scrollWidth <= ow + 2 || shrink()) return;

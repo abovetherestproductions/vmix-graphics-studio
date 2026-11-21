@@ -1676,6 +1676,8 @@ function setPosUI(id, pos) {
     sv(`pos-of-title-${id}`, p.ofTitleSize    ?? 36);  st(`pv-of-title-${id}`, `${p.ofTitleSize    ?? 36}px`);
     sv(`pos-of-sub-${id}`,   p.ofSubtitleSize ?? 16);  st(`pv-of-sub-${id}`,   `${p.ofSubtitleSize ?? 16}px`);
     sv(`pos-of-role-${id}`,  p.ofRoleSize     ?? 14);  st(`pv-of-role-${id}`,  `${p.ofRoleSize     ?? 14}px`);
+    sv(`pos-of-biw-${id}`,   p.ofBiWidth      ?? 1250); st(`pv-of-biw-${id}`,   `${p.ofBiWidth      ?? 1250}px`);
+    sv(`pos-of-birole-${id}`, p.ofBiRoleCol   ?? 460);  st(`pv-of-birole-${id}`, `${p.ofBiRoleCol   ?? 460}px`);
     sv(`pos-of-name-${id}`,  p.ofNameSize     ?? 20);  st(`pv-of-name-${id}`,  `${p.ofNameSize     ?? 20}px`);
   }
   // Standings font sizes
@@ -1883,6 +1885,8 @@ function readPos(id) {
     ofTitleSize:    id === 'officials' ? Number(g(`pos-of-title-${id}`)?.value ?? 36) : undefined,
     ofSubtitleSize: id === 'officials' ? Number(g(`pos-of-sub-${id}`)?.value   ?? 16) : undefined,
     ofRoleSize:     id === 'officials' ? Number(g(`pos-of-role-${id}`)?.value  ?? 14) : undefined,
+    ofBiWidth:      id === 'officials' ? Number(g(`pos-of-biw-${id}`)?.value   ?? 1250) : undefined,
+    ofBiRoleCol:    id === 'officials' ? Number(g(`pos-of-birole-${id}`)?.value ?? 460) : undefined,
     ofNameSize:     id === 'officials' ? Number(g(`pos-of-name-${id}`)?.value  ?? 20) : undefined,
     stTitleSize:    id === 'standings' ? Number(g(`pos-st-title-${id}`)?.value ?? 32) : undefined,
     stSubtitleSize: id === 'standings' ? Number(g(`pos-st-sub-${id}`)?.value   ?? 15) : undefined,
@@ -2060,6 +2064,8 @@ function onPosChange(id) {
     st(`pv-of-title-${id}`, `${p.ofTitleSize}px`);
     st(`pv-of-sub-${id}`,   `${p.ofSubtitleSize}px`);
     st(`pv-of-role-${id}`,  `${p.ofRoleSize}px`);
+    st(`pv-of-biw-${id}`,   `${p.ofBiWidth}px`);
+    st(`pv-of-birole-${id}`, `${p.ofBiRoleCol}px`);
     st(`pv-of-name-${id}`,  `${p.ofNameSize}px`);
   }
   if (id === 'standings') {
@@ -2221,7 +2227,7 @@ async function resetPos(id) {
     : {};
   const scDefaults   = id === 'scoring'     ? { scScoreSize:28, scLabelSize:11, scTotalSize:36, scRevealDelayMs:3000, scHoldSecs:30, scFlagX:0, scFlagY:0, scPanelBg:'rgba(14,14,18,0.92)', scLogoBg:'rgba(0,0,0,0.18)', scRankBg:'rgba(0,0,0,0.28)' } : {};
 	  const elDefaults   = id === 'elements'    ? { elSkaterSize:18, elTotalSize:26, elLabelSize:9, elCodeSize:15, elValueSize:14, elTitleX:0, elTitleY:0, elAutoFit:false, elBodyDelay:2000, elHighestLabelSize:0, elHighestScoreSize:0, elHighestLabelColor:'#ffc848', elHighestScoreColor:'#ffc848' } : {};
-  const ofDefaults   = id === 'officials'   ? { ofRoleAlign:'right' } : {};
+  const ofDefaults   = id === 'officials'   ? { ofRoleAlign:'right', ofBiWidth:1250, ofBiRoleCol:460 } : {};
   const ivDefaults   = id === 'interview'   ? { ltBarBg:'', ivKeyline:'', ivKeylineShow:true } : {};
   const msgDefaults  = id === 'messages'    ? { msgLine1Size:40, msgLine2Size:20 } : {};
   const msExtrasDefaults = id === 'manual-skater' ? { msExtrasEnabled:true, msShowCoaches:false, msShowQuote:false, msShowMusic:false, msShowCategory:true, msQuoteSecs:4, msCoachSecs:4, msShowScoreToFirst:false, msFirstDelaySecs:3, msFirstHoldSecs:4 } : {};
@@ -3312,6 +3318,18 @@ function buildCards() {
             ${LANG_MODE_TEMPLATES.includes(t.id) && t.id !== 'manual-skater' ? `
             <div style="margin:8px 0 2px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);grid-column:1/-1;">Header Language</div>
             ${langModeRow(t.id)}
+            ${t.id === 'officials' ? `
+            <div class="pos-row">
+              <label title="Panel width used in Bilingual mode. Each position and the title are twice as long, so the panel is wider than the normal Width above.">Bilingual Width</label>
+              <input type="range" id="pos-of-biw-${t.id}" min="800" max="1800" value="1250" step="10" oninput="onPosChange('${t.id}')">
+              <span class="pos-val" id="pv-of-biw-${t.id}">1250px</span>
+            </div>
+            <div class="pos-row">
+              <label title="Width of the role column in Bilingual mode, where each role reads 'Referee / Arbitre'.">Bilingual Role Width</label>
+              <input type="range" id="pos-of-birole-${t.id}" min="200" max="800" value="460" step="5" oninput="onPosChange('${t.id}')">
+              <span class="pos-val" id="pv-of-birole-${t.id}">460px</span>
+            </div>
+            ` : ''}
             ` : ''}
             ${TITLE_TEMPLATES.includes(t.id) ? `
             <div style="margin:8px 0 2px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);grid-column:1/-1;">Header Title</div>

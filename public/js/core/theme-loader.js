@@ -127,7 +127,11 @@
       // Width / height overrides on graphic root
       const graphicRoot = document.getElementById('graphic-root');
       if (graphicRoot) {
-        graphicRoot.style.width  = pos.width  > 0 ? `${pos.width}px`  : '';
+        // Officials in Bilingual mode: a wider panel, since each position and
+        // the title are twice as long. Its own width setting, default 1250.
+        const biOfficials = template === 'officials' && pos.langMode === 'both';
+        const rootWidth = biOfficials ? (Number(pos.ofBiWidth) || 1250) : pos.width;
+        graphicRoot.style.width  = rootWidth  > 0 ? `${rootWidth}px`  : '';
         graphicRoot.style.height = pos.height > 0 ? `${pos.height}px` : '';
       }
 
@@ -563,7 +567,7 @@
       }
     }
     if (template === 'officials') {
-      root.style.setProperty('--of-col-role',   `${logoPos.colRole ?? 220}px`);
+      root.style.setProperty('--of-col-role',   `${logoPos.langMode === 'both' ? (Number(logoPos.ofBiRoleCol) || 460) : (logoPos.colRole ?? 220)}px`);
       root.style.setProperty('--of-role-align', logoPos.ofRoleAlign || 'right');
     }
     if (template === 'elements') {
