@@ -161,6 +161,20 @@
   text-overflow: ellipsis;
 }
 
+/* Bilingual roles: English over French, the French a step quieter. */
+.of-role .of-role-en,
+.of-role .of-role-fr {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.of-role .of-role-fr {
+  font-size: 0.86em;
+  opacity: 0.78;
+  margin-top: 1px;
+}
+
 .of-name {
   font-family: var(--font-body);
   font-weight: 600;

@@ -25,7 +25,23 @@
 
     const roleEl = document.createElement('div');
     roleEl.className = 'of-role';
-    roleEl.textContent = langText(row.role, row.roleFr) || '';
+    // Bilingual: both roles, English over French. The role column is narrow,
+    // so they stack rather than sit side by side; a role with no French (or the
+    // same word in both) stays a single line.
+    const en = String(row.role || '').trim();
+    const fr = String(row.roleFr || '').trim();
+    const both = window.configHeaderOverrides?.officials?.langMode === 'both';
+    if (both && en && fr && en.toLowerCase() !== fr.toLowerCase()) {
+      const enEl = document.createElement('span');
+      enEl.className = 'of-role-en';
+      enEl.textContent = en;
+      const frEl = document.createElement('span');
+      frEl.className = 'of-role-fr';
+      frEl.textContent = fr;
+      roleEl.append(enEl, frEl);
+    } else {
+      roleEl.textContent = langText(row.role, row.roleFr) || '';
+    }
 
     const nameEl = document.createElement('div');
     nameEl.className = 'of-name';
