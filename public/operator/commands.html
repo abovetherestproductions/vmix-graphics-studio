@@ -131,6 +131,15 @@ const GROUPS = [
     ],
   },
   {
+    title: 'Language',
+    note: 'Changes every graphic at once, including any that are on air. For French on one graphic: language French, show it, hide it, language English - chain them in a Stream Deck multi-action.',
+    rows: () => [
+      ['Language — English',  '/api/control/language/en'],
+      ['Language — French',   '/api/control/language/fr'],
+      ['Language — toggle',   '/api/control/language/toggle'],
+    ],
+  },
+  {
     title: 'Pages & groups',
     note: 'Replace the number at the end with the page or warm-up group you want.',
     rows: () => [

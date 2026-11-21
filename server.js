@@ -3606,23 +3606,44 @@ app.post('/api/config', (req, res) => {
     merged.autoRecord = Object.assign({}, current.autoRecord || {}, incoming.autoRecord);
   }
   writeConfig(merged);
-  // When language changes, immediately re-poll all configured live endpoints so
-  // data files regenerate with correct titleEn/titleFr/title for the new language.
-  // Runs even if live polling timers are OFF — we want a one-shot refresh regardless.
-  if (languageChanged) {
-    setTimeout(() => {
-      const freshCfg = readConfig();
-      const mode = getDataSourceMode(freshCfg);
-      if (mode === 'csv-folder') { pollCsvFolder(); return; }
-      if (mode === 'sc-api') { scApiService.pollOnce().catch(() => {}); return; }
-      if (mode === 'isu-db') { isuDbService.pollOnce().catch(() => {}); return; }
-      const endpoints = Object.keys(freshCfg.dataSource?.urls || {});
-      for (const endpoint of endpoints) {
-        if (LIVE_ENDPOINTS[endpoint]) pollEndpoint(endpoint, freshCfg).catch(() => {});
-      }
-    }, 150);
-  }
+  if (languageChanged) repollForLanguage();
   res.json({ ok: true });
+});
+
+// When language changes, immediately re-poll all configured live endpoints so
+// data files regenerate with correct titleEn/titleFr/title for the new language.
+// Runs even if live polling timers are OFF — we want a one-shot refresh regardless.
+function repollForLanguage() {
+  setTimeout(() => {
+    const freshCfg = readConfig();
+    const mode = getDataSourceMode(freshCfg);
+    if (mode === 'csv-folder') { pollCsvFolder(); return; }
+    if (mode === 'sc-api') { scApiService.pollOnce().catch(() => {}); return; }
+    if (mode === 'isu-db') { isuDbService.pollOnce().catch(() => {}); return; }
+    const endpoints = Object.keys(freshCfg.dataSource?.urls || {});
+    for (const endpoint of endpoints) {
+      if (LIVE_ENDPOINTS[endpoint]) pollEndpoint(endpoint, freshCfg).catch(() => {});
+    }
+  }, 150);
+}
+
+// Switch the broadcast language from a Stream Deck key: /api/control/language/en,
+// /fr, or /toggle. Reachable by GET like the other live operating actions, but
+// it can change nothing except the language - no other setting passes through.
+registerDual('/api/control/language/:lang', (req, res) => {
+  const current   = readConfig().language === 'fr' ? 'fr' : 'en';
+  const requested = String(req.params.lang || '').toLowerCase();
+  const lang = requested === 'toggle' ? (current === 'fr' ? 'en' : 'fr') : requested;
+  if (lang !== 'en' && lang !== 'fr') {
+    return res.status(400).json({ ok: false, error: 'language must be en, fr or toggle' });
+  }
+  const changed = lang !== current;
+  if (changed) {
+    writeConfig({ ...readConfig(), language: lang });
+    repollForLanguage();
+  }
+  actionLogger.log('language', { language: lang, changed });
+  res.json({ ok: true, language: lang, changed });
 });
 
 app.get('/health', (_req, res) => {
