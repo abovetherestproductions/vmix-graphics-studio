@@ -24,32 +24,55 @@
   }
 
   /**
-   * Bilingual roles are twice as long, and a few ("Assistant Technical
-   * Specialist / Spécialiste technique adjoint") can outgrow even the widened
-   * column. One shared size keeps the column uniform: shrink every role together
-   * until the longest fits, down to 70% of the configured size.
+   * Bilingual mode: size the role column to exactly fit the longest "English /
+   * French" role at its normal font size, and tell the theme loader so the panel
+   * can be that column plus the name side. Measured on clones of the real role
+   * cells (same markup, same styles, same zoom) laid out at their natural width.
+   * Outside Bilingual mode the column is left to the normal Role Width setting.
    */
-  function fitRoles() {
-    const roles = [...rowsEl.querySelectorAll('.of-role')];
+  // The theme loader skips a pass when the saved config has not changed, which
+  // is the case here (only a measurement has), so ask it to apply regardless.
+  async function reapplyTheme() {
+    if (!window.applyTheme) return;
+    window.applyTheme.force = true;
+    try { await window.applyTheme(); } finally { window.applyTheme.force = false; }
+  }
+
+  function sizeRoleColumn() {
     const run = () => {
-      roles.forEach(r => { r.style.fontSize = ''; });
-      if (!isBilingual() || !roles.length) return;
-      const overflows = () => roles.some(r => r.clientWidth && r.scrollWidth > r.clientWidth + 1);
-      const base = parseFloat(getComputedStyle(roles[0]).fontSize) || 14;
-      let size = base;
-      while (overflows() && size > base * 0.7) {
-        size -= 0.5;
-        roles.forEach(r => { r.style.fontSize = `${size}px`; });
+      const rows = [...rowsEl.querySelectorAll('.of-row')];
+      if (!isBilingual() || !rows.length) {
+        if (window.officialsBilingualRoleCol) {
+          window.officialsBilingualRoleCol = 0;
+          root.style.removeProperty('--of-col-role');
+          reapplyTheme();
+        }
+        return;
       }
+      let widest = 0;
+      rows.forEach(row => {
+        const clone = row.querySelector('.of-role').cloneNode(true);
+        clone.style.cssText = 'position:absolute;visibility:hidden;width:auto;max-width:none;overflow:visible;text-overflow:clip;';
+        panel.appendChild(clone);
+        widest = Math.max(widest, clone.offsetWidth);
+        clone.remove();
+      });
+      const first = getComputedStyle(rows[0]);
+      const overhead = (parseFloat(first.paddingLeft) || 0) + (parseFloat(first.paddingRight) || 0) + (parseFloat(first.columnGap) || 0);
+      const col = Math.ceil(widest) + 6;
+      if (col === window.officialsBilingualRoleCol && overhead === window.officialsRowOverhead) return;
+      window.officialsBilingualRoleCol = col;
+      window.officialsRowOverhead = overhead;
+      root.style.setProperty('--of-col-role', `${col}px`);
+      reapplyTheme().then(fitHeader);        // the width follows the new column; refit the title in it
     };
     requestAnimationFrame(() => requestAnimationFrame(run));
     setTimeout(run, 900);
   }
 
-  // The title shrinks to fit but never stacks here: on this panel the width is
-  // the fix, not a second line.
+  // The title shrinks to fit and, in Bilingual mode, stacks if it still cannot.
   function fitHeader() {
-    window.GraphicsUtils.fitTitleOneLine(titleEl, { stack: false });
+    window.GraphicsUtils.fitTitleOneLine(titleEl);
   }
 
   function buildRow(row) {
@@ -58,9 +81,9 @@
 
     const roleEl = document.createElement('div');
     roleEl.className = 'of-role';
-    // Bilingual: both roles on one line, "Referee / Arbitre". The panel and the
-    // role column are widened for this (see theme-loader); a role with no
-    // French, or the same word in both, stays plain.
+    // Bilingual: both roles on one line, "Referee / Arbitre". The role column
+    // is sized to fit them (see sizeRoleColumn); a role with no French, or the
+    // same word in both, stays plain.
     const en = String(row.role || '').trim();
     const fr = String(row.roleFr || '').trim();
     if (isBilingual() && en && fr && en.toLowerCase() !== fr.toLowerCase()) {
@@ -119,7 +142,7 @@
 
     rowsEl.innerHTML = '';
     rows.forEach(row => rowsEl.appendChild(buildRow(row)));
-    fitRoles();
+    sizeRoleColumn();
   }
 
   function animateRowsIn(stagger = 60) {

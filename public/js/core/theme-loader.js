@@ -127,10 +127,17 @@
       // Width / height overrides on graphic root
       const graphicRoot = document.getElementById('graphic-root');
       if (graphicRoot) {
-        // Officials in Bilingual mode: a wider panel, since each position and
-        // the title are twice as long. Its own width setting, default 1250.
+        // Officials in Bilingual mode: the panel is as wide as the role column
+        // (measured by the graphic, just wide enough for the longest "English /
+        // French" role) plus the name side, whose width is the operator's
+        // Bilingual Name Width setting.
         const biOfficials = template === 'officials' && pos.langMode === 'both';
-        const rootWidth = biOfficials ? (Number(pos.ofBiWidth) || 1250) : pos.width;
+        // The columns are laid out inside the panel's content zoom, the width is
+        // set outside it, so the sum is scaled by the zoom.
+        const contentZoom = (pos.zoom != null && pos.zoom > 0) ? pos.zoom / 100 : 1;
+        const rootWidth = biOfficials
+          ? Math.round(((window.officialsBilingualRoleCol || 460) + (Number(pos.ofBiNameWidth) || 320) + (window.officialsRowOverhead || 76)) * contentZoom)
+          : pos.width;
         graphicRoot.style.width  = rootWidth  > 0 ? `${rootWidth}px`  : '';
         graphicRoot.style.height = pos.height > 0 ? `${pos.height}px` : '';
       }
@@ -567,7 +574,7 @@
       }
     }
     if (template === 'officials') {
-      root.style.setProperty('--of-col-role',   `${logoPos.langMode === 'both' ? (Number(logoPos.ofBiRoleCol) || 460) : (logoPos.colRole ?? 220)}px`);
+      root.style.setProperty('--of-col-role',   `${logoPos.colRole ?? 220}px`);
       root.style.setProperty('--of-role-align', logoPos.ofRoleAlign || 'right');
     }
     if (template === 'elements') {
