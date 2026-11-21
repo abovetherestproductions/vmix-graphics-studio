@@ -97,21 +97,37 @@
   opacity: 0.5;
 }
 
-/* Bilingual mode: the French row sits under the English one, laid out the
-   same way (the separator rule above works inside it, as its lines are
-   siblings of each other). Hidden unless the body is marked bilingual. */
+/* Bilingual mode: the French parts follow the English on the same line,
+   behind a "/" divider, laid out the same way (the separator rule above works
+   inside them, as the lines are siblings of each other). When both do not fit
+   the card's width, the script marks the body stacked and French drops to a
+   row of its own with no divider. Hidden unless the body is marked bilingual. */
 .manual-skater .lt-info-row2 {
   display: none;
 }
 
 .manual-skater .lt-info-body.lt-info-bilingual .lt-info-row2 {
   display: flex;
-  flex: 0 0 100%;
+  flex: 0 1 auto;
   align-items: baseline;
   flex-wrap: wrap;
   column-gap: var(--lt-info-sep-gap, 9px);
   row-gap: 1px;
+}
+
+.manual-skater .lt-info-body.lt-info-bilingual .lt-info-row2::before {
+  content: "/";
+  font-weight: 800;
+  opacity: 0.9;
+}
+
+.manual-skater .lt-info-body.lt-info-bilingual.lt-info-stacked .lt-info-row2 {
+  flex: 0 0 100%;
   margin-top: 3px;
+}
+
+.manual-skater .lt-info-body.lt-info-bilingual.lt-info-stacked .lt-info-row2::before {
+  content: none;
 }
 
 /* Quote/music content wraps to multiple lines (capped) instead of the

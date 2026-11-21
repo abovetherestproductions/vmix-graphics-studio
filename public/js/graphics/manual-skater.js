@@ -14,6 +14,7 @@
   const infoCategory2El = document.getElementById('lt-info-category2');
   const infoSegment2El  = document.getElementById('lt-info-segment2');
   const infoGroup2El    = document.getElementById('lt-info-group2');
+  const infoRow2El      = document.getElementById('lt-info-row2');
   const firstCardEl = document.getElementById('lt-first-card');
   const firstLabelEl = document.getElementById('lt-first-label');
   const firstValueEl = document.getElementById('lt-first-value');
@@ -42,6 +43,23 @@
       category: text.replace(GROUP_RE, '').trim(),
       group: `${lang === 'fr' ? 'Groupe' : 'Group'} ${match[1]}`,
     };
+  }
+
+  /**
+   * Bilingual mode puts French beside the English. If the French has wrapped
+   * onto a second line because the card is not wide enough for both, stack it
+   * instead, so the divider is never left dangling at the start of a line.
+   */
+  function fitBilingualRow() {
+    if (!infoBodyEl || !infoRow2El) return;
+    infoBodyEl.classList.remove('lt-info-stacked');
+    if (!infoBodyEl.classList.contains('lt-info-bilingual')) return;
+    const firstLine = infoBodyEl.querySelector('.lt-info-line.is-visible');
+    if (!firstLine) return;
+    const sameRow = Math.abs(
+      infoRow2El.getBoundingClientRect().top - firstLine.getBoundingClientRect().top
+    ) < 6;
+    if (!sameRow) infoBodyEl.classList.add('lt-info-stacked');
   }
 
   function setInfoLine(element, value) {
@@ -100,6 +118,7 @@
     const b2 = setInfoLine(infoSegment2El,  second?.segment);
     const c2 = setInfoLine(infoGroup2El,    second?.group);
     if (infoBodyEl) infoBodyEl.classList.toggle('lt-info-bilingual', !!(a2 || b2 || c2));
+    fitBilingualRow();
     const hasInfo = a || b || c;
     infoCardEl.classList.toggle('has-info', hasInfo);
     infoCardEl.setAttribute('aria-hidden', hasInfo ? 'false' : 'true');
@@ -284,6 +303,8 @@
     }
     setDetailCard(first.category, first.segment, first.group);
   }
+
+  if (document.fonts?.ready) document.fonts.ready.then(fitBilingualRow);
 
   function render(data = {}) {
     lastData = data;
