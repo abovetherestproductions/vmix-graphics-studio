@@ -1240,6 +1240,8 @@ async function loadAllConfig() {
     if (hideLblEl) hideLblEl.checked = !!cfg.elementsHideTotalLabel;
     const hideRailEl = document.getElementById('el-hide-light-rail');
     if (hideRailEl) hideRailEl.checked = !!cfg.elementsHideLightRail;
+    const hideReviewEl = document.getElementById('el-hide-review');
+    if (hideReviewEl) hideReviewEl.checked = !!cfg.elementsHideReview;
     const hideHiEl = document.getElementById('el-hide-highest');
     if (hideHiEl) hideHiEl.checked = !!cfg.elementsHideHighest;
     const showNameEl = document.getElementById('el-highest-show-name');
@@ -2644,6 +2646,13 @@ async function setElementsHideLightRail(hide) {
   } catch(e) { toast(`Error: ${e.message}`, 'err'); }
 }
 
+async function setElementsHideReview(hide) {
+  try {
+    await api('POST', '/api/config', { elementsHideReview: !!hide });
+    toast(`Under-review marker ${hide ? 'hidden' : 'shown'}`);
+  } catch(e) { toast(`Error: ${e.message}`, 'err'); }
+}
+
 async function setElementsHideHighest(hide) {
   try {
     await api('POST', '/api/config', { elementsHideHighest: !!hide });
@@ -3602,6 +3611,12 @@ function buildCards() {
                 <input type="checkbox" id="el-hide-light-rail" onchange="setElementsHideLightRail(this.checked)"
                        style="width:14px;height:14px;accent-color:var(--accent);cursor:pointer;" />
                 Hide GOE light rail
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;"
+                     title="A yellow dot beside an element while the panel has it flagged for review (SC API mode)">
+                <input type="checkbox" id="el-hide-review" onchange="setElementsHideReview(this.checked)"
+                       style="width:14px;height:14px;accent-color:var(--accent);cursor:pointer;" />
+                Hide "under review" dot
               </label>
               <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;">
                 <input type="checkbox" id="el-hide-highest" onchange="setElementsHideHighest(this.checked)"

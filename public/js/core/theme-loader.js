@@ -55,6 +55,7 @@
       elementsHighestLabelFr: config.elementsHighestLabelFr || '',
       elementsHideTotalLabel: !!config.elementsHideTotalLabel,
       elementsHideLightRail: !!config.elementsHideLightRail,
+      elementsHideReview:    !!config.elementsHideReview,
       elementsHideHighest:   !!config.elementsHideHighest,
       elementsHighestShowName: !!config.elementsHighestShowName,
       elementsLayoutMode: config.elementsLayoutMode || 'list',
@@ -649,6 +650,8 @@
     window.elementsHideTotalLabel = !!config.elementsHideTotalLabel;
     // Operator option: hide the GOE light-rail row entirely
     window.elementsHideLightRail  = !!config.elementsHideLightRail;
+    // Operator option: do not mark elements the panel has flagged for review
+    window.elementsHideReview     = !!config.elementsHideReview;
     // Operator option: hide the Highest TES summary row entirely
     window.elementsHideHighest    = !!config.elementsHideHighest;
     // Operator option: show the leader's name under the Highest TES label

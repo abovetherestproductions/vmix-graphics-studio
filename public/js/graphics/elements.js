@@ -68,9 +68,15 @@
     return (document.documentElement.lang === 'fr' && fr) ? fr : (en || fr || '');
   }
 
+  // An element the panel has flagged for review gets a yellow dot and a small
+  // indent (see .el-row.reviewing). The operator can turn the marker off.
+  function isReviewing(el) {
+    return el?.reviewing === true && !window.elementsHideReview;
+  }
+
   function buildRow(el, isCurrent) {
     const div = document.createElement('div');
-    div.className = 'el-row' + (isCurrent ? ' current' : '');
+    div.className = 'el-row' + (isCurrent ? ' current' : '') + (isReviewing(el) ? ' reviewing' : '');
 
     // Accept any "show full name" value: 'name', 'fullName', 'full', true
     const mode = window.elementsDisplayMode;
@@ -101,6 +107,7 @@
 
   function updateRowInPlace(rowEl, el, isCurrent) {
     rowEl.classList.toggle('current', isCurrent);
+    rowEl.classList.toggle('reviewing', isReviewing(el));
     const mode     = window.elementsDisplayMode;
     const showName = (mode === 'name' || mode === 'fullName' || mode === 'full' || mode === true);
     const codeEl   = rowEl.querySelector('.el-code');

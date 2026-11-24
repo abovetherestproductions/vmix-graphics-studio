@@ -179,6 +179,40 @@
 .el-row.row-in  { opacity: 1; transform: none; }
 .el-row.no-anim { transition: none; }
 
+/* Element under review: a yellow dot in the left margin, and the element's text
+   steps in a little to make room for it. The flag comes and goes while the
+   skate is on, so the indent eases rather than jumps. */
+.el-row {
+  position: relative;
+}
+
+.el-row .el-code {
+  transition: padding-left 220ms ease;
+}
+
+.el-row.reviewing .el-code {
+  padding-left: var(--el-review-indent, 20px);
+}
+
+.el-row.reviewing::before {
+  content: '';
+  position: absolute;
+  left: var(--el-review-dot-left, 8px);
+  top: 50%;
+  width: var(--el-review-dot-size, 12px);
+  height: var(--el-review-dot-size, 12px);
+  margin-top: calc(var(--el-review-dot-size, 12px) / -2);
+  border-radius: 50%;
+  background: var(--el-review-color, #ffd21f);
+  box-shadow: 0 0 10px 1px var(--el-review-color, #ffd21f);
+  animation: el-review-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes el-review-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.6; }
+}
+
 /* Most recent element highlighted */
 .el-row.current {
   background: rgba(255,255,255,0.06);

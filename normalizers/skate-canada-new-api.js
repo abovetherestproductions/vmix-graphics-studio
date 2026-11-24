@@ -954,6 +954,10 @@ function normalizeElements(elements, entry, categoryDto, segmentDto, existingCon
         value:     val,
         halfway:   !!el.halfway_flag,
         repeated:  !!el.repeated_jump,
+        // The panel has flagged this element for review while the skate is on.
+        // The API sends review_flag on every element, false once the skate is
+        // finished, so it can simply be passed through.
+        reviewing: el.review_flag === true,
         goeScores,
       };
     });

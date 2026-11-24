@@ -449,6 +449,7 @@
   "elementsHideTotalLabel": true,
   "elementsHideHighest": false,
   "elementsHideLightRail": true,
+  "elementsHideReview": false,
   "nameFormat": "firstlast",
   "elementsHighestShowName": true,
   "categoryGroupStyle": "letter"
