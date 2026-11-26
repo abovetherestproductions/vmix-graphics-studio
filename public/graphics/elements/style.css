@@ -179,10 +179,10 @@
 .el-row.row-in  { opacity: 1; transform: none; }
 .el-row.no-anim { transition: none; }
 
-/* Element under review: a yellow dot just after the element's text. It pulses
-   three times when the flag appears and then holds steady for as long as the
-   element stays flagged. Nothing moves - the dot sits beside the text, it does
-   not make room for itself. */
+/* Element under review: a solid yellow dot just after the element's text.
+   Nothing moves - the dot sits beside the text, it does not make room for
+   itself - and nothing about it animates: no pulse and no glow (a blurred
+   shadow), both of which cost a repaint on every frame in a vMix browser input. */
 .el-row.reviewing .el-code::after {
   /* A glyph, not a box: it has no line-break opportunity before it, so a name
      that wraps keeps the dot on its last word instead of orphaning it on a
@@ -200,17 +200,10 @@
   position: relative;
   top: var(--el-review-nudge, 0.023em);
   color: var(--el-review-color, #ffd21f);
-  text-shadow: 0 0 9px var(--el-review-color, #ffd21f);
-  animation: el-review-pulse 1.2s ease-in-out 3;
 }
 
 .el-row.reviewing .el-code.show-name::after {
   top: var(--el-review-nudge-name, 0.06em);
-}
-
-@keyframes el-review-pulse {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0.35; }
 }
 
 /* Most recent element highlighted */

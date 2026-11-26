@@ -68,8 +68,8 @@
     return (document.documentElement.lang === 'fr' && fr) ? fr : (en || fr || '');
   }
 
-  // An element the panel has flagged for review gets a yellow dot and a small
-  // indent (see .el-row.reviewing). The operator can turn the marker off.
+  // An element the panel has flagged for review gets a yellow dot after its
+  // text (see .el-row.reviewing). The operator can turn the marker off.
   function isReviewing(el) {
     return el?.reviewing === true && !window.elementsHideReview;
   }
