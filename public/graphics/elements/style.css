@@ -179,10 +179,11 @@
 .el-row.row-in  { opacity: 1; transform: none; }
 .el-row.no-anim { transition: none; }
 
-/* Element under review: a solid yellow dot just after the element's text.
-   Nothing moves - the dot sits beside the text, it does not make room for
-   itself - and nothing about it animates: no pulse and no glow (a blurred
-   shadow), both of which cost a repaint on every frame in a vMix browser input. */
+/* Element under review: a yellow dot with a soft glow just after the element's
+   text. Nothing moves - the dot sits beside the text, it does not make room for
+   itself - and nothing about it animates. The glow is static: the browser paints
+   it once and reuses it. It was the pulse, repainting the glow on every frame,
+   that dropped frames in a vMix browser input, so do not animate this. */
 .el-row.reviewing .el-code::after {
   /* A glyph, not a box: it has no line-break opportunity before it, so a name
      that wraps keeps the dot on its last word instead of orphaning it on a
@@ -200,6 +201,7 @@
   position: relative;
   top: var(--el-review-nudge, 0.023em);
   color: var(--el-review-color, #ffd21f);
+  text-shadow: 0 0 9px var(--el-review-color, #ffd21f);
 }
 
 .el-row.reviewing .el-code.show-name::after {
